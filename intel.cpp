@@ -239,12 +239,12 @@ intel::doll_need_impl::table_t::table_t()
   insert("rbx"); insert("ebx"); insert("bx"); insert("bh"); insert("bl");
   insert("RBX"); insert("EBX"); insert("BX"); insert("BH"); insert("BL");
   insert("rcx"); insert("ecx"); insert("cx"); insert("ch"); insert("cl");
-  insert("RCX"); insert("ECX"); insert("CX"); insert("CH"); insert("CL");	
+  insert("RCX"); insert("ECX"); insert("CX"); insert("CH"); insert("CL");
   insert("rdx"); insert("edx"); insert("dx"); insert("dh"); insert("dl");
   insert("RDX"); insert("EDX"); insert("DX"); insert("DH"); insert("DL");
   insert("rsp"); insert("esp");
   insert("RSP"); insert("ESP");
-  insert("sp"); insert("SP");	
+  insert("sp"); insert("SP");
   insert("rbp"); insert("ebp");
   insert("RBP"); insert("EBP");
   insert("bp"); insert("BP");
@@ -400,24 +400,24 @@ void intel::imm::load() const
   if (m_float) {
     if (x64) {
       if (mode == GNU) {
-	out << '\t' << "movl" << '\t' << m_expr << ", %eax" << '\n';
-	out << '\t' << "movq" << '\t' << "%rax, %xmm0" << '\n';
+        out << '\t' << "movl" << '\t' << m_expr << ", %eax" << '\n';
+        out << '\t' << "movq" << '\t' << "%rax, %xmm0" << '\n';
       }
       else {
-	out << '\t' << "mov" << '\t' << "eax, " << m_expr << '\n';
-	out << '\t' << "movq" << '\t' << "xmm0, rax" << '\n';
+        out << '\t' << "mov" << '\t' << "eax, " << m_expr << '\n';
+        out << '\t' << "movq" << '\t' << "xmm0, rax" << '\n';
       }
     }
     else {
       if (mode == GNU) {
-	out << '\t' << "pushl" << '\t' << m_expr << '\n';
-	out << '\t' << "flds" << '\t' << "(%esp)" << '\n';
-	out << '\t' << "leal" << '\t' << "4(%esp), %esp" << '\n';
+        out << '\t' << "pushl" << '\t' << m_expr << '\n';
+        out << '\t' << "flds" << '\t' << "(%esp)" << '\n';
+        out << '\t' << "leal" << '\t' << "4(%esp), %esp" << '\n';
       }
       else {
-	out << '\t' << "push" << '\t' << m_expr << '\n';
-	out << '\t' << "fld" << '\t' << "DWORD PTR [esp]" << '\n';
-	out << '\t' << "lea" << '\t' << "esp, 4[esp]" << '\n';
+        out << '\t' << "push" << '\t' << m_expr << '\n';
+        out << '\t' << "fld" << '\t' << "DWORD PTR [esp]" << '\n';
+        out << '\t' << "lea" << '\t' << "esp, 4[esp]" << '\n';
       }
     }
   }
@@ -456,24 +456,24 @@ namespace intel {
   namespace literal {
     namespace floating {
       namespace output_impl {
-	using namespace COMPILER;
-	double get(usr* u)
-	{
-	  const type* T = u->m_type;
-	  T = T->unqualified();
-	  if (T->m_id == type::DOUBLE) {
-	    typedef double X;
-	    constant<X>* c = static_cast<constant<X>*>(u);
-	    return c->m_value;
-	  }
-	  else {
-	    assert(T->m_id == type::LONG_DOUBLE);
-	    assert(mode == MS);
-	    typedef long double X;
-	    constant<X>* c = static_cast<constant<X>*>(u);
-	    return c->m_value;
-	  }
-	}
+        using namespace COMPILER;
+        double get(usr* u)
+        {
+          const type* T = u->m_type;
+          T = T->unqualified();
+          if (T->m_id == type::DOUBLE) {
+            typedef double X;
+            constant<X>* c = static_cast<constant<X>*>(u);
+            return c->m_value;
+          }
+          else {
+            assert(T->m_id == type::LONG_DOUBLE);
+            assert(mode == MS);
+            typedef long double X;
+            constant<X>* c = static_cast<constant<X>*>(u);
+            return c->m_value;
+          }
+        }
       } // end of namespace output_impl
     } // end of namespace floating
   } // end of namespace literal
@@ -586,71 +586,71 @@ void intel::mem::load() const
   using namespace std;
   using namespace COMPILER;
   const type* T = m_usr->m_type;
-  assert(T->scalar());	
+  assert(T->scalar());
   int size = T->size();
   usr::flag f = m_usr->m_flag;
   refed.insert(refgen_t(m_label,f,size));
   if (T->real()) {
     if (x64) {
       if (literal::floating::big(m_usr)) {
-	char ps = psuffix();
-	if (mode == GNU)
-	  out << '\t' << "mov" << ps << '\t' << m_label << "(%rip)," << '\t' << xmm(0) << '\n';
-	else {
-	  out << '\t' << "movsd" << '\t' << xmm(0) << ", " << "QWORD PTR " << m_label << '\n';
-	}
+        char ps = psuffix();
+        if (mode == GNU)
+          out << '\t' << "mov" << ps << '\t' << m_label << "(%rip)," << '\t' << xmm(0) << '\n';
+        else {
+          out << '\t' << "movsd" << '\t' << xmm(0) << ", " << "QWORD PTR " << m_label << '\n';
+        }
       }
       else {
-	indirect_code(reg::ax);
-	string rax = reg::name(reg::ax, 8);
-	string ptr = (mode == MS) ? ms_pseudo(size) + " PTR " : "";
-	switch (size) {
-	case 4:
-	  if (mode == GNU)
-	    out << '\t' << "movss" << '\t' << '(' << rax << "), " << xmm(0) << '\n';
-	  else
-	    out << '\t' << "movss" << '\t' << xmm(0) << ", " << ptr << '[' << rax << ']' << '\n';
-	  break;
-	case 8:
-	  if (mode == GNU)
-	    out << '\t' << "movsd" << '\t' << '(' << rax << "), " << xmm(0) << '\n';
-	  else
-	    out << '\t' << "movsd" << '\t' << xmm(0) << ", " << ptr <<  '[' << rax << ']' << '\n';
-	  break;
-	case 16:
-	  {
-	    char ps = psuffix();
-	    if (mode == GNU)
-	      out << '\t' << "fldt" << '\t' << '(' << rax << ')' << '\n';
-	    else
-	      out << '\t' << "fld" << '\t' << ptr << '[' << rax << ']' << '\n';
-	    if (mode == GNU)
-	      out << '\t' << "sub" << ps << '\t' << "$8" << ", " << sp() << '\n';
-	    else
-	      out << '\t' << "sub" << '\t' << sp() << ", " << 8 << '\n';
-	    if (mode == GNU)
-	      out << '\t' << "fstpl" << '\t' << '(' << sp() << ')' << '\n';
-	    else
-	      out << '\t' << "fstp" << '\t' << ptr << '[' << sp() << ']' << '\n';
-	    if (mode == GNU)
-	      out << '\t' << "movsd" << '\t' << '(' << sp() << "), " << xmm(0) << '\n';
-	    else
-	      out << '\t' << "movsd" << '\t' << ptr << '[' << sp() << "], " << xmm(0) << '\n';
-	    if (mode == GNU)
-	      out << '\t' << "add" << ps << '\t' << "$8" << ", " << sp() << '\n';
-	    else
-	      out << '\t' << "add" << '\t' << sp() << ", " << 8 << '\n';
-	    break;
-	  }
-	}
+        indirect_code(reg::ax);
+        string rax = reg::name(reg::ax, 8);
+        string ptr = (mode == MS) ? ms_pseudo(size) + " PTR " : "";
+        switch (size) {
+        case 4:
+          if (mode == GNU)
+            out << '\t' << "movss" << '\t' << '(' << rax << "), " << xmm(0) << '\n';
+          else
+            out << '\t' << "movss" << '\t' << xmm(0) << ", " << ptr << '[' << rax << ']' << '\n';
+          break;
+        case 8:
+          if (mode == GNU)
+            out << '\t' << "movsd" << '\t' << '(' << rax << "), " << xmm(0) << '\n';
+          else
+            out << '\t' << "movsd" << '\t' << xmm(0) << ", " << ptr <<  '[' << rax << ']' << '\n';
+          break;
+        case 16:
+          {
+            char ps = psuffix();
+            if (mode == GNU)
+              out << '\t' << "fldt" << '\t' << '(' << rax << ')' << '\n';
+            else
+              out << '\t' << "fld" << '\t' << ptr << '[' << rax << ']' << '\n';
+            if (mode == GNU)
+              out << '\t' << "sub" << ps << '\t' << "$8" << ", " << sp() << '\n';
+            else
+              out << '\t' << "sub" << '\t' << sp() << ", " << 8 << '\n';
+            if (mode == GNU)
+              out << '\t' << "fstpl" << '\t' << '(' << sp() << ')' << '\n';
+            else
+              out << '\t' << "fstp" << '\t' << ptr << '[' << sp() << ']' << '\n';
+            if (mode == GNU)
+              out << '\t' << "movsd" << '\t' << '(' << sp() << "), " << xmm(0) << '\n';
+            else
+              out << '\t' << "movsd" << '\t' << ptr << '[' << sp() << "], " << xmm(0) << '\n';
+            if (mode == GNU)
+              out << '\t' << "add" << ps << '\t' << "$8" << ", " << sp() << '\n';
+            else
+              out << '\t' << "add" << '\t' << sp() << ", " << 8 << '\n';
+            break;
+          }
+        }
       }
     }
     else {
       if (mode == GNU)
-	out << '\t' << "fld" << fsuffix(size) << '\t' << m_label << '\n';
+        out << '\t' << "fld" << fsuffix(size) << '\t' << m_label << '\n';
       else {
-	out << '\t' << "lea" << '\t' << "eax, " << m_label << '\n';
-	out << '\t' << "fld" << '\t' << ms_pseudo(size) << " PTR [eax]" << '\n';
+        out << '\t' << "lea" << '\t' << "eax, " << m_label << '\n';
+        out << '\t' << "fld" << '\t' << ms_pseudo(size) << " PTR [eax]" << '\n';
       }
     }
   }
@@ -680,9 +680,9 @@ void intel::mem::load(reg::gpr r) const
   if (literal::integer::big(m_usr) || literal::floating::big(m_usr)) {
     if (x64) {
       if (mode == GNU)
-	out << '\t' << "mov" << sf << '\t' << m_label << "(%rip)," << '\t' << dst << '\n';
+        out << '\t' << "mov" << sf << '\t' << m_label << "(%rip)," << '\t' << dst << '\n';
       else
-	out << '\t' << "mov" << sf << '\t' << dst << ", " << ptr << m_label << '\n';
+        out << '\t' << "mov" << sf << '\t' << dst << ", " << ptr << m_label << '\n';
     }
     else
       load_adc(r);
@@ -692,28 +692,28 @@ void intel::mem::load(reg::gpr r) const
       string preg = reg::name(r, psize());
       char ps = psuffix();
       if (mode == GNU) {
-	out << '\t' << "mov" << ps << '\t' << ".refptr." << m_label << "(%rip)," << '\t' << preg << '\n';
-	refed.insert(refgen_t(m_label,f,size));
-	out << '\t' << "mov" << sf << '\t' << '(' << preg << "), " << dst << '\n';
+        out << '\t' << "mov" << ps << '\t' << ".refptr." << m_label << "(%rip)," << '\t' << preg << '\n';
+        refed.insert(refgen_t(m_label,f,size));
+        out << '\t' << "mov" << sf << '\t' << '(' << preg << "), " << dst << '\n';
       }
       else {
-	out << '\t' << "lea" << ps << '\t' << preg << ", "<< '\t' << m_label << '\n';
-	out << '\t' << "mov" << sf << '\t' << dst << ", " << ptr << '[' << preg << ']' << '\n';
+        out << '\t' << "lea" << ps << '\t' << preg << ", "<< '\t' << m_label << '\n';
+        out << '\t' << "mov" << sf << '\t' << dst << ", " << ptr << '[' << preg << ']' << '\n';
       }
     }
     else {
       if (size <= 4) {
-	if (mode == GNU)
-	  out << '\t' << "mov" << sf << '\t' << m_label << ", " << dst << '\n';
-	else {
-	  reg::gpr tmp = r == reg::ax ? reg::bx : reg::ax;
-	  string ind = reg::name(tmp, psize());
-	  out << '\t' << "lea" << '\t' << ind << ", " << m_label << '\n';
-	  out << '\t' << "mov" << '\t' << dst << ", " << ptr << '[' << ind << ']' << '\n';
-	}
+        if (mode == GNU)
+          out << '\t' << "mov" << sf << '\t' << m_label << ", " << dst << '\n';
+        else {
+          reg::gpr tmp = r == reg::ax ? reg::bx : reg::ax;
+          string ind = reg::name(tmp, psize());
+          out << '\t' << "lea" << '\t' << ind << ", " << m_label << '\n';
+          out << '\t' << "mov" << '\t' << dst << ", " << ptr << '[' << ind << ']' << '\n';
+        }
       }
       else
-	load_adc(r);
+        load_adc(r);
     }
   }
 }
@@ -763,7 +763,7 @@ std::string intel::mem::gnu_refgen(const refgen_t& x)
   os << '\t' << ".section" << '\t' << ".rdata$.refptr." << label << ", \"dr\"" << '\n';
   if (!(f & usr::STATIC)) {
     os << '\t' << ".globl" << '\t' << ".refptr." << label << '\n';
-    os << '\t' << ".linkonce	discard" << '\n';
+    os << '\t' << ".linkonce        discard" << '\n';
   }
   os << ".refptr." << label << ":\n";
   os << '\t' << ".quad" << '\t' << label << '\n';
@@ -842,30 +842,30 @@ void intel::mem::store() const
       indirect_code(reg::ax);
       switch (size) {
       case 4:
-	if (mode == GNU)
-	  out << '\t' << "movss" << '\t' << "%xmm0, (" << reg::name(reg::ax, 8) << ')' << '\n';
-	else
-	  out << '\t' << "movss" << '\t' << "DWORD PTR " << '[' << reg::name(reg::ax, 8) << ']' << ", xmm0" << '\n';
-	break;
+        if (mode == GNU)
+          out << '\t' << "movss" << '\t' << "%xmm0, (" << reg::name(reg::ax, 8) << ')' << '\n';
+        else
+          out << '\t' << "movss" << '\t' << "DWORD PTR " << '[' << reg::name(reg::ax, 8) << ']' << ", xmm0" << '\n';
+        break;
       case 8:
-	if (mode == GNU)
-	  out << '\t' << "movsd" << '\t' << "%xmm0, (" << reg::name(reg::ax, 8) << ')' << '\n';
-	else
-	  out << '\t' << "movsd" << '\t' << "QWORD PTR " << '[' << reg::name(reg::ax, 8) << ']' << ", xmm0"<< '\n';
-	break;
+        if (mode == GNU)
+          out << '\t' << "movsd" << '\t' << "%xmm0, (" << reg::name(reg::ax, 8) << ')' << '\n';
+        else
+          out << '\t' << "movsd" << '\t' << "QWORD PTR " << '[' << reg::name(reg::ax, 8) << ']' << ", xmm0"<< '\n';
+        break;
       default:
-	assert(size == literal::floating::long_double::size);
-	if (mode == GNU) {
-	  out << '\t' << "movsd" << '\t' << "%xmm0, (" << reg::name(reg::ax, 8) << ')' << '\n';
-	  out << '\t' << "fldl" << '\t' << '(' << reg::name(reg::ax, 8) << ')' << '\n';
-	  out << '\t' << "fstpt" << '\t' << '(' << reg::name(reg::ax, 8) << ')' << '\n';
-	}
-	else {
-	  out << '\t' << "movsd" << '\t' << "QWORD PTR " << '[' << reg::name(reg::ax, 8) << ']' << ", xmm0" << '\n';
-	  out << '\t' << "fldl" << '\t' << '[' << reg::name(reg::ax, 8) << ']' << '\n';
-	  out << '\t' << "fstpt" << '\t' << '[' << reg::name(reg::ax, 8) << ']' << '\n';
-	}
-	break;
+        assert(size == literal::floating::long_double::size);
+        if (mode == GNU) {
+          out << '\t' << "movsd" << '\t' << "%xmm0, (" << reg::name(reg::ax, 8) << ')' << '\n';
+          out << '\t' << "fldl" << '\t' << '(' << reg::name(reg::ax, 8) << ')' << '\n';
+          out << '\t' << "fstpt" << '\t' << '(' << reg::name(reg::ax, 8) << ')' << '\n';
+        }
+        else {
+          out << '\t' << "movsd" << '\t' << "QWORD PTR " << '[' << reg::name(reg::ax, 8) << ']' << ", xmm0" << '\n';
+          out << '\t' << "fldl" << '\t' << '[' << reg::name(reg::ax, 8) << ']' << '\n';
+          out << '\t' << "fstpt" << '\t' << '[' << reg::name(reg::ax, 8) << ']' << '\n';
+        }
+        break;
       }
     }
     else {
@@ -878,9 +878,9 @@ void intel::mem::store() const
       string ax = reg::name(reg::ax, psz);
       string bx = reg::name(reg::bx, psz);
       if (mode == GNU)
-	out << '\t' << "mov" << psuffix() << '\t' << ax << ", " << bx << '\n';
+        out << '\t' << "mov" << psuffix() << '\t' << ax << ", " << bx << '\n';
       else
-	out << '\t' << "mov" << psuffix() << '\t' << bx << ", " << ax << '\n';
+        out << '\t' << "mov" << psuffix() << '\t' << bx << ", " << ax << '\n';
       store(reg::bx);
     }
     else
@@ -911,24 +911,24 @@ void intel::mem::store(reg::gpr r) const
   else {
     if ( size <= 4 ) {
       if (mode == GNU)
-	out << '\t' << "mov" << sf << '\t' << reg::name(r, size) << ", " << m_label << '\n';
+        out << '\t' << "mov" << sf << '\t' << reg::name(r, size) << ", " << m_label << '\n';
       else
-	out << '\t' << "mov" << '\t' << ms_pseudo(size) << " PTR " << m_label << ", " << reg::name(r, size) << '\n';
+        out << '\t' << "mov" << '\t' << ms_pseudo(size) << " PTR " << m_label << ", " << reg::name(r, size) << '\n';
     }
     else {
       assert(size == 8 || size == 12);
       if (mode == GNU) {
-	out << '\t' << "movl" << '\t' << "%eax, " << m_label << '\n';
-	out << '\t' << "movl" << '\t' << "%edx, " << m_label << "+4" << '\n';
-	if ( size == 12 )
-	  out << '\t' << "movl" << '\t' << "%ecx, " << m_label << "+8" << '\n';
+        out << '\t' << "movl" << '\t' << "%eax, " << m_label << '\n';
+        out << '\t' << "movl" << '\t' << "%edx, " << m_label << "+4" << '\n';
+        if ( size == 12 )
+          out << '\t' << "movl" << '\t' << "%ecx, " << m_label << "+8" << '\n';
       }
       else {
-	string ptr = "DWORD PTR ";
-	out << '\t' << "mov" << '\t' << ptr << m_label << ", eax" << '\n';
-	out << '\t' << "mov" << '\t' << ptr << m_label << "+4" << ", edx" << '\n';
-	if ( size == 12 )
-	  out << '\t' << "mov" << '\t' << ptr << m_label << "+8" << ", ecx" << '\n';
+        string ptr = "DWORD PTR ";
+        out << '\t' << "mov" << '\t' << ptr << m_label << ", eax" << '\n';
+        out << '\t' << "mov" << '\t' << ptr << m_label << "+4" << ", edx" << '\n';
+        if ( size == 12 )
+          out << '\t' << "mov" << '\t' << ptr << m_label << "+8" << ", ecx" << '\n';
       }
     }
   }
@@ -962,7 +962,7 @@ std::string intel::mem::expr(int delta, bool special) const
   using namespace COMPILER;
   ostringstream os;
   const type* T = m_usr->m_type;
-  int size = T->size();	
+  int size = T->size();
   if (mode == MS) {
     if (T->scalar())
       os << ms_pseudo(special ? 4 : size) << " PTR ";
@@ -1082,15 +1082,15 @@ bool intel::mem::genobj()
     }
     else {
       if (mode == MS && str)
-	out << '\t' << comment_start << name << '\n';
+        out << '\t' << comment_start << name << '\n';
       const map<int, var*>& value = p->m_value;
       if (int n = T->size() - accumulate(value.begin(), value.end(), 0, pseudo)) {
-	if (mode == GNU)
-	  out << '\t' << ".space" << '\t' << n << '\n';
-	else {
-	  while (n--)
-	    out << '\t' << "BYTE" << '\t' << 0 << '\n';
-	}
+        if (mode == GNU)
+          out << '\t' << ".space" << '\t' << n << '\n';
+        else {
+          while (n--)
+            out << '\t' << "BYTE" << '\t' << 0 << '\n';
+        }
       }
     }
     if (!str)
@@ -1137,7 +1137,7 @@ int intel::mem::pseudo(int offset, const std::pair<int, COMPILER::var*>& p)
       out << '\t' << ".space" << '\t' << n << '\n';
     else {
       while (n--)
-	out << '\t' << "BYTE" << '\t' << 0 << '\n';
+        out << '\t' << "BYTE" << '\t' << 0 << '\n';
     }
     offset = p.first;
   }
@@ -1229,38 +1229,38 @@ void intel::stack::load() const
       char ps = psuffix();
       switch (size) {
       case 4:
-	if (mode == GNU)
-	  out << '\t' << "movss" << '\t' << expr() << ", " << xmm(0) << '\n';
-	else
-	  out << '\t' << "movss" << '\t' << xmm(0) << ", " << expr() << '\n';
-	break;
+        if (mode == GNU)
+          out << '\t' << "movss" << '\t' << expr() << ", " << xmm(0) << '\n';
+        else
+          out << '\t' << "movss" << '\t' << xmm(0) << ", " << expr() << '\n';
+        break;
       case 8:
-	if (mode == GNU)
-	  out << '\t' << "movsd" << '\t' << expr() << ", " << xmm(0) << '\n';
-	else
-	  out << '\t' << "movsd" << '\t' << xmm(0) << ", " << expr() << '\n';
-	break;
+        if (mode == GNU)
+          out << '\t' << "movsd" << '\t' << expr() << ", " << xmm(0) << '\n';
+        else
+          out << '\t' << "movsd" << '\t' << xmm(0) << ", " << expr() << '\n';
+        break;
       case 16:
-	fld(m_var);
-	if (mode == GNU)
-	  out << '\t' << "sub" << ps << '\t' << '$' << 8 << ", " << sp() << '\n';
-	else
-	  out << '\t' << "sub" << '\t' << sp() << ", " << 8 << '\n';
-	string qptr = "QWORD PTR";
-	char sf = fsuffix(8);
-	if (mode == GNU)
-	  out << '\t' << "fstp" << sf << '\t' << '(' << sp() << ')' << '\n';
-	else
-	  out << '\t' << "fstp" << '\t' << ' ' << qptr << ' ' << '[' << sp() << ']' << '\n';
-	if (mode == GNU)
-	  out << '\t' << "movsd" << '\t' << '(' << sp() << "), " << xmm(0) << '\n';
-	else
-	  out << '\t' << "movsd" << '\t' << xmm(0) << ", " << qptr << ' ' << '[' << sp() << ']' << '\n';
-	if (mode == GNU)
-	  out << '\t' << "add" << ps << '\t' << '$' << 8 << ", " << sp() << '\n';
-	else
-	  out << '\t' << "add" << '\t' << sp() << ", " << 8 << '\n';
-	break;
+        fld(m_var);
+        if (mode == GNU)
+          out << '\t' << "sub" << ps << '\t' << '$' << 8 << ", " << sp() << '\n';
+        else
+          out << '\t' << "sub" << '\t' << sp() << ", " << 8 << '\n';
+        string qptr = "QWORD PTR";
+        char sf = fsuffix(8);
+        if (mode == GNU)
+          out << '\t' << "fstp" << sf << '\t' << '(' << sp() << ')' << '\n';
+        else
+          out << '\t' << "fstp" << '\t' << ' ' << qptr << ' ' << '[' << sp() << ']' << '\n';
+        if (mode == GNU)
+          out << '\t' << "movsd" << '\t' << '(' << sp() << "), " << xmm(0) << '\n';
+        else
+          out << '\t' << "movsd" << '\t' << xmm(0) << ", " << qptr << ' ' << '[' << sp() << ']' << '\n';
+        if (mode == GNU)
+          out << '\t' << "add" << ps << '\t' << '$' << 8 << ", " << sp() << '\n';
+        else
+          out << '\t' << "add" << '\t' << sp() << ", " << 8 << '\n';
+        break;
       }
     }
     else
@@ -1292,13 +1292,13 @@ void intel::stack::load(reg::gpr r) const
       out << '\t' << "movl" << '\t' << expr(0, true) << ", %eax" << '\n';
       out << '\t' << "movl" << '\t' << expr(4, true) << ", %edx" << '\n';
       if (size == 12)
-	out << '\t' << "movl" << '\t' << expr(8, true) << ", %ecx" << '\n';
+        out << '\t' << "movl" << '\t' << expr(8, true) << ", %ecx" << '\n';
     }
     else {
       out << '\t' << "mov" << '\t' << "eax, " << expr(0, true) << '\n';
       out << '\t' << "mov" << '\t' << "edx, " << expr(4, true) << '\n';
       if (size == 12)
-	out << '\t' << "mov" << '\t' << "ecx, " << expr(8, true) << '\n';
+        out << '\t' << "mov" << '\t' << "ecx, " << expr(8, true) << '\n';
     }
   }
 }
@@ -1315,21 +1315,21 @@ void intel::stack::store() const
       out << '\t' << "movs";
       switch (size) {
       case 4:
-	out << 's';
-	break;
+        out << 's';
+        break;
       case 8:
       case 16:
-	out << 'd';
-	break;
+        out << 'd';
+        break;
       }
       if (mode == GNU)
-	out << '\t' << xmm(0) << ", " << expr() << '\n';
+        out << '\t' << xmm(0) << ", " << expr() << '\n';
       else
-	out << '\t' << expr() << ", " << xmm(0) << '\n';
+        out << '\t' << expr() << ", " << xmm(0) << '\n';
       if (size == literal::floating::long_double::size && mode == GNU) {
-	char sf = fsuffix(8);
-	out << '\t' << "fld" << sf << '\t' << expr() << '\n';
-	fstp(m_var);
+        char sf = fsuffix(8);
+        out << '\t' << "fld" << sf << '\t' << expr() << '\n';
+        fstp(m_var);
       }
     }
     else
@@ -1360,13 +1360,13 @@ void intel::stack::store(reg::gpr r) const
       out << '\t' << "movl" << '\t' << "%eax, " << expr() << '\n';
       out << '\t' << "movl" << '\t' << "%edx, " << expr(4) << '\n';
       if (size == 12)
-	out << '\t' << "movl" << '\t' << "%ecx, " << expr(8) << '\n';
+        out << '\t' << "movl" << '\t' << "%ecx, " << expr(8) << '\n';
     }
     else {
       out << '\t' << "mov" << '\t' << expr(0, true) << ", eax" << '\n';
       out << '\t' << "mov" << '\t' << expr(4, true) << ", edx" << '\n';
       if (size == 12)
-	out << '\t' << "mov" << '\t' << expr(8, true) << ", ecx" << '\n';
+        out << '\t' << "mov" << '\t' << expr(8, true) << ", ecx" << '\n';
     }
   }
 }
@@ -1393,7 +1393,7 @@ std::string intel::stack::expr(int delta, bool special) const
       const type* T = m_var->m_type;
       int size = T->size();
       if (T->scalar())
-	os << ms_pseudo(special ? 4 : size) << " PTR ";
+        os << ms_pseudo(special ? 4 : size) << " PTR ";
     }
     int n = m_offset + delta;
     os << '[' << FP;
@@ -1437,15 +1437,15 @@ void intel::output_section(section kind)
       current = kind;
       switch (kind) {
       case CODE: case ROMDATA:
-	out << '\t' << ".text" << '\n'; break;
+        out << '\t' << ".text" << '\n'; break;
       case RAM: out << '\t' << ".data" << '\n'; break;
       case BSS: break;
       case CTOR:
       case DTOR:
-	out << '\t' << ".section" << '\t';
-	out << (kind == CTOR ? ".ctors," : ".dtors,");
-	out << '"' << 'w' << '"' << '\n';
-	break;
+        out << '\t' << ".section" << '\t';
+        out << (kind == CTOR ? ".ctors," : ".dtors,");
+        out << '"' << 'w' << '"' << '\n';
+        break;
       }
     }
   }
