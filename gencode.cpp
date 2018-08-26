@@ -30,21 +30,21 @@ void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::ta
   defined.insert(name);
 
   if (doll_need(name))
-	  name += '$';
+          name += '$';
   func_label = external_header + name;
   usr::flag f = u->m_flag;
   usr::flag m = usr::flag(usr::STATIC | usr::INLINE);
-  if ( !(f & m) || (f & usr::EXTERN) )
+  if (!(f & m) || (f & usr::EXTERN))
     out << '\t' << pseudo_global << '\t' << func_label << '\n';
   out << func_label << ((mode == GNU) ? ":" : "\tPROC") << '\n';
   enter(func,code);
-  if ( !code.empty() )
+  if (!code.empty())
     return_impl::last3ac = *code.rbegin();
   return_impl::leave_label.erase();
   for_each(code.begin(),code.end(),gencode);
   leave();
 #ifdef CXX_GENERATOR
-  if ( f & usr::INITIALIZE_FUNCTION )
+  if (f & usr::INITIALIZE_FUNCTION)
     ctors.push_back(func_label);
 #endif // CXX_GENERATOR
 }
@@ -58,14 +58,14 @@ void intel::enter(const COMPILER::fundef* func,
 {
   using namespace std;
   using namespace COMPILER;
-  if ( debug_flag )
+  if (debug_flag)
     out << '\t' << comment_start << " enter\n";
   char ps = psuffix();
   string SP = sp();
   string FP = fp();
   out << '\t' << "push" << ps << '\t' << FP << '\n';
   out << '\t' << "mov" << ps << '\t';
-  if ( mode == GNU )
+  if (mode == GNU)
     out << SP << ", " << FP << '\n';
   else
     out << FP << ", " << SP << '\n';
@@ -108,39 +108,39 @@ void intel::enter(const COMPILER::fundef* func,
 }
 
 namespace intel { namespace aggregate_func {
-	namespace ret {
-		bool cmp(COMPILER::tac* x, COMPILER::tac* y);
-		int size(COMPILER::tac* tac);
-		stack* area;
-	}  // end of namespace ret
-	namespace param {
-		// copy area for `y' where `y' is used as "param y" and type of y is not scalar,
-		// or type of y is long double.
-		typedef std::map<COMPILER::tac*, stack*> table_t;
-		table_t table;
+  namespace ret {
+    bool cmp(COMPILER::tac* x, COMPILER::tac* y);
+    int size(COMPILER::tac* tac);
+    stack* area;
+  }  // end of namespace ret
+  namespace param {
+    // copy area for `y' where `y' is used as "param y" and type of y
+    // is not scalar, or type of y is long double.
+    typedef std::map<COMPILER::tac*, stack*> table_t;
+    table_t table;
 
-		// 1st param3ac set for t := call f where type of t is not scalar.
-		// (for x64, type of t is long double)
-		typedef std::set<COMPILER::tac*> first_t;
-		first_t first;
+    // 1st param3ac set for t := call f where type of t is not scalar.
+    // (for x64, type of t is long double)
+    typedef std::set<COMPILER::tac*> first_t;
+    first_t first;
 
-		int calc(int offset, COMPILER::tac* tac);
-	}  // end of namespace param
+    int calc(int offset, COMPILER::tac* tac);
+  }  // end of namespace param
 } } // end of namespace aggregate_func and intel
 
 void intel::leave()
 {
   using namespace std;
   using namespace COMPILER;
-  if ( debug_flag )
+  if (debug_flag)
     out << '\t' << comment_start << " leave\n";
   if ( !return_impl::leave_label.empty() )
     out << return_impl::leave_label << ":\n";
   out << '\t' << "mov" << psuffix() << '\t';
   if (mode == GNU)
-	  out << fp() << ", " << sp() << '\n';
+    out << fp() << ", " << sp() << '\n';
   else
-	  out << sp() << ", " << fp() << '\n';
+    out << sp() << ", " << fp() << '\n';
 
   out << '\t' << "leave" << '\n';
   out << '\t' << "ret" << '\n';
@@ -148,16 +148,16 @@ void intel::leave()
     out << func_label << '\t' << "ENDP" << '\n';
 
   {
-	  map<var*, address*>& table = address_descriptor.second;
-	  for_each(table.begin(), table.end(), destroy_address<var*>());
-	  table.clear();
+    map<var*, address*>& table = address_descriptor.second;
+    for_each(table.begin(), table.end(), destroy_address<var*>());
+    table.clear();
   }
   delete aggregate_func::ret::area;
   aggregate_func::ret::area = 0;
   {
-	  map<tac*, stack*>& table = aggregate_func::param::table;
-	  for_each(table.begin(), table.end(), destroy_address<tac*>());
-	  table.clear();
+    map<tac*, stack*>& table = aggregate_func::param::table;
+    for_each(table.begin(), table.end(), destroy_address<tac*>());
+    table.clear();
   }
   aggregate_func::param::first.clear();
 }
@@ -165,15 +165,18 @@ void intel::leave()
 namespace intel {
   int func_local(const COMPILER::fundef* func);
   namespace call_arg {
-	  int calculate(const std::vector<COMPILER::tac*>& code);
+    int calculate(const std::vector<COMPILER::tac*>& code);
   }  // end of namespace call_arg
   inline int align(int n, int m)
   {
-	  if (n & (m - 1))
-		  n = (n + m) & ~(m-1);
-	  return n;
+    if (n & (m - 1))
+      n = (n + m) & ~(m-1);
+    return n;
   }
-  inline bool cmp_id(const COMPILER::tac* tac, COMPILER::tac::id_t id) { return tac->id == id; }
+  inline bool cmp_id(const COMPILER::tac* tac, COMPILER::tac::id_t id)
+  {
+    return tac->id == id;
+  }
 }  // end of namespace intel
 
 void intel::sched_stack(const COMPILER::fundef* func,
@@ -185,50 +188,51 @@ void intel::sched_stack(const COMPILER::fundef* func,
   vector<tac*>::const_iterator p =
     max_element(code.begin(),code.end(), aggregate_func::ret::cmp);
   if ( p != code.end() ){
-	  if (int n = aggregate_func::ret::size(*p)) {
-		  stack::local_area += n;
-		  aggregate_func::ret::area = new stack(0, -stack::local_area);
-	  }
+    if (int n = aggregate_func::ret::size(*p)) {
+      stack::local_area += n;
+      aggregate_func::ret::area = new stack(0, -stack::local_area);
+    }
   }
 
   p = code.begin();
   while (p != code.end()) {
-	  p = find_if(p, code.end(), aggregate_func::ret::size);
-	  if (p == code.end())
-		  break;
-	  typedef vector<tac*>::const_reverse_iterator IT;
-	  IT q(p);
-	  IT r = find_if(q, code.rend(), not1(bind2nd(ptr_fun(cmp_id), tac::PARAM)));
-	  --r;
-	  if (cmp_id(*r, tac::PARAM))
-		  aggregate_func::param::first.insert(*r);
-	  ++p;
+    p = find_if(p, code.end(), aggregate_func::ret::size);
+    if (p == code.end())
+      break;
+    typedef vector<tac*>::const_reverse_iterator IT;
+    IT q(p);
+    IT r = find_if(q, code.rend(), not1(bind2nd(ptr_fun(cmp_id), tac::PARAM)));
+    --r;
+    if (cmp_id(*r, tac::PARAM))
+      aggregate_func::param::first.insert(*r);
+    ++p;
   }
 
   if (x64) {
-	  stack::local_area =
-		  accumulate(code.begin(), code.end(), stack::local_area, aggregate_func::param::calc);
+    stack::local_area =
+      accumulate(code.begin(), code.end(), stack::local_area,
+                 aggregate_func::param::calc);
   }
   allocated::base = 0;
   stack::local_area += func_local(func);
   if ( allocated::base ){
-	  if (debug_flag)
-		  out << '\t' << comment_start << " The top of local area of stack is saved\n";
-	  char sf = psuffix();
-	  string rax = reg::name(reg::ax, psize());
-	  int n = -stack::local_area;
-	  int m = -allocated::base;
-	  if (mode == GNU) {
-		  out << '\t' << "lea" << sf << '\t' << n << '(' << fp() << ')' << ", " << rax << '\n';
-		  out << '\t' << "mov" << sf << '\t' << rax << ", " << m << '(' << fp() << ')' << '\n';
-	  }
-	  else {
-	    out << '\t' << "lea" << '\t' << rax << ", " << '[' << fp() << n << ']' << '\n';
-	    string ptr = ms_pseudo(psize()) + " PTR ";
-	    out << '\t' << "mov" << '\t' << ptr << '[' << fp() << m << ']' << ", " << rax << '\n';
-	  }
-	  if (debug_flag)
-		  out << '\n';
+    if (debug_flag)
+      out << '\t' << comment_start << " The top of local area of stack is saved\n";
+    char sf = psuffix();
+    string rax = reg::name(reg::ax, psize());
+    int n = -stack::local_area;
+    int m = -allocated::base;
+    if (mode == GNU) {
+      out << '\t' << "lea" << sf << '\t' << n << '(' << fp() << ')' << ", " << rax << '\n';
+      out << '\t' << "mov" << sf << '\t' << rax << ", " << m << '(' << fp() << ')' << '\n';
+    }
+    else {
+      out << '\t' << "lea" << '\t' << rax << ", " << '[' << fp() << n << ']' << '\n';
+      string ptr = ms_pseudo(psize()) + " PTR ";
+      out << '\t' << "mov" << '\t' << ptr << '[' << fp() << m << ']' << ", " << rax << '\n';
+    }
+    if (debug_flag)
+      out << '\n';
   }
 
   int n = stack::local_area + call_arg::calculate(code);
@@ -266,9 +270,9 @@ int intel::aggregate_func::ret::size(COMPILER::tac* tac)
   if ( T->scalar() ){
     if ( x64 ) {
       if (mode == GNU)
-	return (T->real() && size == literal::floating::long_double::size) ? size : 0;
+        return (T->real() && size == literal::floating::long_double::size) ? size : 0;
       else
-	return 0;
+        return 0;
     }
     else
       return 0;
@@ -278,19 +282,19 @@ int intel::aggregate_func::ret::size(COMPILER::tac* tac)
 
 int intel::aggregate_func::param::calc(int offset, COMPILER::tac* tac)
 {
-	using namespace COMPILER;
-	if (tac->id != tac::PARAM)
-		return offset;
-	var* y = tac->y;
-	const type* T = y->m_type;
-	T = T->complete_type();
-	int size = T->size();
-	if (T->scalar() && size <= 8)
-		return offset;
-	offset += size;
-	offset = align(offset, T->align());
-	table[tac] = new stack(tac->y, -offset);
-	return offset;
+  using namespace COMPILER;
+  if (tac->id != tac::PARAM)
+    return offset;
+  var* y = tac->y;
+  const type* T = y->m_type;
+  T = T->complete_type();
+  int size = T->size();
+  if (T->scalar() && size <= 8)
+    return offset;
+  offset += size;
+  offset = align(offset, T->align());
+  table[tac] = new stack(tac->y, -offset);
+  return offset;
 }
 
 namespace intel {
@@ -320,42 +324,42 @@ int intel::func_local(const COMPILER::fundef* func)
   int offset = first_param_offset;
   int psz = psize();
   if (big)
-	  offset += psz;
+    offset += psz;
   const vector<usr*>& order = func->m_param->m_order;
   offset = accumulate(order.begin(),order.end(),offset,param_decide);
   if (debug_flag && !order.empty() && x64)
-	  out << '\t' << comment_start << " parameter registers are saved\n";
+    out << '\t' << comment_start << " parameter registers are saved\n";
   if (x64) {
-	  char ps = psuffix();
-	  if (big) {
-		  out << '\t' << "mov" << ps << '\t';
-		  string rcx = reg::name(reg::cx, psz);
-		  if (mode == GNU)
-			  out << rcx << ", " << dec << first_param_offset << '(' << fp() << ')' << '\n';
-		  else
-			  out << '[' << fp() << '+' << dec << first_param_offset << ']' << ", " << rcx << '\n';
-	  }
-	  vector<usr*>::const_iterator end = order.end();
-	  if (order.size() > (big ? 3 : 4))
-		  end = order.begin() + (big ? 3 : 4);
-	  accumulate(order.begin(), end, big ? 1 : 0, param_save);
-	  const vector<const type*>& param = X->param();
-	  if (param.size() > order.size()) {
-		  T = param[order.size()];
-		  if (T->m_id == type::ELLIPSIS) {
-			  for (int nth = order.size(); nth != 4; ++nth, offset += 8) {
-				  string reg = param_reg(nth, 0);
-				  out << '\t' << "mov" << ps << '\t';
-				  if (mode == GNU)
-					  out << reg << ", " << dec << offset << '(' << fp() << ')' << '\n';
-				  else
-					  out << '[' << fp() << '+' << dec << offset << ']' << ", " << reg << '\n';
-			  }
-		  }
-	  }
+    char ps = psuffix();
+    if (big) {
+      out << '\t' << "mov" << ps << '\t';
+      string rcx = reg::name(reg::cx, psz);
+      if (mode == GNU)
+        out << rcx << ", " << dec << first_param_offset << '(' << fp() << ')' << '\n';
+      else
+        out << '[' << fp() << '+' << dec << first_param_offset << ']' << ", " << rcx << '\n';
+    }
+    vector<usr*>::const_iterator end = order.end();
+    if (order.size() > (big ? 3 : 4))
+      end = order.begin() + (big ? 3 : 4);
+    accumulate(order.begin(), end, big ? 1 : 0, param_save);
+    const vector<const type*>& param = X->param();
+    if (param.size() > order.size()) {
+      T = param[order.size()];
+      if (T->m_id == type::ELLIPSIS) {
+        for (int nth = order.size(); nth != 4; ++nth, offset += 8) {
+          string reg = param_reg(nth, 0);
+          out << '\t' << "mov" << ps << '\t';
+          if (mode == GNU)
+            out << reg << ", " << dec << offset << '(' << fp() << ')' << '\n';
+          else
+            out << '[' << fp() << '+' << dec << offset << ']' << ", " << reg << '\n';
+        }
+      }
+    }
   }
   if (debug_flag && !order.empty() && x64)
-	  out << '\n';
+    out << '\n';
 
   const vector<scope*>& children = func->m_param->m_children;
   assert(children.size() == 1);
@@ -365,31 +369,34 @@ int intel::func_local(const COMPILER::fundef* func)
 
 bool intel::big_ret(const COMPILER::type* T)
 {
-	if (T) {
-		if (x64) {
-			if (T->aggregate())
-				return true;
-			if (T->size() == literal::floating::long_double::size)
-				return mode == GNU;
-		}
-		else
-			return T->aggregate();
-	}
-	return false;
+  if (T) {
+    if (x64) {
+      if (T->aggregate())
+        return true;
+      if (T->size() == literal::floating::long_double::size)
+        return mode == GNU;
+    }
+    else
+      return T->aggregate();
+  }
+  return false;
 }
 
 namespace intel {
-	inline bool isEllipsis(const COMPILER::type* T) { return T->m_id == COMPILER::type::ELLIPSIS; }
-	namespace call_arg {
-		std::set<COMPILER::tac*> ellipsised;
-		class isEllipsised {
-			int nth;
-		public:
-			isEllipsised(int n) : nth(n) {}
-			bool operator()(COMPILER::tac* tac);
-		};
-	    int param_size(int n, COMPILER::tac*);
-	}  // end of namespace call_arg
+  inline bool isEllipsis(const COMPILER::type* T)
+  {
+    return T->m_id == COMPILER::type::ELLIPSIS;
+  }
+  namespace call_arg {
+    std::set<COMPILER::tac*> ellipsised;
+    class isEllipsised {
+      int nth;
+    public:
+      isEllipsised(int n) : nth(n) {}
+      bool operator()(COMPILER::tac* tac);
+    };
+    int param_size(int n, COMPILER::tac*);
+  }  // end of namespace call_arg
 }  // end of namespace intel
 
 int intel::call_arg::calculate(const std::vector<COMPILER::tac*>& code)
@@ -423,9 +430,9 @@ int intel::call_arg::calculate(const std::vector<COMPILER::tac*>& code)
       const vector<const type*>& param = ft->param();
       vector<const type*>::const_iterator it = find_if(param.begin(), param.end(), isEllipsis);
       if (it != param.end()) {
-		int x = distance(param.begin(), it);
-		copy_if(p, q, inserter(ellipsised, ellipsised.begin()), isEllipsised(x));
-		n = max(n, 4 * 8);  // allocate for %rcx, %rdx, %r8, %r9
+        int x = distance(param.begin(), it);
+        copy_if(p, q, inserter(ellipsised, ellipsised.begin()), isEllipsised(x));
+        n = max(n, 4 * 8);  // allocate for %rcx, %rdx, %r8, %r9
       }
     }
     p = q + 1;
@@ -436,12 +443,12 @@ int intel::call_arg::calculate(const std::vector<COMPILER::tac*>& code)
 
 bool intel::call_arg::isEllipsised::operator()(COMPILER::tac* tac)
 {
-	using namespace COMPILER;
-	if (!cmp_id(tac, tac::PARAM))
-		return false;
-	if ( --nth > 0 )
-		return false;
-	return true;
+  using namespace COMPILER;
+  if (!cmp_id(tac, tac::PARAM))
+    return false;
+  if ( --nth > 0 )
+    return false;
+  return true;
 }
 
 int intel::call_arg::param_size(int n, COMPILER::tac* ptr)
@@ -461,77 +468,78 @@ int intel::param_decide(int offset, COMPILER::usr* u)
   using namespace COMPILER;
   map<var*, address*>& table = address_descriptor.second;
   table[u] = new stack(u,offset);
-  if (x64) {
-	  offset += 8;
-  }
+  if (x64)
+    offset += 8;
   else {
-	  const type* T = u->m_type;
-	  T = T->promotion();
-	  T = T->complete_type();
-	  offset += T->size();
+    const type* T = u->m_type;
+    T = T->promotion();
+    T = T->complete_type();
+    offset += T->size();
   }
   return offset;
 }
 
 int intel::param_save(int nth, COMPILER::usr* u)
 {
-	using namespace std;
-	using namespace COMPILER;
-	assert(nth < 4);
-	const map<var*, address*>& m = address_descriptor.second;
-	map<var*, address*>::const_iterator p = m.find(u);
-	assert(p != m.end());
-	address* stack = p->second;
-	const type* T = u->m_type;
-	string reg = param_reg(nth, T);
-	int size = T->size();
-	char sf = T->integer() ? suffix(size) : psuffix();
-	out << '\t' << "mov";
-	if (mode == MS && T->real())
-		out << 's' << ((size == 4) ? 's' : 'd');
-	out << sf << '\t';
-	if (mode == GNU)
-		out << reg << ", " << stack->expr() << '\n';
-	else
-		out << stack->expr() << ", " << reg << '\n';
-	return nth + 1;
+  using namespace std;
+  using namespace COMPILER;
+  assert(nth < 4);
+  const map<var*, address*>& m = address_descriptor.second;
+  map<var*, address*>::const_iterator p = m.find(u);
+  assert(p != m.end());
+  address* stack = p->second;
+  const type* T = u->m_type;
+  string reg = param_reg(nth, T);
+  int size = T->size();
+  char sf = T->integer() ? suffix(size) : psuffix();
+  out << '\t' << "mov";
+  if (mode == MS && T->real())
+    out << 's' << ((size == 4) ? 's' : 'd');
+  out << sf << '\t';
+  if (mode == GNU)
+    out << reg << ", " << stack->expr() << '\n';
+  else
+    out << stack->expr() << ", " << reg << '\n';
+  return nth + 1;
 }
 
 std::string intel::param_reg(int nth, const COMPILER::type* T)
 {
-	using namespace std;
-	assert(nth < 4);
-	if ( T && T->real() && T->size() <= 8 ) {
-		ostringstream os;
-		if (mode == GNU)
-		  os << '%';
-		os << "xmm" << nth;
-		return os.str();
-	}
+  using namespace std;
+  assert(nth < 4);
+  if (T && T->real() && T->size() <= 8) {
+    ostringstream os;
+    if (mode == GNU)
+      os << '%';
+    os << "xmm" << nth;
+    return os.str();
+  }
 
-	int psz = psize();
-	int size = psz;
-	if (T) {
-		size = T->size();
-		size = T->scalar() && size <= 8 ? size : psz;
-	}
-	
-	switch (nth) {
-	case 0: return reg::name(reg::cx, size);
-	case 1: return reg::name(reg::dx, size);
-	case 2: return reg::name(reg::r8, size);
-	case 3: return reg::name(reg::r9, size);
-	}
-	assert(0);
-	return "";
+  int psz = psize();
+  int size = psz;
+  if (T) {
+    size = T->size();
+    size = T->scalar() && size <= 8 ? size : psz;
+  }
+        
+  switch (nth) {
+  case 0: return reg::name(reg::cx, size);
+  case 1: return reg::name(reg::dx, size);
+  case 2: return reg::name(reg::r8, size);
+  case 3: return reg::name(reg::r9, size);
+  }
+  assert(0);
+  return "";
 }
 
 
 namespace intel {
-  int usr_local1(int offset, const std::pair<std::string, std::vector<COMPILER::usr*> >& entry);
-  int usr_local2(int offset, COMPILER::usr* u);
-  int decide_local(int offset, COMPILER::var* v);
-}
+  using namespace std;
+  using namespace COMPILER;
+  int usr_local1(int offset, const pair<string, vector<usr*> >& entry);
+  int usr_local2(int offset, usr* u);
+  int decide_local(int offset, var* v);
+} // end of namespace intel
 
 int intel::local_variable(int n, COMPILER::scope* p)
 {
@@ -546,7 +554,8 @@ int intel::local_variable(int n, COMPILER::scope* p)
   return accumulate(ch.begin(), ch.end(),n,local_variable);
 }
 
-int intel::usr_local1(int offset, const std::pair<std::string, std::vector<COMPILER::usr*> >& entry)
+int intel::usr_local1(int offset, const std::pair<std::string,
+                      std::vector<COMPILER::usr*> >& entry)
 {
   using namespace std;
   using namespace COMPILER;
@@ -586,59 +595,62 @@ int intel::decide_local(int offset, COMPILER::var* v)
     }
   }
   else
-	  address_descriptor.second[v] = new stack(v,-offset);
+    address_descriptor.second[v] = new stack(v,-offset);
   return offset;
 }
 
 namespace intel {
-  struct gencode_table : std::map<COMPILER::tac::id_t, void (*)(COMPILER::tac*)> {
+  using namespace std;
+  using namespace COMPILER;
+  struct gencode_table : map<tac::id_t, void (*)(tac*)> {
     gencode_table();
   } gencode_table;
-}
+} // end of namespace intel
 
 void intel::gencode(COMPILER::tac* ptr)
 {
   using namespace std;
-  if ( debug_flag ){
+  if (debug_flag) {
     out << '\t' << comment_start << " ";
-	output3ac(out,ptr);
+    output3ac(out,ptr);
     out << '\n';
   }
   gencode_table[ptr->id](ptr);
 }
 
 namespace intel {
-  void assign(COMPILER::tac*);
-  void add(COMPILER::tac*);
-  void sub(COMPILER::tac*);
-  void mul(COMPILER::tac*);
-  void div(COMPILER::tac*);
-  void mod(COMPILER::tac*);
-  void lsh(COMPILER::tac*);
-  void rsh(COMPILER::tac*);
-  void _and(COMPILER::tac*);
-  void _xor(COMPILER::tac*);
-  void _or(COMPILER::tac*);
-  void uminus(COMPILER::tac*);
-  void tilde(COMPILER::tac*);
-  void cast(COMPILER::tac*);
-  void addr(COMPILER::tac*);
-  void invladdr(COMPILER::tac*);
-  void invraddr(COMPILER::tac*);
-  void param(COMPILER::tac*);
-  void call(COMPILER::tac*);
-  void _return(COMPILER::tac*);
-  void _goto(COMPILER::tac*);
-  void to(COMPILER::tac*);
-  void loff(COMPILER::tac*);
-  void roff(COMPILER::tac*);
-  void _alloc_(COMPILER::tac*);
-  void _dealloc_(COMPILER::tac*);
-  void _asm_(COMPILER::tac*);
-  void _va_start(COMPILER::tac*);
-  void _va_arg(COMPILER::tac*);
-  void _va_end(COMPILER::tac*);
-}
+  using namespace COMPILER;
+  void assign(tac*);
+  void add(tac*);
+  void sub(tac*);
+  void mul(tac*);
+  void div(tac*);
+  void mod(tac*);
+  void lsh(tac*);
+  void rsh(tac*);
+  void _and(tac*);
+  void _xor(tac*);
+  void _or(tac*);
+  void uminus(tac*);
+  void tilde(tac*);
+  void cast(tac*);
+  void addr(tac*);
+  void invladdr(tac*);
+  void invraddr(tac*);
+  void param(tac*);
+  void call(tac*);
+  void _return(tac*);
+  void _goto(tac*);
+  void to(tac*);
+  void loff(tac*);
+  void roff(tac*);
+  void _alloc_(tac*);
+  void _dealloc_(tac*);
+  void _asm_(tac*);
+  void _va_start(tac*);
+  void _va_arg(tac*);
+  void _va_end(tac*);
+} // end of namespace intel
 
 intel::gencode_table::gencode_table()
 {
@@ -687,9 +699,9 @@ void intel::assign(COMPILER::tac* tac)
   const type* T = tac->x->m_type;
   int size = T->size();
   if (x64)
-	  (T->scalar() && size <= 8) ? single(tac) : multi(tac);
+    (T->scalar() && size <= 8) ? single(tac) : multi(tac);
   else
-	  T->scalar() ? single(tac) : multi(tac);
+    T->scalar() ? single(tac) : multi(tac);
 }
 
 void intel::assign_impl::single(COMPILER::tac* tac)
@@ -701,7 +713,7 @@ void intel::assign_impl::single(COMPILER::tac* tac)
 }
 
 namespace intel {
-	void copy(address* dst, address* src, int size);
+  void copy(address* dst, address* src, int size);
 } // end of namespace intel
 
 void intel::assign_impl::multi(COMPILER::tac* tac)
@@ -717,27 +729,27 @@ void intel::assign_impl::multi(COMPILER::tac* tac)
     bool by = (tac->y->m_scope->m_id == scope::PARAM);
     if (bx && by) {
       if (mode == GNU) {
-	out << '\t' << "mov" << ps << '\t' << x->expr() << ", %rax" << '\n';
-	out << '\t' << "mov" << ps << '\t' << y->expr() << ", %rbx" << '\n';
+        out << '\t' << "mov" << ps << '\t' << x->expr() << ", %rax" << '\n';
+        out << '\t' << "mov" << ps << '\t' << y->expr() << ", %rbx" << '\n';
       }
       else {
-	out << '\t' << "mov" << '\t' << "rax, " << x->expr() << '\n';
-	out << '\t' << "mov" << '\t' << "rbx, " << y->expr() << '\n';
+        out << '\t' << "mov" << '\t' << "rax, " << x->expr() << '\n';
+        out << '\t' << "mov" << '\t' << "rbx, " << y->expr() << '\n';
       }
       copy(0, 0, size);
     }
     else if (bx) {
       if (mode == GNU)
-	out << '\t' << "mov" << ps << '\t' << x->expr() << ", %rax" << '\n';
+        out << '\t' << "mov" << ps << '\t' << x->expr() << ", %rax" << '\n';
       else
-	out << '\t' << "mov" << '\t' << "rax, " << x->expr() << '\n';	      
+        out << '\t' << "mov" << '\t' << "rax, " << x->expr() << '\n';              
       copy(0, y, size);
     }
     else if (by) {
       if (mode == GNU)
-	out << '\t' << "mov" << ps << '\t' << y->expr() << ", %rax" << '\n';
+        out << '\t' << "mov" << ps << '\t' << y->expr() << ", %rax" << '\n';
       else
-	out << '\t' << "mov" << '\t' << "rax, " << y->expr() << '\n';
+        out << '\t' << "mov" << '\t' << "rax, " << y->expr() << '\n';
       copy(x, 0, size);
     }
     else
@@ -749,30 +761,30 @@ void intel::assign_impl::multi(COMPILER::tac* tac)
 }
 
 namespace intel {
-	void copy(address* dst, address* src, int offset, int size);
+  void copy(address* dst, address* src, int offset, int size);
 } // end of namespace intel
 
 void intel::copy(address* dst, address* src, int size)
 {
-	int offset = 0;
-	while (size) {
-	  if (x64 && size >= 8) {
-	    copy(dst, src, offset, 8);
-	    offset += 8, size -= 8;
-	  }
-	  else if (size >= 4) {
-	    copy(dst, src, offset, 4);
-	    offset += 4, size -= 4;
-	  }
-	  else if (size >= 2) {
-	    copy(dst, src, offset, 2);
-	    offset += 2, size -= 2;
-	  }
-	  else if (size >= 1) {
-	    copy(dst, src, offset, 1);
-	    offset += 1, size -= 1;
-	  }
-	}
+  int offset = 0;
+  while (size) {
+    if (x64 && size >= 8) {
+      copy(dst, src, offset, 8);
+      offset += 8, size -= 8;
+    }
+    else if (size >= 4) {
+      copy(dst, src, offset, 4);
+      offset += 4, size -= 4;
+    }
+    else if (size >= 2) {
+      copy(dst, src, offset, 2);
+      offset += 2, size -= 2;
+    }
+    else if (size >= 1) {
+      copy(dst, src, offset, 1);
+      offset += 1, size -= 1;
+    }
+  }
 }
 
 void intel::copy(address* dst, address* src, int offset, int size)
@@ -899,11 +911,11 @@ void intel::mul_impl::longlong_x86_impl::GNU_subr(COMPILER::tac* tac)
   out << '\t' << "movl" << '\t' << z->expr(0) << ", %edx" << '\n';
   out << '\t' << "movl" << '\t' << z->expr(4) << ", %ecx" << '\n';
 
-  out << '\t' << "imull	%eax, %ecx" << '\n';
-  out << '\t' << "imull	%edx, %ebx" << '\n';
-  out << '\t' << "mull	%edx" << '\n';
-  out << '\t' << "addl	%ebx, %ecx" << '\n';
-  out << '\t' << "leal	(%ecx,%edx), %edx" << '\n';
+  out << '\t' << "imull        %eax, %ecx" << '\n';
+  out << '\t' << "imull        %edx, %ebx" << '\n';
+  out << '\t' << "mull        %edx" << '\n';
+  out << '\t' << "addl        %ebx, %ecx" << '\n';
+  out << '\t' << "leal        (%ecx,%edx), %edx" << '\n';
 
   address* x = getaddr(tac->x);
   x->store();
@@ -980,25 +992,25 @@ void intel::div_impl::integer(COMPILER::tac* tac, bool div)
       z->load(reg::dx);
       out << '\t' << "mov" << sf << '\t' << "%rdx, %r8" << '\n';
       if (T->_signed()) {
-	out << '\t' << "cqto" << '\n';
-	op = "idiv";
-	op += sf;
+        out << '\t' << "cqto" << '\n';
+        op = "idiv";
+        op += sf;
       }
       else {
-	out << '\t' << "xorl" << '\t' << "%edx, %edx" << '\n';
-	op = "div";
-	op += sf;
+        out << '\t' << "xorl" << '\t' << "%edx, %edx" << '\n';
+        op = "div";
+        op += sf;
       }
       out << '\t' << op << '\t' << "%r8" << '\n';
     }
     else {
       if (T->_signed()) {
-	out << '\t' << "cqo" << '\n';
-	out << '\t' << "idiv" << '\t' << z->expr() << '\n';
+        out << '\t' << "cqo" << '\n';
+        out << '\t' << "idiv" << '\t' << z->expr() << '\n';
       }
       else {
-	out << '\t' << "xor" << '\t' << "edx,edx" << '\n';
-	out << '\t' << "div" << '\t' << z->expr() << '\n';
+        out << '\t' << "xor" << '\t' << "edx,edx" << '\n';
+        out << '\t' << "div" << '\t' << z->expr() << '\n';
       }
     }
   }
@@ -1013,26 +1025,26 @@ void intel::div_impl::integer(COMPILER::tac* tac, bool div)
     }
     else {
       if (mode == GNU)
-	out << '\t' << "mov" << sf << '\t' << "$0, %edx" << '\n';
+        out << '\t' << "mov" << sf << '\t' << "$0, %edx" << '\n';
       else
-	out << '\t' << "mov" << sf << '\t' << "edx, 0" << '\n';
+        out << '\t' << "mov" << sf << '\t' << "edx, 0" << '\n';
       op = "div"; op += sf;
     }
     if (z->m_id == address::IMM) {
       if (mode == GNU) {
-	out << '\t' << "mov" << sf << '\t' << z->expr() << ", %ecx" << '\n';
-	out << '\t' << op << '\t' << "%ecx, %eax" << '\n';
+        out << '\t' << "mov" << sf << '\t' << z->expr() << ", %ecx" << '\n';
+        out << '\t' << op << '\t' << "%ecx, %eax" << '\n';
       }
       else {
-	out << '\t' << "mov" << sf << '\t' << "ecx, " << z->expr() << '\n';
-	out << '\t' << op << '\t' << "ecx" << '\n';
+        out << '\t' << "mov" << sf << '\t' << "ecx, " << z->expr() << '\n';
+        out << '\t' << op << '\t' << "ecx" << '\n';
       }
     }
     else {
       if (mode == GNU)
-	out << '\t' << op << '\t' << z->expr() << ", %eax" << '\n';
+        out << '\t' << op << '\t' << z->expr() << ", %eax" << '\n';
       else
-	out << '\t' << op << '\t' << z->expr() << '\n';
+        out << '\t' << op << '\t' << z->expr() << '\n';
     }
   }
   x->store(div ? reg::ax : reg::dx);
@@ -1064,7 +1076,7 @@ void intel::div_impl::longlong_x86_impl::GNU_subr(COMPILER::tac* tac, bool div)
   else
     fun = div ? "__udivdi3" : "__umoddi3";
 
-  out << '\t' << "subl	$24, %esp" << '\n';
+  out << '\t' << "subl        $24, %esp" << '\n';
   {
     address* y = getaddr(tac->y);
     y->load();
@@ -1076,7 +1088,7 @@ void intel::div_impl::longlong_x86_impl::GNU_subr(COMPILER::tac* tac, bool div)
     out << '\t' << "movl" << '\t' << "%edx,12(%esp)" << '\n';
     out << '\t' << "call" << '\t' << fun << '\n';
   }
-  out << '\t' << "addl	$24, %esp" << '\n';
+  out << '\t' << "addl        $24, %esp" << '\n';
   address* x = getaddr(tac->x);
   x->store();
 }
@@ -1118,16 +1130,16 @@ void intel::lsh(COMPILER::tac* tac)
   const type* T = tac->x->m_type;
   int size = T->size();
   if (x64)
-	  shift::notlonglongx86(tac, "sal");
+    shift::notlonglongx86(tac, "sal");
   else {
-	  if (size > 4) {
-		  string eax = reg::name(reg::ax, 4);
-		  string edx = reg::name(reg::dx, 4);
-		  string op[] = { "shld", eax, edx, "sal", "mov" };
-		  shift::longlongx86(tac, &op[0], 0);
-	  }
-	  else
-		  shift::notlonglongx86(tac, "sal");
+    if (size > 4) {
+      string eax = reg::name(reg::ax, 4);
+      string edx = reg::name(reg::dx, 4);
+      string op[] = { "shld", eax, edx, "sal", "mov" };
+      shift::longlongx86(tac, &op[0], 0);
+    }
+    else
+      shift::notlonglongx86(tac, "sal");
   }
 }
 
@@ -1144,12 +1156,12 @@ void intel::rsh(COMPILER::tac* tac)
       string eax = reg::name(reg::ax, 4);
       string edx = reg::name(reg::dx, 4);
       if (!T->_signed()) {
-	string op[] = { "shrd", edx, eax, "shr", "mov" };
-	shift::longlongx86(tac, &op[0], 0);
+        string op[] = { "shrd", edx, eax, "shr", "mov" };
+        shift::longlongx86(tac, &op[0], 0);
       }
       else {
-	string op[] = { "shrd", edx, eax, "sar", "sar" };
-	shift::longlongx86(tac, &op[0], 31);
+        string op[] = { "shrd", edx, eax, "sar", "sar" };
+        shift::longlongx86(tac, &op[0], 31);
       }
     }
     else
@@ -1182,9 +1194,9 @@ void intel::shift::notlonglongx86(COMPILER::tac* tac, std::string op)
     char sf2 = suffix(4);
     if (sz > 4) {
       if (mode == GNU)
-	out << '\t' << "mov" << sf2 << '\t' << z->expr() << ", " << ecx << '\n';
+        out << '\t' << "mov" << sf2 << '\t' << z->expr() << ", " << ecx << '\n';
       else
-	out << '\t' << "mov" << '\t' << ecx << ", " << z->expr(0, true) << '\n';
+        out << '\t' << "mov" << '\t' << ecx << ", " << z->expr(0, true) << '\n';
     }
     else
       z->load(reg::cx);
@@ -1276,19 +1288,19 @@ void intel::binary::integer(COMPILER::tac* tac, std::string op, std::string op2)
     if (x64 || sy <= 4) {
       out << '\t' << op << suffix(sy) << '\t';
       if (mode == GNU)
-	out << z->expr() << ", " << reg::name(reg::ax, sy) << '\n';
+        out << z->expr() << ", " << reg::name(reg::ax, sy) << '\n';
       else
-	out << reg::name(reg::ax, sy) << ", " << z->expr() << '\n';
+        out << reg::name(reg::ax, sy) << ", " << z->expr() << '\n';
     }
     else {
       assert(!x64 && sy == 8);
       if (mode == GNU) {
-	out << '\t' << op  << 'l' << '\t' << z->expr(0) << ", %eax" << '\n';
-	out << '\t' << op2 << 'l' << '\t' << z->expr(4) << ", %edx" << '\n';
+        out << '\t' << op  << 'l' << '\t' << z->expr(0) << ", %eax" << '\n';
+        out << '\t' << op2 << 'l' << '\t' << z->expr(4) << ", %edx" << '\n';
       }
       else {
-	out << '\t' << op  << '\t' << "eax, " << z->expr(0, true) << '\n';
-	out << '\t' << op2 << '\t' << "edx, " << z->expr(4, true) << '\n';
+        out << '\t' << op  << '\t' << "eax, " << z->expr(0, true) << '\n';
+        out << '\t' << op2 << '\t' << "edx, " << z->expr(4, true) << '\n';
       }
     }
     address* x = getaddr(tac->x);
@@ -1306,18 +1318,18 @@ void intel::binary::integer(COMPILER::tac* tac, std::string op, std::string op2)
       y->load(reg::bx);
       z->load(reg::ax);
     }
-	string rax = reg::name(reg::ax, 8);
-	string rbx = reg::name(reg::bx, 8);
-	string ebx = reg::name(reg::bx, 4);
-	string sf; sf += suffix(4); sf += suffix(8);
-	if (mode == GNU) {
-		out << '\t' << "movslq" << '\t' << ebx << ", " << rbx << '\n';
-		out << '\t' << op << suffix(8) << '\t' << rbx << ", " << rax << '\n';
-	}
-	else {
-		out << '\t' << "movsxd" << '\t' << rbx << ", " << ebx << '\n';
-		out << '\t' << op << suffix(8) << '\t' << rax << ", " << rbx << '\n';
-	}
+        string rax = reg::name(reg::ax, 8);
+        string rbx = reg::name(reg::bx, 8);
+        string ebx = reg::name(reg::bx, 4);
+        string sf; sf += suffix(4); sf += suffix(8);
+        if (mode == GNU) {
+          out << '\t' << "movslq" << '\t' << ebx << ", " << rbx << '\n';
+          out << '\t' << op << suffix(8) << '\t' << rbx << ", " << rax << '\n';
+        }
+        else {
+          out << '\t' << "movsxd" << '\t' << rbx << ", " << ebx << '\n';
+          out << '\t' << op << suffix(8) << '\t' << rax << ", " << rbx << '\n';
+        }
     address* x = getaddr(tac->x);
     return x->store(reg::ax);
   }
@@ -1349,130 +1361,130 @@ void intel::binary::integer(COMPILER::tac* tac, std::string op, std::string op2)
  }
 
 namespace intel {
-	void fld(COMPILER::var* v)
-	{
-		using namespace std;
-		using namespace COMPILER;
-		address* a = getaddr(v);
-		const type* T = v->m_type;
-		int size = T->size();
-		char suffix = fsuffix(size);
-		string expr = a->expr();
-		char ps = psuffix();
-		int psz = psize();
-		string SP = sp();
+  void fld(COMPILER::var* v)
+  {
+    using namespace std;
+    using namespace COMPILER;
+    address* a = getaddr(v);
+    const type* T = v->m_type;
+    int size = T->size();
+    char suffix = fsuffix(size);
+    string expr = a->expr();
+    char ps = psuffix();
+    int psz = psize();
+    string SP = sp();
 
-		if (v->isconstant() && size == 4) {
-			out << '\t' << "push" << ps << '\t' << expr << '\n';
-			if (mode == GNU) {
-				out << '\t' << "fld" << suffix << '\t' << '(' << SP << ')' << '\n';
-				out << '\t' << "add" << ps << '\t' << '$' << psz << ", " << SP << '\n';
-			}
-			else {
-				out << '\t' << "fld" << suffix << '\t' << "DWORD PTR " << '[' << SP << ']' << '\n';
-				out << '\t' << "add" << ps << '\t' << SP << ", " << psz << '\n';
-			}
-		}
-		else if (x64 && v->m_scope->m_id == scope::PARAM && size == 16) {
-			string rax = reg::name(reg::ax, psz);
-			if (mode == GNU) {
-				out << '\t' << "mov" << ps << '\t' << expr << ", " << rax << '\n';
-				out << '\t' << "fld" << suffix << '\t' << '(' << rax << ')' << '\n';
-			}
-			else {
-				out << '\t' << "mov" << ps << '\t' << rax << ", " << expr << '\n';
-				out << '\t' << "fld" << '\t' << ms_pseudo(size) << " PTR " << '[' << rax << ']' << '\n';
-			}
-		}
-		else {
-			if (mode == GNU)
-				out << '\t' << "fld" << suffix << '\t' << expr << '\n';
-			else {
-				if (x64)
-					out << '\t' << "fld" << '\t' << expr << '\n';
-				else {
-					if (a->m_id == address::MEM) {
-						a->get(reg::ax);
-						out << '\t' << "fld" << '\t' << ms_pseudo(size) << " PTR [eax]" << '\n';
-					}
-					else
-						out << '\t' << "fld" << '\t' << expr << '\n';
-				}
-			}
-		}
-	}
-	void fstp(COMPILER::var* v)
-	{
-		using namespace std;
-		using namespace COMPILER;
-		address* a = getaddr(v);
-		const type* T = v->m_type;
-		int size = T->size();
-		char suffix = fsuffix(size);
-		string expr = a->expr();
-		if (x64 && v->m_scope->m_id == scope::PARAM && size == 16) {
-			string rax = reg::name(reg::ax, psize());
-			out << '\t' << "mov" << psuffix() << '\t' << expr << ", " << rax << '\n';
-			out << '\t' << "fstp" << suffix << '\t' << '(' << rax << ')' << '\n';
-		}
-		else
-			out << '\t' << "fstp" << suffix << '\t' << expr << '\n';
-	}
+    if (v->isconstant() && size == 4) {
+      out << '\t' << "push" << ps << '\t' << expr << '\n';
+      if (mode == GNU) {
+        out << '\t' << "fld" << suffix << '\t' << '(' << SP << ')' << '\n';
+        out << '\t' << "add" << ps << '\t' << '$' << psz << ", " << SP << '\n';
+      }
+      else {
+        out << '\t' << "fld" << suffix << '\t' << "DWORD PTR " << '[' << SP << ']' << '\n';
+        out << '\t' << "add" << ps << '\t' << SP << ", " << psz << '\n';
+      }
+    }
+    else if (x64 && v->m_scope->m_id == scope::PARAM && size == 16) {
+      string rax = reg::name(reg::ax, psz);
+      if (mode == GNU) {
+        out << '\t' << "mov" << ps << '\t' << expr << ", " << rax << '\n';
+        out << '\t' << "fld" << suffix << '\t' << '(' << rax << ')' << '\n';
+      }
+      else {
+        out << '\t' << "mov" << ps << '\t' << rax << ", " << expr << '\n';
+        out << '\t' << "fld" << '\t' << ms_pseudo(size) << " PTR " << '[' << rax << ']' << '\n';
+      }
+    }
+    else {
+      if (mode == GNU)
+        out << '\t' << "fld" << suffix << '\t' << expr << '\n';
+      else {
+        if (x64)
+          out << '\t' << "fld" << '\t' << expr << '\n';
+        else {
+          if (a->m_id == address::MEM) {
+            a->get(reg::ax);
+            out << '\t' << "fld" << '\t' << ms_pseudo(size) << " PTR [eax]" << '\n';
+          }
+          else
+            out << '\t' << "fld" << '\t' << expr << '\n';
+        }
+      }
+    }
+  }
+  void fstp(COMPILER::var* v)
+  {
+    using namespace std;
+    using namespace COMPILER;
+    address* a = getaddr(v);
+    const type* T = v->m_type;
+    int size = T->size();
+    char suffix = fsuffix(size);
+    string expr = a->expr();
+    if (x64 && v->m_scope->m_id == scope::PARAM && size == 16) {
+      string rax = reg::name(reg::ax, psize());
+      out << '\t' << "mov" << psuffix() << '\t' << expr << ", " << rax << '\n';
+      out << '\t' << "fstp" << suffix << '\t' << '(' << rax << ')' << '\n';
+    }
+    else
+      out << '\t' << "fstp" << suffix << '\t' << expr << '\n';
+  }
 } // end of namespace intel
 
 void intel::binary::real(COMPILER::tac* tac, std::string inst, std::string ld_inst)
 {
-	using namespace std;
-	using namespace COMPILER;
-	const type* T = tac->x->m_type;
-	int size = T->size();
-	if (x64 && (size == 4 || size == 8)) {
-		address* z = getaddr(tac->z);
-		z->load();
-		out << '\t' << "mov";
-		if (mode == MS)
-			out << "sd";
-		out << psuffix() << '\t';
-		if (mode == GNU)
-		out << xmm(0) << ", " << xmm(1);
-		else
-		out << xmm(1) << ", " << xmm(0);
-		out << '\n';
-		address* y = getaddr(tac->y);
-		y->load();
-		out << '\t' << inst;
-		out << (size == 4 ? 's' : 'd');
-		if (mode == GNU)
-		out << '\t' << xmm(1) << ", " << xmm(0);
-		else
-		out << '\t' << xmm(0) << ", " << xmm(1);
-		out << '\n';
-		address* x = getaddr(tac->x);
-		return x->store();
- 	}
+  using namespace std;
+  using namespace COMPILER;
+  const type* T = tac->x->m_type;
+  int size = T->size();
+  if (x64 && (size == 4 || size == 8)) {
+    address* z = getaddr(tac->z);
+    z->load();
+    out << '\t' << "mov";
+    if (mode == MS)
+      out << "sd";
+    out << psuffix() << '\t';
+    if (mode == GNU)
+      out << xmm(0) << ", " << xmm(1);
+    else
+      out << xmm(1) << ", " << xmm(0);
+    out << '\n';
+    address* y = getaddr(tac->y);
+    y->load();
+    out << '\t' << inst;
+    out << (size == 4 ? 's' : 'd');
+    if (mode == GNU)
+      out << '\t' << xmm(1) << ", " << xmm(0);
+    else
+      out << '\t' << xmm(0) << ", " << xmm(1);
+    out << '\n';
+    address* x = getaddr(tac->x);
+    return x->store();
+  }
 
-	if (x64 || mode == GNU) { 
-	  fld(tac->z);
-	  fld(tac->y);
-	}
-	else {
-	  fld(tac->y);
-	  fld(tac->z);
-	}
-	
-	if (x64) {
-		if (mode == GNU)
-		out << '\t' << ld_inst << '\t' << "%st, %st(1)" << '\n';
-		else
-		out << '\t' << ld_inst << '\t' << "st(1), st" << '\n';
-	}
-	else {
-		if (mode == GNU)
-		out << '\t' << inst << 'p' << '\t' << "%st, %st(1)" << '\n';
-		else
-		out << '\t' << inst << 'p' << '\t' << "st(1), st" << '\n';
-	}
-	fstp(tac->x);
+  if (x64 || mode == GNU) { 
+    fld(tac->z);
+    fld(tac->y);
+  }
+  else {
+    fld(tac->y);
+    fld(tac->z);
+  }
+        
+  if (x64) {
+    if (mode == GNU)
+      out << '\t' << ld_inst << '\t' << "%st, %st(1)" << '\n';
+    else
+      out << '\t' << ld_inst << '\t' << "st(1), st" << '\n';
+  }
+  else {
+    if (mode == GNU)
+      out << '\t' << inst << 'p' << '\t' << "%st, %st(1)" << '\n';
+    else
+      out << '\t' << inst << 'p' << '\t' << "st(1), st" << '\n';
+  }
+  fstp(tac->x);
 }
 
 namespace intel { namespace unary {
@@ -1510,9 +1522,9 @@ void intel::unary::integer(COMPILER::tac* tac, std::string op)
       out << '\t' << op << '\t' << "eax" << '\n';
     if ( op == "neg" ) {
       if (mode == GNU)
-	out << '\t' << "adcl" << '\t' << "$0, %edx" << '\n';
+        out << '\t' << "adcl" << '\t' << "$0, %edx" << '\n';
       else
-	out << '\t' << "adc" << '\t' << "edx, 0" << '\n';
+        out << '\t' << "adc" << '\t' << "edx, 0" << '\n';
     }
     if (mode == GNU)
       out << '\t' << op << '\t' << "%edx" << '\n';
@@ -1524,81 +1536,82 @@ void intel::unary::integer(COMPILER::tac* tac, std::string op)
 
 void intel::unary::real(COMPILER::tac* tac)
 {
-	using namespace COMPILER;
-	const type* T = tac->x->m_type;
-	int size = T->size();
-	if (x64 && (size == 4 || size == 8)) {
-		if (mode == MS) {
-			if (size == 4) {
-				if (uminus_float_t::obj.m_label.empty())
-					uminus_float_t::obj.m_label = new_label("LC$");
-				out << '\t' << "movss" << '\t' << "xmm1, DWORD PTR " << uminus_float_t::obj.m_label << '\n';
-			}
-			else {
-				if (uminus_double_t::obj.m_label.empty())
-					uminus_double_t::obj.m_label = new_label("LC$");
-				out << '\t' << "movsd" << '\t' << "xmm1, QWORD PTR " << uminus_double_t::obj.m_label << '\n';
-			}
-		}
-		address* y = getaddr(tac->y);
-		y->load();
+  using namespace COMPILER;
+  const type* T = tac->x->m_type;
+  int size = T->size();
+  if (x64 && (size == 4 || size == 8)) {
+    if (mode == MS) {
+      if (size == 4) {
+        if (uminus_float_t::obj.m_label.empty())
+          uminus_float_t::obj.m_label = new_label("LC$");
+        out << '\t' << "movss" << '\t' << "xmm1, DWORD PTR " << uminus_float_t::obj.m_label << '\n';
+      }
+      else {
+        if (uminus_double_t::obj.m_label.empty())
+          uminus_double_t::obj.m_label = new_label("LC$");
+        out << '\t' << "movsd" << '\t' << "xmm1, QWORD PTR " << uminus_double_t::obj.m_label << '\n';
+      }
+    }
+    address* y = getaddr(tac->y);
+    y->load();
+    out << '\t' << "xorp";
+    out << (size == 4 ? 's' : 'd');
+    out << '\t';
+    if (mode == GNU) {
+      if (size == 4) {
+        if (uminus_float_t::obj.m_label.empty())
+          uminus_float_t::obj.m_label = new_label(".LC");
+        out << uminus_float_t::obj.m_label;
+      }
+      else {
+        if (uminus_double_t::obj.m_label.empty())
+          uminus_double_t::obj.m_label = new_label((mode == GNU) ? ".LC" : "LC$");
+        out << uminus_double_t::obj.m_label;
+      }
+      out << "(%rip), %xmm0" << '\n';
+    }
+    else
+      out << "xmm0, xmm1" << '\n';
 
-		out << '\t' << "xorp";
-		out << (size == 4 ? 's' : 'd');
-		out << '\t';
-		if (mode == GNU) {
-			if (size == 4) {
-				if (uminus_float_t::obj.m_label.empty())
-					uminus_float_t::obj.m_label = new_label(".LC");
-				out << uminus_float_t::obj.m_label;
-			}
-			else {
-				if (uminus_double_t::obj.m_label.empty())
-					uminus_double_t::obj.m_label = new_label((mode == GNU) ? ".LC" : "LC$");
-				out << uminus_double_t::obj.m_label;
-			}
-			out << "(%rip), %xmm0" << '\n';
-		}
-		else
-			out << "xmm0, xmm1" << '\n';
+    address* x = getaddr(tac->x);
+    return x->store();
+  }
 
-		address* x = getaddr(tac->x);
-		return x->store();
-	}
-
-	fld(tac->y);
-	out << '\t' << "fchs" << '\n';
-	fstp(tac->x);
+  fld(tac->y);
+  out << '\t' << "fchs" << '\n';
+  fstp(tac->x);
 }
 
 void intel::uminus_float_t::output_value() const
 {
-	if (mode == GNU)
-		out << '\t' << ".align 16" << '\n';
-	out << m_label << ":\n";
-	out << '\t' << dot_long() << '\t' << "2147483648" << '\n';
-	out << '\t' << dot_long() << '\t' << 0 << '\n';
-	out << '\t' << dot_long() << '\t' << 0 << '\n';
-	out << '\t' << dot_long() << '\t' << 0 << '\n';
+  if (mode == GNU)
+    out << '\t' << ".align 16" << '\n';
+  out << m_label << ":\n";
+  out << '\t' << dot_long() << '\t' << "2147483648" << '\n';
+  out << '\t' << dot_long() << '\t' << 0 << '\n';
+  out << '\t' << dot_long() << '\t' << 0 << '\n';
+  out << '\t' << dot_long() << '\t' << 0 << '\n';
 }
 
 void intel::uminus_double_t::output_value() const
 {
-	if (mode == GNU)
-		out << '\t' << ".align 16" << '\n';
-	out << m_label << ":\n";
-	out << '\t' << dot_long() << '\t' << 0 << '\n';
-	out << '\t' << dot_long() << '\t' << "-2147483648" << '\n';
-	out << '\t' << dot_long() << '\t' << 0 << '\n';
-	out << '\t' << dot_long() << '\t' << 0 << '\n';
+  if (mode == GNU)
+    out << '\t' << ".align 16" << '\n';
+  out << m_label << ":\n";
+  out << '\t' << dot_long() << '\t' << 0 << '\n';
+  out << '\t' << dot_long() << '\t' << "-2147483648" << '\n';
+  out << '\t' << dot_long() << '\t' << 0 << '\n';
+  out << '\t' << dot_long() << '\t' << 0 << '\n';
 }
 
 namespace intel {
-  struct cast_table : std::map<std::pair<int,int>, void (*)(COMPILER::tac*)> {
+  using namespace std;
+  using namespace COMPILER;
+  struct cast_table : map<pair<int,int>, void (*)(tac*)> {
     static int id(const COMPILER::type*);
     cast_table();
   } m_cast_table;
-}
+} // end of namespace intel
 
 void intel::cast(COMPILER::tac* tac)
 {
@@ -1611,10 +1624,10 @@ void intel::cast(COMPILER::tac* tac)
 
 int intel::cast_table::id(const COMPILER::type* T)
 {
-	int r = T->real() ? 1 : 0;
-	int u = (T->integer() && !T->_signed()) ? 1 : 0;
-	int s = T->size();
-	return (s << 2) + (u << 1) + r;
+  int r = T->real() ? 1 : 0;
+  int u = (T->integer() && !T->_signed()) ? 1 : 0;
+  int s = T->size();
+  return (s << 2) + (u << 1) + r;
 }
 
 namespace intel {
@@ -1637,7 +1650,7 @@ namespace intel {
   void uint64_float(COMPILER::tac*);
   void uint64_double(COMPILER::tac*);
   void uint64_ld(COMPILER::tac*);
-}
+} // end of namespace intel
 
 intel::cast_table::cast_table()
 {
@@ -1790,7 +1803,7 @@ void intel::byte_real(COMPILER::tac* tac)
   const type* Ty = tac->y->m_type;
   int sy = Ty->size();
   if (sy == 4 || sy == 8)
-	  return half_real(tac);
+    return half_real(tac);
 
   fld(tac->y);
   {
@@ -1861,14 +1874,14 @@ void intel::half_real(COMPILER::tac* tac)
       out << '\t' << "movw" << '\t' << "%ax, 12(" << SP << ')' << '\n';
       out << '\t' << "fldcw" << '\t' << "12(" << SP << ')' << '\n';
       if (Tx->_signed())
-	out << '\t' << "fistps" << '\t' << "10(" << SP << ')' << '\n';
+        out << '\t' << "fistps" << '\t' << "10(" << SP << ')' << '\n';
       else
-	out << '\t' << "fistpl" << '\t' << "8(" << SP << ')' << '\n';
+        out << '\t' << "fistpl" << '\t' << "8(" << SP << ')' << '\n';
       out << '\t' << "fldcw" << '\t' << "14(" << SP << ')' << '\n';
       if (Tx->_signed())
-	out << '\t' << "movzwl" << '\t' << "10(" << SP << "), %eax" << '\n';
+        out << '\t' << "movzwl" << '\t' << "10(" << SP << "), %eax" << '\n';
       else
-	out << '\t' << "movl" << '\t' << "8(" << SP << "), %eax" << '\n';
+        out << '\t' << "movl" << '\t' << "8(" << SP << "), %eax" << '\n';
       out << '\t' << "add" << ps << '\t' << "$24, " << SP << '\n';
     }
     else {
@@ -1879,14 +1892,14 @@ void intel::half_real(COMPILER::tac* tac)
       out << '\t' << "mov" << '\t' << "WORD PTR 12[" << SP << "], ax" << '\n';
       out << '\t' << "fldcw" << '\t' << "12[" << SP << ']' << '\n';
       if (Tx->_signed())
-	out << '\t' << "fistp" << '\t' << "DWORD PTR 10[" << SP << ']' << '\n';
+        out << '\t' << "fistp" << '\t' << "DWORD PTR 10[" << SP << ']' << '\n';
       else
-	out << '\t' << "fistp" << '\t' << "QWORD PTR 8[" << SP << ']' << '\n';
+        out << '\t' << "fistp" << '\t' << "QWORD PTR 8[" << SP << ']' << '\n';
       out << '\t' << "fldcw" << '\t' << "14[" << SP << ']' << '\n';
       if (Tx->_signed())
-	out << '\t' << "movzx" << '\t' << "eax, WORD PTR 10[" << SP << ']' << '\n';
+        out << '\t' << "movzx" << '\t' << "eax, WORD PTR 10[" << SP << ']' << '\n';
       else
-	out << '\t' << "mov" << '\t' << "eax, DWORD PTR 8[" << SP << ']' << '\n';
+        out << '\t' << "mov" << '\t' << "eax, DWORD PTR 8[" << SP << ']' << '\n';
       out << '\t' << "add" << '\t' << SP << ", 24" << '\n';
     }
   }
@@ -2043,21 +2056,21 @@ void intel::longlong_notlonglong(COMPILER::tac* tac)
     switch (size) {
     case 1:
       if (mode == GNU)
-	out << (T->_signed() ? "movsbq" : "movzbl");
+        out << (T->_signed() ? "movsbq" : "movzbl");
       else
-	out << (T->_signed() ? "movsx" : "movzx");
+        out << (T->_signed() ? "movsx" : "movzx");
       break;
     case 2:
       if (mode == GNU)
-	out << (T->_signed() ? "movswq" : "movzwl");
+        out << (T->_signed() ? "movswq" : "movzwl");
       else
-	out << (T->_signed() ? "movsx" : "movzx");
+        out << (T->_signed() ? "movsx" : "movzx");
       break;
     case 4:
       if (mode == GNU)
-	out << (T->_signed() ? "movslq" : "movl");
+        out << (T->_signed() ? "movslq" : "movl");
       else
-	out << (T->_signed() ? "movsxd" : "mov");
+        out << (T->_signed() ? "movsxd" : "mov");
       break;
     }
     if (mode == GNU) {
@@ -2075,21 +2088,21 @@ void intel::longlong_notlonglong(COMPILER::tac* tac)
     switch (size) {
     case 1:
       if (mode == GNU)
-	out << (T->_signed() ? "movsbl" : "movzbl");
+        out << (T->_signed() ? "movsbl" : "movzbl");
       else
-	out << (T->_signed() ? "movsx" : "movzx");
+        out << (T->_signed() ? "movsx" : "movzx");
       break;
     case 2:
       if (mode == GNU)
-	out << (T->_signed() ? "movswl" : "movzwl");
+        out << (T->_signed() ? "movswl" : "movzwl");
       else
-	out << (T->_signed() ? "movsx" : "movzx");
+        out << (T->_signed() ? "movsx" : "movzx");
       break;
     case 4:
       if (mode == GNU)
-	out << "movl";
+        out << "movl";
       else
-	out << "mov";
+        out << "mov";
       break;
     }
     if (mode == GNU)
@@ -2099,21 +2112,21 @@ void intel::longlong_notlonglong(COMPILER::tac* tac)
 
     if (!T->_signed()) {
       if (mode == GNU) {
-	char sf = suffix(4);
-	out << '\t' << "mov" << sf << '\t' << "$0, " << edx << '\n';
+        char sf = suffix(4);
+        out << '\t' << "mov" << sf << '\t' << "$0, " << edx << '\n';
       }
       else
-	out << '\t' << "mov" << '\t' << edx << ", " << 0 << '\n';
+        out << '\t' << "mov" << '\t' << edx << ", " << 0 << '\n';
     }
     else {
       if (mode == GNU) {
-	char sf = suffix(4);
-	out << '\t' << "mov" << sf << '\t' << eax << ", " << edx << '\n';
-	out << '\t' << "sar" << sf << '\t' << "$31" << ", " << edx << '\n';
+        char sf = suffix(4);
+        out << '\t' << "mov" << sf << '\t' << eax << ", " << edx << '\n';
+        out << '\t' << "sar" << sf << '\t' << "$31" << ", " << edx << '\n';
       }
       else {
-	out << '\t' << "mov" << '\t' << edx << ", " << eax << '\n';
-	out << '\t' << "sar" << '\t' << edx << ", " << 31 << '\n';
+        out << '\t' << "mov" << '\t' << edx << ", " << eax << '\n';
+        out << '\t' << "sar" << '\t' << edx << ", " << 31 << '\n';
       }
     }
   }
@@ -2134,7 +2147,6 @@ void intel::notlonglong_longlong(COMPILER::tac* tac)
   x->store(reg::ax);
 }
 
-
 void intel::notlonglong_notlonglong(COMPILER::tac* tac)
 {
   using namespace std;
@@ -2147,20 +2159,20 @@ void intel::notlonglong_notlonglong(COMPILER::tac* tac)
   string eax = reg::name(reg::ax, 4);
   if ( xsize < ysize ){
     int mask = ~(~0 << 8 * xsize);
-	char sf = suffix(4);
-	if (mode == GNU)
-		out << '\t' << "and" << sf << '\t' << '$' << mask << ", " << eax << '\n';
-	else
-		out << '\t' << "and" << sf << '\t' << eax << ", " << mask << '\n';
+    char sf = suffix(4);
+    if (mode == GNU)
+      out << '\t' << "and" << sf << '\t' << '$' << mask << ", " << eax << '\n';
+    else
+      out << '\t' << "and" << sf << '\t' << eax << ", " << mask << '\n';
   }
   else if ( xsize > ysize ){
     const type* T = tac->y->m_type;
     string op = T->_signed() ? "movsx" : "movzx";
-	string yax = reg::name(reg::ax, ysize);
-	if (mode == GNU)
-		out << '\t' << op << '\t' << yax << ", " << eax << '\n';
-	else
-		out << '\t' << op << '\t' << eax << ", " << yax << '\n';
+    string yax = reg::name(reg::ax, ysize);
+    if (mode == GNU)
+      out << '\t' << op << '\t' << yax << ", " << eax << '\n';
+    else
+      out << '\t' << op << '\t' << eax << ", " << yax << '\n';
   }
   x->store(reg::ax);
 }
@@ -2171,50 +2183,50 @@ void intel::sint64_real(COMPILER::tac* tac)
   using namespace std;
   fld(tac->y);
   {
-	  string SP = sp();
-	  if (mode == GNU) {
-	    char ps = psuffix();
-	    string sf = fistp_suffix();
-	    out << '\t' << "sub" << ps << '\t' << "$24, " << SP << '\n';
-	    out << '\t' << "fnstcw" << '\t' << "14(" << SP << ')' << '\n';
-	    out << '\t' << "movzwl" << '\t' << "14(" << SP << "), %eax" << '\n';
-	    out << '\t' << "orb" << '\t' << "$12, %ah" << '\n';
-	    out << '\t' << "movw" << '\t' << "%ax, 12(" << SP << ')' << '\n';
-	    out << '\t' << "fldcw" << '\t' << "12(" << SP << ')' << '\n';
-	    out << '\t' << "fistp" << sf << '\t' << '(' << SP << ')' << '\n';
-	    out << '\t' << "fldcw" << '\t' << "14(" << SP << ')' << '\n';
-	    if (x64)
-	      out << '\t' << "mov" << psuffix() << '\t' << '(' << SP << "), %rax" << '\n';
-	    else {
-	      out << '\t' << "movl" << '\t' << " (" << SP << "), %eax" << '\n';
-	      out << '\t' << "movl" << '\t' << "4(" << SP << "), %edx" << '\n';
-	    }
-	    out << '\t' << "add" << ps << '\t' << "$24, " << SP << '\n';
-	  }
-	  else {
-	    out << '\t' << "sub" << '\t' << SP << ", 24" << '\n';
-	    out << '\t' << "fnstcw" << '\t' << "14[" << SP << ']' << '\n';
-	    out << '\t' << "movzx" << '\t' << "eax, WORD PTR 14[" << SP << ']' << '\n';
-	    out << '\t' << "or" << '\t' << "ah, 12" << '\n';
-	    out << '\t' << "mov" << '\t' << "WORD PTR 12[" << SP << ']' << ", " << "ax" << '\n';
-	    out << '\t' << "fldcw" << '\t' << "12[" << SP << ']' << '\n';
-	    out << '\t' << "fistp" << '\t' << "QWORD PTR " << '[' << SP << ']' << '\n';
-	    out << '\t' << "fldcw" << '\t' << "14[" << SP << ']' << '\n';
-	    if (x64)
-	      out << '\t' << "mov" << '\t' << "rax" << ", " << " QWORD PTR " << '[' << SP << ']' << '\n';
-	    else {
-	      out << '\t' << "mov" << '\t' << "eax" << ", " << '[' << SP << ']' << '\n';
-	      out << '\t' << "mov" << '\t' << "edx" << ", " << " DWORD PTR 4[" << SP << ']' << '\n';
-	    }
-	    out << '\t' << "add" << '\t' << SP << ", 24" << '\n';
-	  }
+    string SP = sp();
+    if (mode == GNU) {
+      char ps = psuffix();
+      string sf = fistp_suffix();
+      out << '\t' << "sub" << ps << '\t' << "$24, " << SP << '\n';
+      out << '\t' << "fnstcw" << '\t' << "14(" << SP << ')' << '\n';
+      out << '\t' << "movzwl" << '\t' << "14(" << SP << "), %eax" << '\n';
+      out << '\t' << "orb" << '\t' << "$12, %ah" << '\n';
+      out << '\t' << "movw" << '\t' << "%ax, 12(" << SP << ')' << '\n';
+      out << '\t' << "fldcw" << '\t' << "12(" << SP << ')' << '\n';
+      out << '\t' << "fistp" << sf << '\t' << '(' << SP << ')' << '\n';
+      out << '\t' << "fldcw" << '\t' << "14(" << SP << ')' << '\n';
+      if (x64)
+        out << '\t' << "mov" << psuffix() << '\t' << '(' << SP << "), %rax" << '\n';
+      else {
+        out << '\t' << "movl" << '\t' << " (" << SP << "), %eax" << '\n';
+        out << '\t' << "movl" << '\t' << "4(" << SP << "), %edx" << '\n';
+      }
+      out << '\t' << "add" << ps << '\t' << "$24, " << SP << '\n';
+    }
+    else {
+      out << '\t' << "sub" << '\t' << SP << ", 24" << '\n';
+      out << '\t' << "fnstcw" << '\t' << "14[" << SP << ']' << '\n';
+      out << '\t' << "movzx" << '\t' << "eax, WORD PTR 14[" << SP << ']' << '\n';
+      out << '\t' << "or" << '\t' << "ah, 12" << '\n';
+      out << '\t' << "mov" << '\t' << "WORD PTR 12[" << SP << ']' << ", " << "ax" << '\n';
+      out << '\t' << "fldcw" << '\t' << "12[" << SP << ']' << '\n';
+      out << '\t' << "fistp" << '\t' << "QWORD PTR " << '[' << SP << ']' << '\n';
+      out << '\t' << "fldcw" << '\t' << "14[" << SP << ']' << '\n';
+      if (x64)
+        out << '\t' << "mov" << '\t' << "rax" << ", " << " QWORD PTR " << '[' << SP << ']' << '\n';
+      else {
+        out << '\t' << "mov" << '\t' << "eax" << ", " << '[' << SP << ']' << '\n';
+        out << '\t' << "mov" << '\t' << "edx" << ", " << " DWORD PTR 4[" << SP << ']' << '\n';
+      }
+      out << '\t' << "add" << '\t' << SP << ", 24" << '\n';
+    }
   }
   address* x = getaddr(tac->x);
   x->store(reg::ax);
 }
 
 namespace intel {
-	void uint64_real_x86(COMPILER::tac* tac);
+  void uint64_real_x86(COMPILER::tac* tac);
 }  // end of namespace intel
 
 void intel::uint64_float(COMPILER::tac* tac)
@@ -2263,10 +2275,10 @@ void intel::uint64_float(COMPILER::tac* tac)
 
 void intel::uint64_float_t::output_value() const
 {
-	if (mode == GNU)
-		out << ".align 4" << '\n';
-	out << m_label << ":\n";
-	out << '\t' << dot_long() << '\t' << 1593835520 << '\n';
+  if (mode == GNU)
+    out << ".align 4" << '\n';
+  out << m_label << ":\n";
+  out << '\t' << dot_long() << '\t' << 1593835520 << '\n';
 }
 
 namespace intel {
@@ -2292,7 +2304,7 @@ void intel::uint64_double_impl::x64_impl::subr(COMPILER::tac* tac)
     if (uint64_double_t::obj.m_label.empty())
       uint64_double_t::obj.m_label = new_label(".LC");
     out << '\t' << "movsd" << '\t' << uint64_double_t::obj.m_label << "(%rip), %xmm1" << '\n';
-    out << '\t' << "ucomisd	%xmm1, %xmm0" << '\n';
+    out << '\t' << "ucomisd        %xmm1, %xmm0" << '\n';
     string label = new_label(".label");
     out << '\t' << "jnb" << '\t' << label << '\n';
     out << '\t' << "cvttsd2siq" << '\t' << "%xmm0, %rax" << '\n';
@@ -2300,10 +2312,10 @@ void intel::uint64_double_impl::x64_impl::subr(COMPILER::tac* tac)
     out << '\t' << "jmp" << '\t' << end << '\n';
     out << '\t' << ".p2align 4,,10" << '\n';
     out << label << ":\n";
-    out << "subsd	%xmm1, %xmm0" << '\n';
-    out << "movabsq	$-9223372036854775808, %rdx" << '\n';
-    out << "cvttsd2siq	%xmm0, %rax" << '\n';
-    out << "xorq	%rdx, %rax" << '\n';
+    out << "subsd        %xmm1, %xmm0" << '\n';
+    out << "movabsq        $-9223372036854775808, %rdx" << '\n';
+    out << "cvttsd2siq        %xmm0, %rax" << '\n';
+    out << "xorq        %rdx, %rax" << '\n';
     out << end << ":\n";
   }
   else {
@@ -2317,10 +2329,10 @@ void intel::uint64_double_impl::x64_impl::subr(COMPILER::tac* tac)
     string end = new_label("label$");
     out << '\t' << "jmp" << '\t' << end << '\n';
     out << label << ":\n";
-    out << '\t' << "subsd	xmm0, xmm1" << '\n';
-    out << '\t' << "mov	rdx, -9223372036854775808" << '\n';
-    out << '\t' << "cvttsd2si	rax, xmm0" << '\n';
-    out << '\t' << "xor	rax, rdx" << '\n';
+    out << '\t' << "subsd        xmm0, xmm1" << '\n';
+    out << '\t' << "mov        rdx, -9223372036854775808" << '\n';
+    out << '\t' << "cvttsd2si        rax, xmm0" << '\n';
+    out << '\t' << "xor        rax, rdx" << '\n';
     out << end << ":\n";
   }
   address*x = getaddr(tac->x);
@@ -2329,13 +2341,12 @@ void intel::uint64_double_impl::x64_impl::subr(COMPILER::tac* tac)
 
 void intel::uint64_double_t::output_value() const
 {
-	if (mode == GNU)
-		out << '\t' << ".align 8" << '\n';
-	out << m_label << ":\n";
-	out << '\t' << dot_long() << "	0" << '\n';
-	out << '\t' << dot_long() << "	1138753536" << '\n';
+  if (mode == GNU)
+    out << '\t' << ".align 8" << '\n';
+  out << m_label << ":\n";
+  out << '\t' << dot_long() << "        0" << '\n';
+  out << '\t' << dot_long() << "        1138753536" << '\n';
 }
-
 
 void intel::uint64_ld(COMPILER::tac* tac)
 {
@@ -2349,33 +2360,33 @@ void intel::uint64_ld(COMPILER::tac* tac)
     if (mode == GNU) {
       out << '\t' << "subq" << '\t' << "$24, %rsp" << '\n';
       out << '\t' << "flds" << '\t' << uint64_ld_t::obj.m_label << "(%rip)" << '\n';
-      out << '\t' << "fxch	%st(1)" << '\n';
-      out << '\t' << "fucomi	%st(1), %st" << '\n';
+      out << '\t' << "fxch        %st(1)" << '\n';
+      out << '\t' << "fucomi        %st(1), %st" << '\n';
       out << '\t' << "jnb" << '\t' << label << '\n';
-      out << '\t' << "fstp	%st(1)" << '\n';
-      out << '\t' << "fnstcw	14(%rsp)" << '\n';
-      out << '\t' << "movzwl	14(%rsp), %eax" << '\n';
-      out << '\t' << "orb	$12, %ah" << '\n';
-      out << '\t' << "movw	%ax, 12(%rsp)" << '\n';
-      out << '\t' << "fldcw	12(%rsp)" << '\n';
-      out << '\t' << "fistpq	(%rsp)" << '\n';
-      out << '\t' << "fldcw	14(%rsp)" << '\n';
-      out << '\t' << "mov" << psuffix() << "	(%rsp), %rax" << '\n';
+      out << '\t' << "fstp        %st(1)" << '\n';
+      out << '\t' << "fnstcw        14(%rsp)" << '\n';
+      out << '\t' << "movzwl        14(%rsp), %eax" << '\n';
+      out << '\t' << "orb        $12, %ah" << '\n';
+      out << '\t' << "movw        %ax, 12(%rsp)" << '\n';
+      out << '\t' << "fldcw        12(%rsp)" << '\n';
+      out << '\t' << "fistpq        (%rsp)" << '\n';
+      out << '\t' << "fldcw        14(%rsp)" << '\n';
+      out << '\t' << "mov" << psuffix() << "        (%rsp), %rax" << '\n';
       out << '\t' << "jmp" << '\t' << end << '\n';
 
       out << '\t' << ".p2align 4,,10" << '\n';
       out << label << ":\n";
-      out << '\t' << "fnstcw	14(%rsp)" << '\n';
-      out << '\t' << "movzwl	14(%rsp), %eax" << '\n';
-      out << '\t' << "fsubp	%st, %st(1)" << '\n';
-      out << '\t' << "movabsq	$-9223372036854775808, %rdx" << '\n';
-      out << '\t' << "orb	$12, %ah" << '\n';
-      out << '\t' << "movw	%ax, 12(%rsp)" << '\n';
-      out << '\t' << "fldcw	12(%rsp)" << '\n';
-      out << '\t' << "fistpq	(%rsp)" << '\n';
-      out << '\t' << "fldcw	14(%rsp)" << '\n';
+      out << '\t' << "fnstcw        14(%rsp)" << '\n';
+      out << '\t' << "movzwl        14(%rsp), %eax" << '\n';
+      out << '\t' << "fsubp        %st, %st(1)" << '\n';
+      out << '\t' << "movabsq        $-9223372036854775808, %rdx" << '\n';
+      out << '\t' << "orb        $12, %ah" << '\n';
+      out << '\t' << "movw        %ax, 12(%rsp)" << '\n';
+      out << '\t' << "fldcw        12(%rsp)" << '\n';
+      out << '\t' << "fistpq        (%rsp)" << '\n';
+      out << '\t' << "fldcw        14(%rsp)" << '\n';
       out << '\t' << "mov" << psuffix() << " (%rsp), %rax" << '\n';
-      out << '\t' << "xorq	%rdx, %rax" << '\n';
+      out << '\t' << "xorq        %rdx, %rax" << '\n';
       out << end << ":\n";
       out << '\t' << "addq" << '\t' << "$24, %rsp" << '\n';
       address* x = getaddr(tac->x);
@@ -2384,30 +2395,30 @@ void intel::uint64_ld(COMPILER::tac* tac)
     else {
       out << '\t' << "subq" << '\t' << "rsp, 24" << '\n';
       out << '\t' << "fld" << '\t' << "DWORD PTR " << uint64_ld_t::obj.m_label << '\n';
-      out << '\t' << "fxch	st(1)" << '\n';
-      out << '\t' << "fucomi	st(1), st" << '\n';
+      out << '\t' << "fxch        st(1)" << '\n';
+      out << '\t' << "fucomi        st(1), st" << '\n';
       out << '\t' << "jnb" << '\t' << label << '\n';
-      out << '\t' << "fstp	st(1)" << '\n';
-      out << '\t' << "fnstcw	14[rsp]" << '\n';
-      out << '\t' << "movzx	14[rsp], eax" << '\n';
-      out << '\t' << "orb	ah, 12" << '\n';
-      out << '\t' << "movw	12[rsp], ax" << '\n';
-      out << '\t' << "fldcw	12[rsp]" << '\n';
-      out << '\t' << "fistp	QWORD PTR [rsp]" << '\n';
-      out << '\t' << "fldcw	14[rsp]" << '\n';
+      out << '\t' << "fstp        st(1)" << '\n';
+      out << '\t' << "fnstcw        14[rsp]" << '\n';
+      out << '\t' << "movzx        14[rsp], eax" << '\n';
+      out << '\t' << "orb        ah, 12" << '\n';
+      out << '\t' << "movw        12[rsp], ax" << '\n';
+      out << '\t' << "fldcw        12[rsp]" << '\n';
+      out << '\t' << "fistp        QWORD PTR [rsp]" << '\n';
+      out << '\t' << "fldcw        14[rsp]" << '\n';
       out << '\t' << "mov" << psuffix() << " rax, [rsp]" << '\n';
       out << '\t' << "jmp" << '\t' << end << '\n';
 
-      out << '\t' << "fnstcw	14[rsp]" << '\n';
-      out << '\t' << "movzwl	eax, 14[rsp]" << '\n';
-      out << '\t' << "fsubp	st(1), st" << '\n';
-      out << '\t' << "orb	ah, 12" << '\n';
-      out << '\t' << "mov	WORD PTR 12[rsp], ax" << '\n';
-      out << '\t' << "fldcw	12[rsp]" << '\n';
-      out << '\t' << "fistp	QWORD PTR [rsp]" << '\n';
-      out << '\t' << "fldcw	14[rsp]" << '\n';
+      out << '\t' << "fnstcw        14[rsp]" << '\n';
+      out << '\t' << "movzwl        eax, 14[rsp]" << '\n';
+      out << '\t' << "fsubp        st(1), st" << '\n';
+      out << '\t' << "orb        ah, 12" << '\n';
+      out << '\t' << "mov        WORD PTR 12[rsp], ax" << '\n';
+      out << '\t' << "fldcw        12[rsp]" << '\n';
+      out << '\t' << "fistp        QWORD PTR [rsp]" << '\n';
+      out << '\t' << "fldcw        14[rsp]" << '\n';
       out << '\t' << "mov" << psuffix() << " rax, [rsp]";
-      out << '\t' << "xor	rax, rdx" << '\n';
+      out << '\t' << "xor        rax, rdx" << '\n';
       out << end << ":\n";
       out << '\t' << "add" << '\t' << "rsp, 24" << '\n';
       address* x = getaddr(tac->x);
@@ -2420,10 +2431,10 @@ void intel::uint64_ld(COMPILER::tac* tac)
 
 void intel::uint64_ld_t::output_value() const
 {
-	if (mode == GNU)
-		out << '\t' << ".align 4" << '\n';
-	out << m_label << ":\n";
-	out << '\t' << dot_long() << "	1593835520" << '\n';
+  if (mode == GNU)
+    out << '\t' << ".align 4" << '\n';
+  out << m_label << ":\n";
+  out << '\t' << dot_long() << '\t' << "1593835520" << '\n';
 }
 
 void intel::uint64_real_x86(COMPILER::tac* tac)
@@ -2622,7 +2633,7 @@ void intel::real_longlong_impl::x64_impl::MS_subr(COMPILER::tac* tac)
   using namespace COMPILER;
   const type* Tx = tac->x->m_type;
   int sx = Tx->size();
-  char cx = (sx == 4 ? 's' : 'd');		       
+  char cx = (sx == 4 ? 's' : 'd');                       
   address* x = getaddr(tac->x);
   address* y = getaddr(tac->y);
   const type* Ty = tac->y->m_type;
@@ -2632,7 +2643,7 @@ void intel::real_longlong_impl::x64_impl::MS_subr(COMPILER::tac* tac)
   }
   y->load(reg::ax);
   out << '\t' << "cvtsi2s" << cx << '\t' << "xmm0, rax" << '\n';
-  out << '\t' << "test	rax, rax" << '\n';
+  out << '\t' << "test        rax, rax" << '\n';
   string label = new_label("label$");
   out << '\t' << "jge" << '\t' << label << '\n';
   out << '\t' << "adds" << cx << '\t' << "xmm0, " << ms_pseudo(sx) << " PTR ";
@@ -2678,7 +2689,7 @@ void intel::real_longlong_impl::x86_impl::subr(COMPILER::tac* tac)
       out << '\t' << ".p2align 3" << '\n';
       out << label << ":\n";
       if (real_uint64_t::obj.m_label.empty())
-	real_uint64_t::obj.m_label = new_label(".LC");
+        real_uint64_t::obj.m_label = new_label(".LC");
       out << '\t' << "fadds" << '\t' << real_uint64_t::obj.m_label << '\n';
       out << end << ":\n";
     }
@@ -2694,7 +2705,7 @@ void intel::real_longlong_impl::x86_impl::subr(COMPILER::tac* tac)
       out << '\t' << "jmp" << '\t' << end << '\n';
       out << label << ":\n";
       if (real_uint64_t::obj.m_label.empty())
-	real_uint64_t::obj.m_label = new_label("LC$");
+        real_uint64_t::obj.m_label = new_label("LC$");
       out << '\t' << "fadd" << '\t' << "DWORD PTR ";
       out << real_uint64_t::obj.m_label << '\n';
       out << end << ":\n";
@@ -2723,85 +2734,85 @@ void intel::double_uint64_t::output_value() const
 {
   assert(mode == MS);
   out << m_label << ":\n";
-  out << '\t' << "DQ 043f0000000000000r	; 1.84467e+19" << '\n';
+  out << '\t' << "DQ 043f0000000000000r        ; 1.84467e+19" << '\n';
 }
 
 void intel::real_longlong_impl::x64_impl::ld_longlong(COMPILER::tac* tac)
 {
-	using namespace std;
-	using namespace COMPILER;
-	assert(x64);
-	assert(mode == GNU);
+  using namespace std;
+  using namespace COMPILER;
+  assert(x64);
+  assert(mode == GNU);
 
-	address* y = getaddr(tac->y);
-	y->load();
-	{
-		const type* Ty = tac->y->m_type;
-		if (!Ty->_signed())
-			out << '\t' << "testq" << '\t' << "%rax, %rax" << '\n';
+  address* y = getaddr(tac->y);
+  y->load();
+  {
+    const type* Ty = tac->y->m_type;
+    if (!Ty->_signed())
+      out << '\t' << "testq" << '\t' << "%rax, %rax" << '\n';
 
-		out << '\t' << "pushq" << '\t' << "%rax" << '\n';
-		out << '\t' << "fildq" << '\t' << "(%rsp)" << '\n';
-		out << '\t' << "popq" << '\t' << "%rax" << '\n';
+    out << '\t' << "pushq" << '\t' << "%rax" << '\n';
+    out << '\t' << "fildq" << '\t' << "(%rsp)" << '\n';
+    out << '\t' << "popq" << '\t' << "%rax" << '\n';
 
-		if (!Ty->_signed()) {
-			string label = new_label((mode == GNU) ? ".label" : "label$");
-			out << '\t' << "js" << '\t' << label << '\n';
-			string end = new_label((mode == GNU) ? ".label" : "label$");
-			out << '\t' << "jmp" << '\t' << end << '\n';
-			out << '\t' << ".p2align 4,,10" << '\n';
-			out << label << ":\n";
+    if (!Ty->_signed()) {
+      string label = new_label((mode == GNU) ? ".label" : "label$");
+      out << '\t' << "js" << '\t' << label << '\n';
+      string end = new_label((mode == GNU) ? ".label" : "label$");
+      out << '\t' << "jmp" << '\t' << end << '\n';
+      out << '\t' << ".p2align 4,,10" << '\n';
+      out << label << ":\n";
 
-			if (ld_uint64_t::obj.m_label.empty())
-				ld_uint64_t::obj.m_label = new_label((mode == GNU) ? ".LC" : "LC$");
-			out << '\t' << "fadds" << '\t' << ld_uint64_t::obj.m_label << "(%rip)" << '\n';
-			out << end << ":\n";
-		}
-	}
-	fstp(tac->x);
+      if (ld_uint64_t::obj.m_label.empty())
+        ld_uint64_t::obj.m_label = new_label((mode == GNU) ? ".LC" : "LC$");
+      out << '\t' << "fadds" << '\t' << ld_uint64_t::obj.m_label << "(%rip)" << '\n';
+      out << end << ":\n";
+    }
+  }
+  fstp(tac->x);
 }
 
 void intel::ld_uint64_t::output_value() const
 {
-	if (mode == GNU)
-		out << '\t' << ".align 4" << '\n';
-	out << m_label << ":\n";
-	out << '\t' << dot_long() << "	1602224128" << '\n';
+  if (mode == GNU)
+    out << '\t' << ".align 4" << '\n';
+  out << m_label << ":\n";
+  out << '\t' << dot_long() << '\t' << "1602224128" << '\n';
 }
 
 void intel::real_real(COMPILER::tac* tac)
 {
-	// double <- float : cvtss2sd	%xmm0, %xmm0
-	// ld     <- float : fld & fstp
+  // double <- float : cvtss2sd        %xmm0, %xmm0
+  // ld     <- float : fld & fstp
 
-	// float <- double : cvtsd2ss	%xmm0, %xmm0
-	// ld    <- double : fld & fstp
+  // float <- double : cvtsd2ss        %xmm0, %xmm0
+  // ld    <- double : fld & fstp
 
-	// float  <- ld : fld & fstp
-	// double <- ld : fld & fstp
+  // float  <- ld : fld & fstp
+  // double <- ld : fld & fstp
 
-	using namespace COMPILER;
+  using namespace COMPILER;
 
-	const type* Tx = tac->x->m_type;
-	int sx = Tx->size();
+  const type* Tx = tac->x->m_type;
+  int sx = Tx->size();
 
-	const type* Ty = tac->y->m_type;
-	int sy = Ty->size();
+  const type* Ty = tac->y->m_type;
+  int sy = Ty->size();
 
-	if (x64) {
-		if ((sx == 8 && sy == 4) || (sx == 4 && sy == 8)) {
-			address* y = getaddr(tac->y);
-			y->load();
-			out << '\t';
-			out << (sx == 4 ? "cvtsd2ss" : "cvtss2sd");
-			out << '\t' << xmm(0) << ", " << xmm(0) << '\n';
-			address* x = getaddr(tac->x);
-			return x->store();
-		}
-	}
+  if (x64) {
+    if ((sx == 8 && sy == 4) || (sx == 4 && sy == 8)) {
+      address* y = getaddr(tac->y);
+      y->load();
+      out << '\t';
+      out << (sx == 4 ? "cvtsd2ss" : "cvtss2sd");
+      out << '\t' << xmm(0) << ", " << xmm(0) << '\n';
+      address* x = getaddr(tac->x);
+      return x->store();
+    }
+  }
 
-	fld(tac->y);
-	fstp(tac->x);
+  fld(tac->y);
+  fstp(tac->x);
 }
 
 void intel::real_sint32(COMPILER::tac* tac)
@@ -2865,45 +2876,45 @@ void intel::real_uint32(COMPILER::tac* tac)
 }
 
 namespace intel {
-	namespace addr_impl {
-		void normal(COMPILER::tac* tac);
-	}
+  namespace addr_impl {
+    void normal(COMPILER::tac* tac);
+  } // end of namespace addr_impl
 }  // end of namesapce intel
 
 void intel::addr(COMPILER::tac* tac)
 {
-	using namespace std;
-	using namespace COMPILER;
-	using namespace addr_impl;
+  using namespace std;
+  using namespace COMPILER;
+  using namespace addr_impl;
 
-	if (x64) {
-		const type* T = tac->y->m_type;
-		int size = T->size();
-		if (T->scalar() && size <= 8)
-			return normal(tac);
-		if (tac->y->m_scope->m_id != scope::PARAM)
-			return normal(tac);
+  if (x64) {
+    const type* T = tac->y->m_type;
+    int size = T->size();
+    if (T->scalar() && size <= 8)
+      return normal(tac);
+    if (tac->y->m_scope->m_id != scope::PARAM)
+      return normal(tac);
 
-		address* y = getaddr(tac->y);
-		char sf = psuffix();
-		string bx = reg::name(reg::bx, psize());
-		if (mode == GNU)
-			out << '\t' << "mov" << sf << '\t' << y->expr() << ", " << bx << '\n';
-		else
-			out << '\t' << "mov" << sf << '\t' << bx << ", " << y->expr() << '\n';
-		address* x = getaddr(tac->x);
-		return x->store(reg::bx);
-	}
-	else
-		return normal(tac);
+    address* y = getaddr(tac->y);
+    char sf = psuffix();
+    string bx = reg::name(reg::bx, psize());
+    if (mode == GNU)
+      out << '\t' << "mov" << sf << '\t' << y->expr() << ", " << bx << '\n';
+    else
+      out << '\t' << "mov" << sf << '\t' << bx << ", " << y->expr() << '\n';
+    address* x = getaddr(tac->x);
+    return x->store(reg::bx);
+  }
+  else
+    return normal(tac);
 }
 
 void intel::addr_impl::normal(COMPILER::tac* tac)
 {
-    address* y = getaddr(tac->y);
-    y->get(reg::bx);
-    address* x = getaddr(tac->x);
-    x->store(reg::bx);
+  address* y = getaddr(tac->y);
+  y->get(reg::bx);
+  address* x = getaddr(tac->x);
+  x->store(reg::bx);
 }
 
 namespace intel { namespace invladdr_impl {
@@ -2959,13 +2970,13 @@ void intel::invladdr_impl::single(COMPILER::tac* tac)
       out << '\t' << "mov" << sf << '\t' << ax << ", " << " (" << bx << ')' << '\n';
       out << '\t' << "mov" << sf << '\t' << dx << ", " << "4(" << bx << ')' << '\n';
       if (size == 12)
-	out << '\t' << "mov" << sf << '\t' << cx << ", " << "8(" << bx << ')' << '\n';
+        out << '\t' << "mov" << sf << '\t' << cx << ", " << "8(" << bx << ')' << '\n';
     }
     else {
       out << '\t' << "mov" << sf << '\t' << "[" << bx << "  ]" << ", " << ax << '\n';
       out << '\t' << "mov" << sf << '\t' << "[" << bx << "+4]" << ", " << dx << '\n';
       if (size == 12)
-	out << '\t' << "mov" << sf << '\t' << "[" << bx << "+8]" << ", " << cx << '\n';
+        out << '\t' << "mov" << sf << '\t' << "[" << bx << "+8]" << ", " << cx << '\n';
     }
   }
 }
@@ -3029,9 +3040,9 @@ void intel::invraddr_impl::single(COMPILER::tac* tac)
       string  ax = reg::name(reg::ax, size);
       char sf = suffix(size);
       if (mode == GNU)
-	out << '\t' << "mov" << sf << '\t' << '(' << ptr << ')' << ", " << ax << '\n';
+        out << '\t' << "mov" << sf << '\t' << '(' << ptr << ')' << ", " << ax << '\n';
       else
-	out << '\t' << "mov" << '\t' << ax << ", " << '[' << ptr << ']' << '\n';
+        out << '\t' << "mov" << '\t' << ax << ", " << '[' << ptr << ']' << '\n';
     }
     else {
       assert(!x64 && size == 8);
@@ -3040,12 +3051,12 @@ void intel::invraddr_impl::single(COMPILER::tac* tac)
       string dx = reg::name(reg::dx, sz);
       char sf = suffix(sz);
       if (mode == GNU) {
-	out << '\t' << "mov" << sf << '\t' << "4(" << ax << "), " << dx << '\n';
-	out << '\t' << "mov" << sf << '\t' << " (" << ax << "), " << ax << '\n';
+        out << '\t' << "mov" << sf << '\t' << "4(" << ax << "), " << dx << '\n';
+        out << '\t' << "mov" << sf << '\t' << " (" << ax << "), " << ax << '\n';
       }
       else {
-	out << '\t' << "mov" << '\t' << dx << ", [" << ax << "+4]" << '\n';
-	out << '\t' << "mov" << '\t' << ax << ", [" << ax <<   "]" << '\n';
+        out << '\t' << "mov" << '\t' << dx << ", [" << ax << "+4]" << '\n';
+        out << '\t' << "mov" << '\t' << ax << ", [" << ax <<   "]" << '\n';
       }
     }
     address* x = getaddr(tac->x);
@@ -3063,17 +3074,17 @@ void intel::invraddr_impl::multi(COMPILER::tac* tac)
   y->load(reg::ax);
   address* x = getaddr(tac->x);
   if (x64 && tac->x->m_scope->m_id == scope::PARAM) {
-	  string rax = reg::name(reg::ax, psize());
-	  out << '\t' << "mov" << psuffix() << '\t' << x->expr() << ", " << rax << '\n';
-	  copy(0, 0, size);
+    string rax = reg::name(reg::ax, psize());
+    out << '\t' << "mov" << psuffix() << '\t' << x->expr() << ", " << rax << '\n';
+    copy(0, 0, size);
   }
   else
-	  copy(x, 0, size);
+    copy(x, 0, size);
 }
 
 namespace intel { namespace param_impl {
-    void paramx64(COMPILER::tac*);
-    void paramx86(COMPILER::tac*);
+  void paramx64(COMPILER::tac*);
+  void paramx86(COMPILER::tac*);
 } } // end of namespace param_impl and intel;
 
 void intel::param(COMPILER::tac* tac)
@@ -3083,7 +3094,7 @@ void intel::param(COMPILER::tac* tac)
 }
 
 namespace intel { namespace param_impl {
-    int offset;
+  int offset;
 } } // end of namespace param_impl and intel;
 
 void intel::param_impl::paramx64(COMPILER::tac* tac)
@@ -3093,7 +3104,7 @@ void intel::param_impl::paramx64(COMPILER::tac* tac)
   aggregate_func::param::first_t::const_iterator p =
     aggregate_func::param::first.find(tac);
   if (p != aggregate_func::param::first.end())
-	param_impl::offset = psize();
+    param_impl::offset = psize();
 
   const type* T = tac->y->m_type;
   T = T->complete_type();
@@ -3109,21 +3120,21 @@ void intel::param_impl::paramx64(COMPILER::tac* tac)
     if (tac->y->m_scope->m_id == scope::PARAM) {
       char sf = psuffix();
       if (mode == GNU)
-	out << '\t' << "mov" << sf << '\t' << y->expr() << ", %rax" << '\n';
+        out << '\t' << "mov" << sf << '\t' << y->expr() << ", %rax" << '\n';
       else
-	out << '\t' << "mov" << sf << '\t' << "rax, " << y->expr() << '\n';
+        out << '\t' << "mov" << sf << '\t' << "rax, " << y->expr() << '\n';
       copy(x, 0, size);
     }
     else {
       if (mode == GNU)
-	copy(x, y, size);
+        copy(x, y, size);
       else {
-	if (y->m_id == address::MEM) {
-	  y->get(reg::ax);
-	  copy(x, 0, size);
-	}
-	else
-	  copy(x, y, size);
+        if (y->m_id == address::MEM) {
+          y->get(reg::ax);
+          copy(x, 0, size);
+        }
+        else
+          copy(x, y, size);
       }
     }
     x->get(reg::ax);
@@ -3136,7 +3147,7 @@ void intel::param_impl::paramx64(COMPILER::tac* tac)
     dst = param_reg(param_impl::offset >> 3, T);
     if (call_arg::ellipsised.find(tac) != call_arg::ellipsised.end()) {
       if (T->real())
-	dst2 = param_reg(param_impl::offset >> 3, 0);
+        dst2 = param_reg(param_impl::offset >> 3, 0);
     }
   }
   else {
@@ -3168,81 +3179,79 @@ void intel::param_impl::paramx64(COMPILER::tac* tac)
 
 void intel::param_impl::paramx86(COMPILER::tac* tac)
 {
-	using namespace std;
-	using namespace COMPILER;
-	aggregate_func::param::first_t::const_iterator p =
-	  aggregate_func::param::first.find(tac);
-	if (p != aggregate_func::param::first.end())
-		param_impl::offset = psize();
+  using namespace std;
+  using namespace COMPILER;
+  aggregate_func::param::first_t::const_iterator p =
+    aggregate_func::param::first.find(tac);
+  if (p != aggregate_func::param::first.end())
+    param_impl::offset = psize();
 
-	const type* T = tac->y->m_type;
-	T = T->complete_type();
-	int size = T->size();
-	address* y = getaddr(tac->y);
-	if (T->scalar()) {
-		y->load();
-		if (T->real()) {
-			if (mode == GNU) {
-				out << '\t' << "fstp" << fsuffix(size) << '\t';
-				out << param_impl::offset << '(' << sp() << ')' << '\n';
-			}
-			else {
-				out << '\t' << "fstp" << '\t' << ms_pseudo(size) << " PTR ";
-				out << param_impl::offset << '[' << sp() << ']' << '\n';
-			}
-		}
-		else {
-			if (size <= 4) {
-				if (mode == GNU) {
-					out << '\t' << "mov" << suffix(size) << '\t' << reg::name(reg::ax, size) << ", ";
-					out << param_impl::offset << '(' << sp() << ')' << '\n';
-				}
-				else {
-					std::string ptr = ms_pseudo(size) + " PTR ";
-					out << '\t' << "mov" << '\t' << ptr << param_impl::offset << '[' << sp() << ']' << ", ";
-					out << reg::name(reg::ax, size) << '\n';
-				}
-			}
-			else {
-				if (mode == GNU) {
-					out << '\t' << "movl" << '\t' << "%eax" << ", ";
-					out << param_impl::offset << '(' << sp() << ')' << '\n';
-					out << '\t' << "movl" << '\t' << "%edx" << ", ";
-					out << param_impl::offset + 4 << '(' << sp() << ')' << '\n';
-					if (size == 12) {
-						out << '\t' << "movl" << '\t' << "%ecx" << ", ";
-						out << param_impl::offset + 8 << '(' << sp() << ')' << '\n';
-					}
-				}
-				else {
-					std::string ptr = " DWORD PTR ";
-					out << '\t' << "mov" << '\t' << ptr << param_impl::offset + 0 << '[' << sp() << ']' << ", " << "eax" << '\n';
-					out << '\t' << "mov" << '\t' << ptr << param_impl::offset + 4 << '[' << sp() << ']' << ", " << "edx" << '\n';
-					if (size == 12) {
-						out << '\t' << "movl" << '\t' << ptr << param_impl::offset + 8 << '[' << sp() << ']' << ", " << "ecx" << '\n';
-					}
-				}
-			}
-		}
-	}
-	else {
-	  if (mode == GNU)
-	    out << '\t' << "leal" << '\t' << param_impl::offset << '(' << sp() << "), %eax" << '\n';
-	  else
-	    out << '\t' << "lea" << '\t' << "eax, " << param_impl::offset << '[' << sp() << "]" << '\n';
-	  copy(0,y,size);	  
-	}
-	T = T->promotion();
-	size = T->size();
-	param_impl::offset += size;
+  const type* T = tac->y->m_type;
+  T = T->complete_type();
+  int size = T->size();
+  address* y = getaddr(tac->y);
+  if (T->scalar()) {
+    y->load();
+    if (T->real()) {
+      if (mode == GNU) {
+        out << '\t' << "fstp" << fsuffix(size) << '\t';
+        out << param_impl::offset << '(' << sp() << ')' << '\n';
+      }
+      else {
+        out << '\t' << "fstp" << '\t' << ms_pseudo(size) << " PTR ";
+        out << param_impl::offset << '[' << sp() << ']' << '\n';
+      }
+    }
+    else {
+      if (size <= 4) {
+        if (mode == GNU) {
+          out << '\t' << "mov" << suffix(size) << '\t' << reg::name(reg::ax, size) << ", ";
+          out << param_impl::offset << '(' << sp() << ')' << '\n';
+        }
+        else {
+          std::string ptr = ms_pseudo(size) + " PTR ";
+          out << '\t' << "mov" << '\t' << ptr << param_impl::offset << '[' << sp() << ']' << ", ";
+          out << reg::name(reg::ax, size) << '\n';
+        }
+      }
+      else {
+        if (mode == GNU) {
+          out << '\t' << "movl" << '\t' << "%eax" << ", ";
+          out << param_impl::offset << '(' << sp() << ')' << '\n';
+          out << '\t' << "movl" << '\t' << "%edx" << ", ";
+          out << param_impl::offset + 4 << '(' << sp() << ')' << '\n';
+          if (size == 12) {
+            out << '\t' << "movl" << '\t' << "%ecx" << ", ";
+            out << param_impl::offset + 8 << '(' << sp() << ')' << '\n';
+          }
+        }
+        else {
+          std::string ptr = " DWORD PTR ";
+          out << '\t' << "mov" << '\t' << ptr << param_impl::offset + 0 << '[' << sp() << ']' << ", " << "eax" << '\n';
+          out << '\t' << "mov" << '\t' << ptr << param_impl::offset + 4 << '[' << sp() << ']' << ", " << "edx" << '\n';
+          if (size == 12) {
+            out << '\t' << "movl" << '\t' << ptr << param_impl::offset + 8 << '[' << sp() << ']' << ", " << "ecx" << '\n';
+          }
+        }
+      }
+    }
+  }
+  else {
+    if (mode == GNU)
+      out << '\t' << "leal" << '\t' << param_impl::offset << '(' << sp() << "), %eax" << '\n';
+    else
+      out << '\t' << "lea" << '\t' << "eax, " << param_impl::offset << '[' << sp() << "]" << '\n';
+    copy(0,y,size);          
+  }
+  T = T->promotion();
+  size = T->size();
+  param_impl::offset += size;
 }
 
 namespace intel { namespace call_impl {
   void single(COMPILER::tac*);
   void multi(COMPILER::tac*);
   void Void(COMPILER::tac*);
-  using namespace std;
-  using namespace COMPILER;
 } } // end of namespace call_impl and intel;
 
 void intel::call(COMPILER::tac* tac)
@@ -3251,17 +3260,17 @@ void intel::call(COMPILER::tac* tac)
   using namespace call_impl;
   if ( tac->x ){
     const type* T = tac->x->m_type;
-	if (x64) {
-		int size = T->size();
-		(T->scalar() && size <= 8) ? single(tac) : multi(tac);
-	}
-	else
-		T->scalar() ? single(tac) : multi(tac);
+    if (x64) {
+      int size = T->size();
+      (T->scalar() && size <= 8) ? single(tac) : multi(tac);
+    }
+    else
+      T->scalar() ? single(tac) : multi(tac);
   }
   else if (aggregate_func::ret::size(tac)) {
-	  // hcc1 can eliminate `x' where x := call f and `x' is not
-	  // used after this call.
-	  multi(tac);
+    // hcc1 can eliminate `x' where x := call f and `x' is not
+    // used after this call.
+    multi(tac);
   }
   else
     Void(tac);
@@ -3279,10 +3288,10 @@ void intel::call_impl::multi(COMPILER::tac* tac)
   address* x = tac->x ? getaddr(tac->x) : aggregate_func::ret::area;
   x->get(reg::cx);
   if (!x64) {
-	  if (mode == GNU)
-		  out << '\t' << "movl" << '\t' << "%ecx, (%esp)" << '\n';
-	  else
-		  out << '\t' << "mov" << '\t' << "DWORD PTR [esp], ecx" << '\n';
+    if (mode == GNU)
+      out << '\t' << "movl" << '\t' << "%ecx, (%esp)" << '\n';
+    else
+      out << '\t' << "mov" << '\t' << "DWORD PTR [esp], ecx" << '\n';
   }
   Void(tac);
 }
@@ -3302,25 +3311,25 @@ void intel::call_impl::Void(COMPILER::tac* tac)
     out << reg::name(reg::ax, psize());    
   }
   else {
-	assert(y->m_id == address::MEM);
-	mem* m = static_cast<mem*>(y);
-	string label = m->m_label;
-	out << label;
-	if (mode == MS) {
-		usr* func = tac->y->usr_cast();
-		usr::flag f = func->m_flag;
-		if (!(f & usr::STATIC))
-			mem::refed.insert(mem::refgen_t(label,f,0));
-	  }
+    assert(y->m_id == address::MEM);
+    mem* m = static_cast<mem*>(y);
+    string label = m->m_label;
+    out << label;
+    if (mode == MS) {
+      usr* func = tac->y->usr_cast();
+      usr::flag f = func->m_flag;
+      if (!(f & usr::STATIC))
+        mem::refed.insert(mem::refgen_t(label,f,0));
+    }
   }
   out << '\n';
 }
 
 namespace intel {
-	namespace return_impl {
-		void single(COMPILER::tac*);
-		void multi(COMPILER::tac*);
-	} // end of namespace return_impl
+  namespace return_impl {
+    void single(COMPILER::tac*);
+    void multi(COMPILER::tac*);
+  } // end of namespace return_impl
 } // end of namespace intel
 
 void intel::_return(COMPILER::tac* tac)
@@ -3329,11 +3338,11 @@ void intel::_return(COMPILER::tac* tac)
   using namespace return_impl;
   if ( var* y = tac->y ){
     const type* T = y->m_type;
-	int size = T->size();
-	if ( x64 )
-		( T->scalar() && size <= 8 ) ? single(tac) : multi(tac);
-	else
-		T->scalar() ? single(tac) : multi(tac);
+    int size = T->size();
+    if ( x64 )
+      ( T->scalar() && size <= 8 ) ? single(tac) : multi(tac);
+    else
+      T->scalar() ? single(tac) : multi(tac);
   }
   if ( return_impl::last3ac != tac ){
     if ( return_impl::leave_label.empty() )
@@ -3376,13 +3385,13 @@ void intel::return_impl::multi(COMPILER::tac* tac)
 }
 
 namespace intel {
-	namespace goto_impl {
-		void cond(COMPILER::goto3ac*);
-	}  // end of namespace goto_impl
-	namespace to_impl {
-		using namespace std;
-		string label(COMPILER::tac*);
-	}  // end of namespace to_impl
+  namespace goto_impl {
+    void cond(COMPILER::goto3ac*);
+  }  // end of namespace goto_impl
+  namespace to_impl {
+    using namespace std;
+    string label(COMPILER::tac*);
+  }  // end of namespace to_impl
 }  // end of namespace intel
 
 void intel::_goto(COMPILER::tac* tac)
@@ -3409,10 +3418,12 @@ void intel::goto_impl::cond(COMPILER::goto3ac* go)
 }
 
 namespace intel { namespace goto_impl {
-  struct table : std::map<std::pair<COMPILER::goto3ac::op,bool>, std::string> {
+  using namespace std;
+  using namespace COMPILER;
+  struct table : map<pair<goto3ac::op,bool>, string> {
     table();
   } m_table;
-  void longlongx86(COMPILER::goto3ac* go);
+  void longlongx86(goto3ac* go);
 } } // end of namespace goto_impl, notlonglong_impl and intel
 
 void intel::goto_impl::integer(COMPILER::goto3ac* go)
@@ -3454,12 +3465,12 @@ intel::goto_impl::table::table()
   using namespace std;
   using namespace COMPILER;
   typedef pair<goto3ac::op,bool> key;
-  (*this)[key(goto3ac::EQ,false)] = "je";    (*this)[key(goto3ac::EQ,true)] = "je";
-  (*this)[key(goto3ac::NE,false)] = "jne";   (*this)[key(goto3ac::NE,true)] = "jne";
-  (*this)[key(goto3ac::LT,false)] = "jl";    (*this)[key(goto3ac::LT,true)] = "jb";
-  (*this)[key(goto3ac::GT,false)] = "jg";    (*this)[key(goto3ac::GT,true)] = "ja";
-  (*this)[key(goto3ac::LE,false)] = "jle";   (*this)[key(goto3ac::LE,true)] = "jbe";
-  (*this)[key(goto3ac::GE,false)] = "jge";   (*this)[key(goto3ac::GE,true)] = "jae";
+  (*this)[key(goto3ac::EQ,false)] = "je";  (*this)[key(goto3ac::EQ,true)] = "je";
+  (*this)[key(goto3ac::NE,false)] = "jne"; (*this)[key(goto3ac::NE,true)] = "jne";
+  (*this)[key(goto3ac::LT,false)] = "jl";  (*this)[key(goto3ac::LT,true)] = "jb";
+  (*this)[key(goto3ac::GT,false)] = "jg";  (*this)[key(goto3ac::GT,true)] = "ja";
+  (*this)[key(goto3ac::LE,false)] = "jle"; (*this)[key(goto3ac::LE,true)] = "jbe";
+  (*this)[key(goto3ac::GE,false)] = "jge"; (*this)[key(goto3ac::GE,true)] = "jae";
 }
 
 void intel::goto_impl::real(COMPILER::goto3ac* go)
@@ -3483,15 +3494,17 @@ void intel::goto_impl::real(COMPILER::goto3ac* go)
   if ( go->m_op == goto3ac::EQ )
     out << label << ":\n";
   if (go->m_op == goto3ac::NE)
-	  out << '\t' << "jp" << '\t' << to_impl::label(go->m_to) << '\n';
+          out << '\t' << "jp" << '\t' << to_impl::label(go->m_to) << '\n';
 }
 
 namespace intel { namespace goto_impl { namespace longlongx86_impl {
-  struct table : std::map<std::pair<COMPILER::goto3ac::op,bool>, std::vector<std::string> > {
+  using namespace std;
+  using namespace COMPILER;
+  struct table : map<pair<goto3ac::op,bool>, vector<string> > {
     table();
   } m_table;
-  void GNU_subr(COMPILER::goto3ac* go);
-  void MS_subr(COMPILER::goto3ac* go);
+  void GNU_subr(goto3ac* go);
+  void MS_subr(goto3ac* go);
 } } } // end of namespace longlongx86_impl, goto_impl and intel
 
 void intel::goto_impl::longlongx86(COMPILER::goto3ac* go)
@@ -3604,9 +3617,9 @@ namespace intel {
       using namespace std;
       ostringstream os;
       if (mode == GNU)
-	os << '.' << func_label << tac;
+        os << '.' << func_label << tac;
       else
-	os << func_label << tac << '$';
+        os << func_label << tac << '$';
       return os.str();
     }
   }  // end of namespace to_impl
@@ -3629,9 +3642,9 @@ void intel::loff(COMPILER::tac* tac)
   const type* T = tac->z->m_type;
   int size = T->size();
   if ( x64 )
-	  (T->scalar() && size <= 8) ? single(tac) : multi(tac);
+    (T->scalar() && size <= 8) ? single(tac) : multi(tac);
   else
-	  T->scalar() ? single(tac) : multi(tac);
+    T->scalar() ? single(tac) : multi(tac);
 }
 
 namespace intel { namespace loff_impl {
@@ -3653,7 +3666,7 @@ void intel::loff_impl::single(COMPILER::tac* tac)
   const type* Tz = tac->z->m_type;
   int size = Tz->size();
   if ( x64 )
-	  assert(size <= 8);
+    assert(size <= 8);
   x->get(reg::bx);
   y->load(reg::cx);
   int psz = psize();
@@ -3662,37 +3675,37 @@ void intel::loff_impl::single(COMPILER::tac* tac)
   const type* Ty = tac->y->m_type;
   int sy = Ty->size();
   if (sy < psz) {
-	  if (mode == GNU)
-	  out << '\t' << "movslq" << '\t' << reg::name(reg::cx, sy) << ", " << cx << '\n';
-	  else
+    if (mode == GNU)
+      out << '\t' << "movslq" << '\t' << reg::name(reg::cx, sy) << ", " << cx << '\n';
+    else
       out << '\t' << "movsxd" << '\t' << cx << ", " << reg::name(reg::cx, sy) << '\n';
   }
   if (mode == GNU)
-  out << '\t' << "add" << psuffix() << '\t' << cx << ", " << bx << '\n';
+    out << '\t' << "add" << psuffix() << '\t' << cx << ", " << bx << '\n';
   else
-  out << '\t' << "add" << psuffix() << '\t' << bx << ", " << cx << '\n';
+    out << '\t' << "add" << '\t' << bx << ", " << cx << '\n';
 
   z->load(reg::ax);
   if (x64 || size <= 4) {
-	  char sf = suffix(size);
-	  if (mode == GNU)
-	  out << '\t' << "mov" << sf << '\t' << reg::name(reg::ax, size) << ", (" << bx << ')' << '\n';
-	  else
-	  out << '\t' << "mov" << sf << '\t' << '[' << bx << ']' << ", " << reg::name(reg::ax, size) << '\n';
+    char sf = suffix(size);
+    if (mode == GNU)
+      out << '\t' << "mov" << sf << '\t' << reg::name(reg::ax, size) << ", (" << bx << ')' << '\n';
+    else
+      out << '\t' << "mov" << '\t' << '[' << bx << ']' << ", " << reg::name(reg::ax, size) << '\n';
   }
   else {
-	  if (mode == GNU) {
-		  out << '\t' << "movl" << '\t' << "%eax" << ", 0(" << "%ebx" << ')' << '\n';
-		  out << '\t' << "movl" << '\t' << "%edx" << ", 4(" << "%ebx" << ')' << '\n';
-		  if (size == 12)
-		  out << '\t' << "movl" << '\t' << "%ecx" << ", 8(" << "%ebx" << ')' << '\n';
-	  }
-	  else {
-		  out << '\t' << "mov" << '\t' <<  '[' << "ebx" << ']' << ", " << "eax" << '\n';
-		  out << '\t' << "mov" << '\t' << "4[" << "ebx" << ']' << ", " << "edx" << '\n';
-		  if (size == 12)
-		  out << '\t' << "mov" << '\t' << "8[" << "ebx" << ']' << ", " << "ecx" << '\n';
-	  }
+    if (mode == GNU) {
+      out << '\t' << "movl" << '\t' << "%eax" << ", 0(" << "%ebx" << ')' << '\n';
+      out << '\t' << "movl" << '\t' << "%edx" << ", 4(" << "%ebx" << ')' << '\n';
+      if (size == 12)
+        out << '\t' << "movl" << '\t' << "%ecx" << ", 8(" << "%ebx" << ')' << '\n';
+    }
+    else {
+      out << '\t' << "mov" << '\t' <<  '[' << "ebx" << ']' << ", " << "eax" << '\n';
+      out << '\t' << "mov" << '\t' << "4[" << "ebx" << ']' << ", " << "edx" << '\n';
+      if (size == 12)
+        out << '\t' << "mov" << '\t' << "8[" << "ebx" << ']' << ", " << "ecx" << '\n';
+    }
   }
 }
 
@@ -3706,60 +3719,60 @@ void intel::loff_impl::single(COMPILER::tac* tac, int delta)
   const type* T = tac->z->m_type;
   int size = T->size();
   if ( x64 )
-	  assert(size <= 8);
+    assert(size <= 8);
   if (x64 || size <= 4) {
-	  string ax = reg::name(reg::ax, size);
-	  char sf = suffix(size);
-	  if (x64 && tac->x->m_scope->m_id == scope::PARAM) {
-		  string rbx = reg::name(reg::bx, psize());
-		  if (mode == GNU) {
-			  out << '\t' << "mov" << psuffix() << '\t' << x->expr() << ", " << rbx << '\n';
-			  out << '\t' << "add" << psuffix() << '\t' << '$' << delta << ", " << rbx << '\n';
-			  out << '\t' << "mov" << sf << '\t' << ax << ", " << '(' << rbx << ')' << '\n';
-		  }
-		  else {
-			  string ptr = ms_pseudo(size) + " PTR ";
-			  out << '\t' << "mov" << psuffix() << '\t' << rbx << ", " << x->expr() << '\n';
-			  out << '\t' << "add" << psuffix() << '\t' << rbx << ", " << delta << '\n';
-			  out << '\t' << "mov" << sf << '\t' << ptr << '[' << rbx << ']' << ", " << ax << '\n';
-		  }
-	  }
-	  else {
-		  if (mode == GNU)
-			  out << '\t' << "mov" << sf << '\t' << ax << ", " << x->expr(delta) << '\n';
-		  else {
-			  string ptr = ms_pseudo(size) + " PTR ";
-			  if (!x64 && x->m_id == address::MEM) {
-				  x->get(reg::bx);
-				  out << '\t' << "mov" << '\t' << ptr;
-				  if (delta)
-					  out << dec << delta;
-				  out << "[ebx], " << ax << '\n';
-			  }
-			  else
-				  out << '\t' << "mov" << '\t' << ptr << x->expr(delta) << ", " << ax << '\n';
-		  }
-	  }
+    string ax = reg::name(reg::ax, size);
+    char sf = suffix(size);
+    if (x64 && tac->x->m_scope->m_id == scope::PARAM) {
+      string rbx = reg::name(reg::bx, psize());
+      if (mode == GNU) {
+        out << '\t' << "mov" << psuffix() << '\t' << x->expr() << ", " << rbx << '\n';
+        out << '\t' << "add" << psuffix() << '\t' << '$' << delta << ", " << rbx << '\n';
+        out << '\t' << "mov" << sf << '\t' << ax << ", " << '(' << rbx << ')' << '\n';
+      }
+      else {
+        string ptr = ms_pseudo(size) + " PTR ";
+        out << '\t' << "mov" << psuffix() << '\t' << rbx << ", " << x->expr() << '\n';
+        out << '\t' << "add" << psuffix() << '\t' << rbx << ", " << delta << '\n';
+        out << '\t' << "mov" << sf << '\t' << ptr << '[' << rbx << ']' << ", " << ax << '\n';
+      }
+    }
+    else {
+      if (mode == GNU)
+        out << '\t' << "mov" << sf << '\t' << ax << ", " << x->expr(delta) << '\n';
+      else {
+        string ptr = ms_pseudo(size) + " PTR ";
+        if (!x64 && x->m_id == address::MEM) {
+          x->get(reg::bx);
+          out << '\t' << "mov" << '\t' << ptr;
+          if (delta)
+            out << dec << delta;
+          out << "[ebx], " << ax << '\n';
+        }
+        else
+          out << '\t' << "mov" << '\t' << ptr << x->expr(delta) << ", " << ax << '\n';
+      }
+    }
   }
   else {
-	  string eax = reg::name(reg::ax, 4);
-	  string edx = reg::name(reg::dx, 4);
-	  string ecx = reg::name(reg::cx, 4);
-	  char sf = suffix(4);
+    string eax = reg::name(reg::ax, 4);
+    string edx = reg::name(reg::dx, 4);
+    string ecx = reg::name(reg::cx, 4);
+    char sf = suffix(4);
 
-	  if (mode == GNU) {
-		  out << '\t' << "mov" << sf << '\t' << eax << ", " << x->expr(delta + 0) << '\n';
-		  out << '\t' << "mov" << sf << '\t' << edx << ", " << x->expr(delta + 4) << '\n';
-		  if (size == 12)
-		  out << '\t' << "mov" << sf << '\t' << ecx << ", " << x->expr(delta + 8) << '\n';
-	  }
-	  else {
-		  string ptr = ms_pseudo(4) + " PTR ";
-		  out << '\t' << "mov" << sf << '\t' << ptr << x->expr(delta + 0) << ", " << eax << '\n';
-		  out << '\t' << "mov" << sf << '\t' << ptr << x->expr(delta + 4) << ", " << edx << '\n';
-		  if (size == 12)
-		  out << '\t' << "mov" << sf << '\t' << ptr << x->expr(delta + 8) << ", " << ecx << '\n';
-	  }
+    if (mode == GNU) {
+      out << '\t' << "mov" << sf << '\t' << eax << ", " << x->expr(delta + 0) << '\n';
+      out << '\t' << "mov" << sf << '\t' << edx << ", " << x->expr(delta + 4) << '\n';
+      if (size == 12)
+        out << '\t' << "mov" << sf << '\t' << ecx << ", " << x->expr(delta + 8) << '\n';
+    }
+    else {
+      string ptr = ms_pseudo(4) + " PTR ";
+      out << '\t' << "mov" << sf << '\t' << ptr << x->expr(delta + 0) << ", " << eax << '\n';
+      out << '\t' << "mov" << sf << '\t' << ptr << x->expr(delta + 4) << ", " << edx << '\n';
+      if (size == 12)
+        out << '\t' << "mov" << sf << '\t' << ptr << x->expr(delta + 8) << ", " << ecx << '\n';
+    }
   }
 }
 
@@ -3785,33 +3798,33 @@ void intel::loff_impl::multi(COMPILER::tac* tac)
   int psz = psize();
   string ax = reg::name(reg::ax, psz);
   if (x64 && tac->x->m_scope->m_id == scope::PARAM)
-	  out << '\t' << "mov" << psuffix() << '\t' << x->expr() << ", " << ax << '\n';
+    out << '\t' << "mov" << psuffix() << '\t' << x->expr() << ", " << ax << '\n';
   else
-	  x->get(reg::ax);
+    x->get(reg::ax);
   y->load(reg::bx);
   string bx = reg::name(reg::bx, psz);
   const type* Ty = tac->y->m_type;
   int sy = Ty->size();
   if (sy < psz) {
-	  if (mode == GNU)
-	  out << '\t' << "movslq" << '\t' << reg::name(reg::bx, sy) << ", " << bx << '\n';
-	  else
-	  out << '\t' << "movsxd" << '\t' << bx << ", " << reg::name(reg::bx, sy) << '\n';
+    if (mode == GNU)
+      out << '\t' << "movslq" << '\t' << reg::name(reg::bx, sy) << ", " << bx << '\n';
+    else
+      out << '\t' << "movsxd" << '\t' << bx << ", " << reg::name(reg::bx, sy) << '\n';
   }
   if (mode == GNU)
-  out << '\t' << "add" << psuffix() << '\t' << bx << ", " << ax << '\n';
+    out << '\t' << "add" << psuffix() << '\t' << bx << ", " << ax << '\n';
   else
-  out << '\t' << "add" << psuffix() << '\t' << ax << ", " << bx << '\n';
+    out << '\t' << "add" << '\t' << ax << ", " << bx << '\n';
 
   if (x64 && tac->z->m_scope->m_id == scope::PARAM) {
-	  if (mode == GNU)
-	  out << '\t' << "mov" << psuffix() << '\t' << z->expr() << ", " << bx << '\n';
-	  else
-	  out << '\t' << "mov" << psuffix() << '\t' << bx << ", " << z->expr() << '\n';
-	  copy(0, 0, size);
+    if (mode == GNU)
+      out << '\t' << "mov" << psuffix() << '\t' << z->expr() << ", " << bx << '\n';
+    else
+      out << '\t' << "mov" << psuffix() << '\t' << bx << ", " << z->expr() << '\n';
+    copy(0, 0, size);
   }
   else
-	  copy(0, z, size);
+    copy(0, z, size);
 }
 
 void intel::loff_impl::multi(COMPILER::tac* tac, int delta)
@@ -3929,13 +3942,13 @@ void intel::roff_impl::single(COMPILER::tac* tac)
   else {
     if (mode == GNU) {
       if (size == 12)
-	out << '\t' << "movl" << '\t' << "8(%eax), %ecx" << '\n';
+        out << '\t' << "movl" << '\t' << "8(%eax), %ecx" << '\n';
       out << '\t' << "movl" << '\t' << "4(%eax), %edx" << '\n';
       out << '\t' << "movl" << '\t' << " (%eax), %eax" << '\n';
     }
     else {
       if (size == 12)
-	out << '\t' << "mov" << '\t' << "ecx, 8[eax]" << '\n';
+        out << '\t' << "mov" << '\t' << "ecx, 8[eax]" << '\n';
       out << '\t' << "mov" << '\t' << "edx, 4[eax]" << '\n';
       out << '\t' << "mov" << '\t' << "eax, [eax]" << '\n';
     }
@@ -3959,29 +3972,29 @@ void intel::roff_impl::single(COMPILER::tac* tac, int delta)
     if (T->real()) {
       out << '\t' << "fld";
       if (mode == GNU)
-	out << fsuffix(size) << '\t';
+        out << fsuffix(size) << '\t';
       else
-	out << '\t' << ms_pseudo(size) << " PTR ";
+        out << '\t' << ms_pseudo(size) << " PTR ";
       if (delta)
-	out << delta;
+        out << delta;
       if (mode == GNU)
-	out << "(%rax)" << '\n';
+        out << "(%rax)" << '\n';
       else
-	out << "[rax]" << '\n';
+        out << "[rax]" << '\n';
       fstp(tac->x);
     }
     else {
       out << '\t' << "mov" << suffix(size) << '\t';
       if (mode == GNU) {
-	if (delta)
-	  out << delta;
-	out << "(%rax), " << reg::name(reg::ax, size) << '\n';
+        if (delta)
+          out << delta;
+        out << "(%rax), " << reg::name(reg::ax, size) << '\n';
       }
       else {
-	out << reg::name(reg::ax, size) << ", ";
-	if (delta)
-	  out << delta;
-	out << "[rax]" << '\n';
+        out << reg::name(reg::ax, size) << ", ";
+        if (delta)
+          out << delta;
+        out << "[rax]" << '\n';
       }
       address* x = getaddr(tac->x);
       x->store();
@@ -3990,42 +4003,42 @@ void intel::roff_impl::single(COMPILER::tac* tac, int delta)
   else {
     if (T->real()) {
       if (mode == GNU)
-	out << '\t' << "fld" << fsuffix(size) << '\t' << y->expr(delta) << '\n';
+        out << '\t' << "fld" << fsuffix(size) << '\t' << y->expr(delta) << '\n';
       else {
-	string ptr = ms_pseudo(size) + " PTR ";
-	out << '\t' << "fld" << '\t' << ptr << y->expr(delta) << '\n';
+        string ptr = ms_pseudo(size) + " PTR ";
+        out << '\t' << "fld" << '\t' << ptr << y->expr(delta) << '\n';
       }
       fstp(tac->x);
     }
     else {
       if (x64 || size <= 4) {
-	char sf = suffix(size);
-	string ax = reg::name(reg::ax, size);
-	if (mode == GNU)
-	  out << '\t' << "mov" << sf << '\t' << y->expr(delta) << ", " << ax << '\n';
-	else {
-	  if (y->m_id == address::MEM) {
-	    y->get(reg::ax);
-	    out << '\t' << "mov" << sf << '\t' << ax << ", ";
-	    if (delta)
-	      out << dec << delta;
-	    out << '[' << reg::name(reg::ax, psize()) << ']' << '\n';
-	  }
-	  else
-	    out << '\t' << "mov" << sf << '\t' << ax << ", " << y->expr(delta) << '\n';
-	}
+        char sf = suffix(size);
+        string ax = reg::name(reg::ax, size);
+        if (mode == GNU)
+          out << '\t' << "mov" << sf << '\t' << y->expr(delta) << ", " << ax << '\n';
+        else {
+          if (y->m_id == address::MEM) {
+            y->get(reg::ax);
+            out << '\t' << "mov" << sf << '\t' << ax << ", ";
+            if (delta)
+              out << dec << delta;
+            out << '[' << reg::name(reg::ax, psize()) << ']' << '\n';
+          }
+          else
+            out << '\t' << "mov" << sf << '\t' << ax << ", " << y->expr(delta) << '\n';
+        }
       }
       else {
-	assert(!x64 && size == 8);
-	if (mode == GNU) {
-	  out << '\t' << "movl" << '\t' << y->expr(delta + 0) << ", %eax" << '\n';
-	  out << '\t' << "movl" << '\t' << y->expr(delta + 4) << ", %edx" << '\n';
-	}
-	else {
-	  string ptr = "DWORD PTR ";
-	  out << '\t' << "mov" << '\t' << "eax, " << ptr << y->expr(delta + 0) << '\n';
-	  out << '\t' << "mov" << '\t' << "edx, " << ptr << y->expr(delta + 4) << '\n';
-	}
+        assert(!x64 && size == 8);
+        if (mode == GNU) {
+          out << '\t' << "movl" << '\t' << y->expr(delta + 0) << ", %eax" << '\n';
+          out << '\t' << "movl" << '\t' << y->expr(delta + 4) << ", %edx" << '\n';
+        }
+        else {
+          string ptr = "DWORD PTR ";
+          out << '\t' << "mov" << '\t' << "eax, " << ptr << y->expr(delta + 0) << '\n';
+          out << '\t' << "mov" << '\t' << "edx, " << ptr << y->expr(delta + 4) << '\n';
+        }
       }
       address* x = getaddr(tac->x);
       x->store();
@@ -4051,14 +4064,14 @@ void intel::roff_impl::multi(COMPILER::tac* tac)
   int size = Tx->size();
   address* y = getaddr(tac->y);
   if (x64 && tac->y->m_scope->m_id == scope::PARAM) {
-	  char sf = psuffix();
-	  if (mode == GNU)
-	  out << '\t' << "mov" << sf << '\t' << y->expr() << ", %rax" << '\n';
-	  else
-	  out << '\t' << "mov" << sf << '\t' << "eax, " << y->expr() << '\n';
+    char sf = psuffix();
+    if (mode == GNU)
+      out << '\t' << "mov" << sf << '\t' << y->expr() << ", %rax" << '\n';
+    else
+      out << '\t' << "mov" << sf << '\t' << "eax, " << y->expr() << '\n';
   }
   else
-	  y->get(reg::ax);
+    y->get(reg::ax);
   address* z = getaddr(tac->z);
   z->load(reg::dx);
   int psz = psize();
@@ -4067,30 +4080,30 @@ void intel::roff_impl::multi(COMPILER::tac* tac)
   const type* Tz = tac->z->m_type;
   int sz = Tz->size();
   if (sz < psz) {
-	  if (mode == GNU)
-	  out << '\t' << "movslq" << '\t' << reg::name(reg::dx, sz) << ", " << dx << '\n';
-	  else
-	  out << '\t' << "movsxd" << '\t' << dx << ", " << reg::name(reg::dx, sz) << '\n';
+    if (mode == GNU)
+      out << '\t' << "movslq" << '\t' << reg::name(reg::dx, sz) << ", " << dx << '\n';
+    else
+      out << '\t' << "movsxd" << '\t' << dx << ", " << reg::name(reg::dx, sz) << '\n';
   }
   char sf = psuffix();
   if (mode == GNU)
-  out << '\t' << "add" << sf << '\t' << dx << ", " << ax << '\n';
+    out << '\t' << "add" << sf << '\t' << dx << ", " << ax << '\n';
   else
-  out << '\t' << "add" << sf << '\t' << ax << ", " << dx << '\n';
+    out << '\t' << "add" << sf << '\t' << ax << ", " << dx << '\n';
   address* x = getaddr(tac->x);
   if (x64 && tac->x->m_scope->m_id == scope::PARAM) {
-	  if (mode == GNU) {
-		  out << '\t' << "mov" << sf << '\t' << "%rax, %rbx" << '\n';
-		  out << '\t' << "mov" << sf << '\t' << x->expr() << ", " << "%rax" << '\n';
-	  }
-	  else {
-		  out << '\t' << "mov" << sf << '\t' << "rbx, rax" << '\n';
-		  out << '\t' << "mov" << sf << '\t' << "rax" << ", " << x->expr() << '\n';
-	  }
-	  copy(0, 0, size);
+    if (mode == GNU) {
+      out << '\t' << "mov" << sf << '\t' << "%rax, %rbx" << '\n';
+      out << '\t' << "mov" << sf << '\t' << x->expr() << ", " << "%rax" << '\n';
+    }
+    else {
+      out << '\t' << "mov" << sf << '\t' << "rbx, rax" << '\n';
+      out << '\t' << "mov" << sf << '\t' << "rax" << ", " << x->expr() << '\n';
+    }
+    copy(0, 0, size);
   }
   else
-	  copy(x, 0, size);
+    copy(x, 0, size);
 }
 
 void intel::roff_impl::multi(COMPILER::tac* tac, int delta)
@@ -4103,31 +4116,31 @@ void intel::roff_impl::multi(COMPILER::tac* tac, int delta)
   address* y = getaddr(tac->y);
   char sf = psuffix();
   if (x64 && tac->y->m_scope->m_id == scope::PARAM) {
-	  if (mode == GNU)
-	  out << '\t' << "mov" << sf << '\t' << y->expr() << ", %rax" << '\n';
-	  else
+    if (mode == GNU)
+      out << '\t' << "mov" << sf << '\t' << y->expr() << ", %rax" << '\n';
+    else
       out << '\t' << "mov" << sf << '\t' << "rax, " << y->expr() << '\n';
   }
   else
-	  y->get(reg::ax);
+    y->get(reg::ax);
   if (mode == GNU)
-  out << '\t' << "add" << sf << '\t' << '$' << delta << ", " << reg::name(reg::ax, psize()) << '\n';
+    out << '\t' << "add" << sf << '\t' << '$' << delta << ", " << reg::name(reg::ax, psize()) << '\n';
   else
-  out << '\t' << "add" << sf << '\t' << reg::name(reg::ax, psize()) << ", " << delta << '\n';
+    out << '\t' << "add" << '\t' << reg::name(reg::ax, psize()) << ", " << delta << '\n';
 
   if (x64 && tac->x->m_scope->m_id == scope::PARAM) {
-	  if (mode == GNU) {
-		  out << '\t' << "mov" << sf << '\t' << "%rax, %rbx" << '\n';
-		  out << '\t' << "mov" << sf << '\t' << x->expr() << ", " << "%rax" << '\n';
-	  }
-	  else {
-		  out << '\t' << "mov" << sf << '\t' << "rbx, rax" << '\n';
-		  out << '\t' << "mov" << sf << '\t' << "rax, " << x->expr() << '\n';
-	  }
-	  copy(0, 0, size);
+    if (mode == GNU) {
+      out << '\t' << "mov" << sf << '\t' << "%rax, %rbx" << '\n';
+      out << '\t' << "mov" << sf << '\t' << x->expr() << ", " << "%rax" << '\n';
+    }
+    else {
+      out << '\t' << "mov" << '\t' << "rbx, rax" << '\n';
+      out << '\t' << "mov" << '\t' << "rax, " << x->expr() << '\n';
+    }
+    copy(0, 0, size);
   }
   else
-	  copy(x, 0, size);
+    copy(x, 0, size);
 }
 
 void intel::_alloc_(COMPILER::tac* tac)
@@ -4145,9 +4158,9 @@ void intel::_alloc_(COMPILER::tac* tac)
   int n = -allocated::base;
   ostringstream os;
   if (mode == GNU)
-	  os << dec << n << '(' << fp() << ')';
+    os << dec << n << '(' << fp() << ')';
   else
-	  os << '[' << fp() << dec << n << ']';
+    os << '[' << fp() << dec << n << ']';
   string fpexpr = os.str();
   string SP = sp();
   int m = stack::threshold_alloca;
@@ -4233,16 +4246,16 @@ void intel::_dealloc_(COMPILER::tac* tac)
   string fpexpr = os.str();
   string SP = sp();
   if (mode == GNU) {
-	  out << '\t' << "add" << ps << '\t' << ax << ", " << SP << '\n';
-	  out << '\t' << "mov" << ps << '\t' << fpexpr << ", " << bx << '\n';
-	  out << '\t' << "add" << ps << '\t' << ax << ", " << bx << '\n';
-	  out << '\t' << "mov" << ps << '\t' << bx << ", " << fpexpr << '\n';
+    out << '\t' << "add" << ps << '\t' << ax << ", " << SP << '\n';
+    out << '\t' << "mov" << ps << '\t' << fpexpr << ", " << bx << '\n';
+    out << '\t' << "add" << ps << '\t' << ax << ", " << bx << '\n';
+    out << '\t' << "mov" << ps << '\t' << bx << ", " << fpexpr << '\n';
   }
   else {
-	  out << '\t' << "add" << '\t' << SP << ", " << ax << '\n';
-	  out << '\t' << "mov" << '\t' << bx << ", " << fpexpr << '\n';
-	  out << '\t' << "add" << '\t' << bx << ", " << ax << '\n';
-	  out << '\t' << "mov" << '\t' << fpexpr << ", " << bx << '\n';
+    out << '\t' << "add" << '\t' << SP << ", " << ax << '\n';
+    out << '\t' << "mov" << '\t' << bx << ", " << fpexpr << '\n';
+    out << '\t' << "add" << '\t' << bx << ", " << ax << '\n';
+    out << '\t' << "mov" << '\t' << fpexpr << ", " << bx << '\n';
   }
 }
 
@@ -4255,32 +4268,32 @@ void intel::_asm_(COMPILER::tac* tac)
 
 void intel::_va_start(COMPILER::tac* tac)
 {
-	using namespace COMPILER;
-	address* y = getaddr(tac->y);
-	y->get(reg::ax);
-	char sf = psuffix();
-	if (x64) {
-		if (mode == GNU)
-			out << '\t' << "add" << sf << '\t' << "$8, %rax" << '\n';
-		else
-			out << '\t' << "add" << sf << '\t' << "rax, 8" << '\n';
-	}
-	else {
-		const type* T = tac->y->m_type;
-		T = T->promotion();
-		int size = T->size();
-		if (mode == GNU)
-			out << '\t' << "add" << sf << '\t' << '$' << size << ", %eax" << '\n';
-		else
-			out << '\t' << "add" << sf << '\t' << "eax, " << size << '\n';
-	}
-	address* x = getaddr(tac->x);
-	x->store(reg::ax);
+  using namespace COMPILER;
+  address* y = getaddr(tac->y);
+  y->get(reg::ax);
+  char sf = psuffix();
+  if (x64) {
+    if (mode == GNU)
+      out << '\t' << "add" << sf << '\t' << "$8, %rax" << '\n';
+    else
+      out << '\t' << "add" << sf << '\t' << "rax, 8" << '\n';
+  }
+  else {
+    const type* T = tac->y->m_type;
+    T = T->promotion();
+    int size = T->size();
+    if (mode == GNU)
+      out << '\t' << "add" << sf << '\t' << '$' << size << ", %eax" << '\n';
+    else
+      out << '\t' << "add" << sf << '\t' << "eax, " << size << '\n';
+  }
+  address* x = getaddr(tac->x);
+  x->store(reg::ax);
 }
 
 namespace intel { namespace va_arg_impl {
-    void common(COMPILER::tac* tac);
-    void multi_x64(COMPILER::tac* tac);
+  void common(COMPILER::tac* tac);
+  void multi_x64(COMPILER::tac* tac);
 } }  // end of namespace va_arg_impl, intel
 
 void intel::_va_arg(COMPILER::tac* tac)
@@ -4291,9 +4304,9 @@ void intel::_va_arg(COMPILER::tac* tac)
   const type* T = tac->x->m_type;
   int size = T->size();
   if (x64)
-	  (T->scalar() && size <= 8) ? common(tac) : multi_x64(tac);
+    (T->scalar() && size <= 8) ? common(tac) : multi_x64(tac);
   else
-	  common(tac);
+    common(tac);
 }
 
 void intel::va_arg_impl::common(COMPILER::tac* tac)
@@ -4304,6 +4317,7 @@ void intel::va_arg_impl::common(COMPILER::tac* tac)
   invraddr(tac);
   address* y = getaddr(tac->y);
   y->load();
+  assert(mode == GNU);
   if (x64)
     out << '\t' << "addq" << '\t' << "$8, %rax" << '\n';
   else {
@@ -4325,6 +4339,7 @@ void intel::va_arg_impl::multi_x64(COMPILER::tac* tac)
   int psz = psize();
   string ax = reg::name(reg::ax, psz);
   string cx = reg::name(reg::cx, psz);
+  assert(mode == GNU);  
   out << '\t' << "mov" << ps << '\t' << ax << ", " << cx << '\n';
   out << '\t' << "mov" << ps << '\t' << '(' << ax << "), " << ax << '\n';
   address* x = getaddr(tac->x);
@@ -4337,6 +4352,7 @@ void intel::va_arg_impl::multi_x64(COMPILER::tac* tac)
 
 void intel::_va_end(COMPILER::tac*)
 {
+  // just ignore
 }
 
 #ifdef CXX_GENERATOR
@@ -4363,7 +4379,7 @@ std::string intel::cxx_label(COMPILER::usr* u)
     ret += os.str();
   }
   string b;
-  if ( flag & usr::FUNCTION )
+  if (flag & usr::FUNCTION)
     b = func_name(u);
   else {
     ostringstream os;
