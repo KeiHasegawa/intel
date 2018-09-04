@@ -1007,9 +1007,9 @@ bool intel::mem::is(COMPILER::usr* u)
     return false;
   }
 #ifdef CXX_GENERATOR
-  usr::flag mask = usr::flag(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::STATIC_DEF);
+  usr::flag mask = usr::flag(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG | usr::STATIC_DEF);
 #else // CXX_GENERATOR
-  usr::flag mask = usr::flag(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI);
+  usr::flag mask = usr::flag(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG);
 #endif // CXX_GENERATOR
   if (x64)
     mask = usr::flag(mask | usr::CONST_PTR);
