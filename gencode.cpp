@@ -30,7 +30,7 @@ void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::ta
   defined.insert(name);
 
   if (doll_need(name))
-          name += '$';
+    name += '$';
   func_label = external_header + name;
   usr::flag f = u->m_flag;
   usr::flag m = usr::flag(usr::STATIC | usr::INLINE);
@@ -63,7 +63,10 @@ void intel::enter(const COMPILER::fundef* func,
   char ps = psuffix();
   string SP = sp();
   string FP = fp();
+  int psz = psize();
   out << '\t' << "push" << ps << '\t' << FP << '\n';
+  if (mode == MS)
+    out << '\t' << "push" << '\t' << reg::name(reg::bx, psz) << '\n';
   out << '\t' << "mov" << ps << '\t';
   if (mode == GNU)
     out << SP << ", " << FP << '\n';
@@ -71,8 +74,11 @@ void intel::enter(const COMPILER::fundef* func,
     out << FP << ", " << SP << '\n';
 
   sched_stack(func,code);
+  if (mode == MS && x64)
+    stack::delta_sp += 8;
+
   int n = stack::delta_sp;
-  string ax = reg::name(reg::ax, psize());  
+  string ax = reg::name(reg::ax, psz);  
 #if defined(_MSC_VER) || defined(__CYGWIN__)
   if (stack::delta_sp < stack::threshold_alloca) {
     out << '\t' << "sub" << ps << '\t';
@@ -139,10 +145,15 @@ void intel::leave()
   out << '\t' << "mov" << psuffix() << '\t';
   if (mode == GNU)
     out << fp() << ", " << sp() << '\n';
-  else
-    out << sp() << ", " << fp() << '\n';
+  else {
+          out << sp() << ", " << fp() << '\n';
+          out << '\t' << "pop" << '\t' << reg::name(reg::bx, psize()) << '\n';
+  }
 
-  out << '\t' << "leave" << '\n';
+  if (mode == GNU)
+          out << '\t' << "leave" << '\n';
+  else
+          out << '\t' << "pop" << '\t' << fp() << '\n';
   out << '\t' << "ret" << '\n';
   if (mode == MS)
     out << func_label << '\t' << "ENDP" << '\n';
@@ -184,7 +195,8 @@ void intel::sched_stack(const COMPILER::fundef* func,
 {
   using namespace std;
   using namespace COMPILER;
-  stack::local_area = psize();  // for return address save area
+  int psz = psize();
+  stack::local_area = psz;  // for return address save area
   vector<tac*>::const_iterator p =
     max_element(code.begin(),code.end(), aggregate_func::ret::cmp);
   if ( p != code.end() ){
@@ -215,7 +227,7 @@ void intel::sched_stack(const COMPILER::fundef* func,
   }
   allocated::base = 0;
   stack::local_area += func_local(func);
-  if ( allocated::base ){
+  if (allocated::base) {
     if (debug_flag)
       out << '\t' << comment_start << " The top of local area of stack is saved\n";
     char sf = psuffix();

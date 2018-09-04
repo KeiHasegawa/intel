@@ -23,22 +23,22 @@ namespace intel {
   extern bool doll_need(std::string);
   inline std::string sp()
   {
-	  if (x64)
-		  return mode == GNU ? "%rsp" : "rsp";
-	  else
-		  return mode == GNU ? "%esp" : "esp";
+          if (x64)
+                  return mode == GNU ? "%rsp" : "rsp";
+          else
+                  return mode == GNU ? "%esp" : "esp";
   }
   inline std::string fp()
   {
-	  if (x64)
-		  return mode == GNU ? "%rbp" : "rbp";
-	  else
-		  return mode == GNU ? "%ebp" : "ebp";
+          if (x64)
+                  return mode == GNU ? "%rbp" : "rbp";
+          else
+                  return mode == GNU ? "%ebp" : "ebp";
   }
   inline std::string xmm(int n)
   {
-	  using namespace std;
-	  return (mode == GNU) ? string("%xmm") + char('0' + n) : string("xmm") + char('0' + n);
+          using namespace std;
+          return (mode == GNU) ? string("%xmm") + char('0' + n) : string("xmm") + char('0' + n);
   }
   inline char psuffix() { if (mode == MS) return ' '; else return x64 ? 'q' : 'l';  }
   inline int psize() { return x64 ? 8 : 4; }
@@ -46,21 +46,21 @@ namespace intel {
   extern std::set<std::string> defined;
   inline std::string gnu_pseudo(int size)
   {
-	  switch (size) {
-	  case 1: return ".byte";
-	  case 2: return ".word";
-	  case 4: return ".long";
-	  default: assert(size == 8); return ".quad";
-	  }
+          switch (size) {
+          case 1: return ".byte";
+          case 2: return ".word";
+          case 4: return ".long";
+          default: assert(size == 8); return ".quad";
+          }
   }
   inline std::string ms_pseudo(int size)
   {
-	  switch (size) {
-	  case 1: return "BYTE";
-	  case 2: return "WORD";
-	  case 4: return "DWORD";
-	  default: assert(size == 8); return "QWORD";
-	  }
+          switch (size) {
+          case 1: return "BYTE";
+          case 2: return "WORD";
+          case 4: return "DWORD";
+          default: assert(size == 8); return "QWORD";
+          }
   }
   inline std::string pseudo(int size) { return mode == GNU ? gnu_pseudo(size) : ms_pseudo(size); }
   inline std::string dot_long() { return mode == GNU ? ".long" : "DD"; }
@@ -85,9 +85,9 @@ namespace intel {
   };
   extern std::pair<std::map<COMPILER::usr*, address*>, std::map<COMPILER::var*, address*> > address_descriptor;
   template<class T> struct destroy_address {
-	  void operator()(std::pair<T, address*> x) {
-		  delete x.second;
-	  }
+          void operator()(std::pair<T, address*> x) {
+                  delete x.second;
+          }
   };
   extern address* getaddr(COMPILER::var*);
   extern std::string external_header;
@@ -124,15 +124,15 @@ namespace intel {
       int m_size;
       bool operator<(const refgen_t& that) const
       {
-	if (m_label < that.m_label)
-	  return true;
-	if (m_label > that.m_label)
-	  return false;
-	if (m_flag < that.m_flag)
-	  return true;
-	if (m_flag > that.m_flag)
-	  return false;
-	return m_size < that.m_size;
+        if (m_label < that.m_label)
+          return true;
+        if (m_label > that.m_label)
+          return false;
+        if (m_flag < that.m_flag)
+          return true;
+        if (m_flag > that.m_flag)
+          return false;
+        return m_size < that.m_size;
       }
     refgen_t(std::string label, COMPILER::usr::flag f, int size) : m_label(label), m_flag(f), m_size(size) {}
       refgen_t(){}
@@ -196,7 +196,7 @@ namespace intel {
         double to_double(const unsigned char*);
         void from_double(unsigned char*, double);
         bool cmp(COMPILER::goto3ac::op, const unsigned char*, const unsigned char*);
-	extern int size;
+        extern int size;
       }  // end of namespace long_double
     }  // end of namespace floating
     namespace integer {
@@ -211,9 +211,9 @@ namespace intel {
   extern void output_section(section);
   extern void end_section(section);
   struct sec_hlp {
-	  enum section m_section;
-	  sec_hlp(enum section s) : m_section(s) { output_section(m_section); }
-	  ~sec_hlp() { end_section(m_section); }
+          enum section m_section;
+          sec_hlp(enum section s) : m_section(s) { output_section(m_section); }
+          ~sec_hlp() { end_section(m_section); }
   };
   extern std::string new_label(std::string head);
   extern std::pair<std::map<std::pair<int,COMPILER::goto3ac*>, std::string>, std::map<int, std::vector<std::string> > > label_table;
@@ -222,66 +222,66 @@ namespace intel {
   struct reference_constant {
     std::string m_label;
     bool m_out;
-	static std::vector<reference_constant*> m_all;
-	reference_constant() { m_all.push_back(this); }
-	void output();
-	virtual void output_value() const = 0;
+        static std::vector<reference_constant*> m_all;
+        reference_constant() { m_all.push_back(this); }
+        void output();
+        virtual void output_value() const = 0;
   };
   void fld(COMPILER::var*);
   void fstp(COMPILER::var*);
   class uint64_float_t : public reference_constant {
-	  uint64_float_t(){}
+          uint64_float_t(){}
   public:
-	  static uint64_float_t obj;
-	  void output_value() const;
+          static uint64_float_t obj;
+          void output_value() const;
   };
   class uint64_double_t : public reference_constant {
-	  uint64_double_t(){}
+          uint64_double_t(){}
   public:
-	  static uint64_double_t obj;
-	  void output_value() const;
+          static uint64_double_t obj;
+          void output_value() const;
   };
   class uint64_ld_t : public reference_constant {
-	  uint64_ld_t(){}
+          uint64_ld_t(){}
   public:
-	  static uint64_ld_t obj;
-	  void output_value() const;
+          static uint64_ld_t obj;
+          void output_value() const;
   };
   class ld_uint64_t : public reference_constant {
-	  ld_uint64_t() {}
+          ld_uint64_t() {}
   public:
-	  static ld_uint64_t obj;
-	  void output_value() const;
+          static ld_uint64_t obj;
+          void output_value() const;
   };
   class uminus_float_t : public reference_constant {
-	  uminus_float_t() {}
+          uminus_float_t() {}
   public:
-	  static uminus_float_t obj;
-	  void output_value() const;
+          static uminus_float_t obj;
+          void output_value() const;
   };
   class uminus_double_t : public reference_constant {
-	  uminus_double_t() {}
+          uminus_double_t() {}
   public:
-	  static uminus_double_t obj;
-	  void output_value() const;
+          static uminus_double_t obj;
+          void output_value() const;
   };
   class real_uint64_t : public reference_constant {
-	  real_uint64_t() {}
+          real_uint64_t() {}
   public:
-	  static real_uint64_t obj;
-	  void output_value() const;
+          static real_uint64_t obj;
+          void output_value() const;
   };
   class float_uint64_t : public reference_constant {
-	  float_uint64_t() {}
+          float_uint64_t() {}
   public:
-	  static float_uint64_t obj;
-	  void output_value() const;
+          static float_uint64_t obj;
+          void output_value() const;
   };
   class double_uint64_t : public reference_constant {
-	  double_uint64_t() {}
+          double_uint64_t() {}
   public:
-	  static double_uint64_t obj;
-	  void output_value() const;
+          static double_uint64_t obj;
+          void output_value() const;
   };
 
   extern std::string pseudo_global;

@@ -68,9 +68,13 @@ int intel::option_handler(const char* option)
   if (string("--x86") == option) {
     x64 = false;
     intel::literal::floating::long_double::size = (mode == MS) ? 8 : 12;
-    intel::first_param_offset = 8;
-    if (mode == MS)
-      external_header = "_";
+        if (mode == GNU) {
+                intel::first_param_offset = 8;
+        }
+        else {
+                intel::first_param_offset = 12;
+                external_header = "_";
+        }
     return 0;
   }
   if (string("--ms") == option) {
@@ -78,8 +82,13 @@ int intel::option_handler(const char* option)
     pseudo_global = "PUBLIC";
     comment_start = ";";
     intel::literal::floating::long_double::size = 8;
-    if (!x64)
-      external_header = "_";
+        if (x64) {
+                intel::first_param_offset = 0x18;
+        }
+        else {
+                intel::first_param_offset = 12;
+                external_header = "_";
+        }
     return 0;
   }
   else {
