@@ -167,21 +167,47 @@ void intel::reference_constant::output()
   }
 }
 
-extern "C" DLL_EXPORT int generator_sizeof(const COMPILER::type* T)
+extern "C" DLL_EXPORT int generator_sizeof(int n)
 {
   using namespace COMPILER;
   using namespace intel;
 
-  if (T->m_id == type::LONG_DOUBLE)
-    return literal::floating::long_double::size;
-
-  if (T->m_id == type::LONG)
+  switch ((type::id)n) {
+  case type::SHORT:
+    return 2;
+  case type::INT:
+    return 4;
+  case type::LONG:
     return mode == MS ? 4 : (x64 ? 8 : 4);
-  
-  if (T->m_id == type::POINTER)
+  case type::LONGLONG:
+    return 8;
+  case type::FLOAT:
+    return 4;
+  case type::DOUBLE:
+    return 8;
+  case type::LONG_DOUBLE:
+    return literal::floating::long_double::size;
+  default:
+    assert((type::id)n == type::POINTER);
     return x64 ? 8 : 4;
+  }
+}
 
-  return T->size();
+extern "C" DLL_EXPORT
+int generator_wchar_type()
+{
+  using namespace COMPILER;
+#ifdef linux
+#ifdef DEBIAN 
+  return (int)type::INT;
+#else // DEBIAN
+  return (int)type::LONG;
+#endif /// DEBIAN
+#endif // linux
+#ifdef __APPLE__
+  return (int)type::INT;
+#endif // __APPLE__
+  return (int)type::USHORT;
 }
 
 #ifdef _MSC_VER
