@@ -120,7 +120,7 @@ namespace intel {
     static std::string pseudo_helper2(COMPILER::usr* u);
     struct refgen_t {
       std::string m_label;
-      COMPILER::usr::flag m_flag;
+      COMPILER::usr::flag_t m_flag;
       int m_size;
       bool operator<(const refgen_t& that) const
       {
@@ -134,7 +134,7 @@ namespace intel {
           return false;
         return m_size < that.m_size;
       }
-    refgen_t(std::string label, COMPILER::usr::flag f, int size) : m_label(label), m_flag(f), m_size(size) {}
+    refgen_t(std::string label, COMPILER::usr::flag_t f, int size) : m_label(label), m_flag(f), m_size(size) {}
       refgen_t(){}
     };
     static std::set<refgen_t> refed;

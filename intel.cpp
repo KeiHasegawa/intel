@@ -172,7 +172,7 @@ extern "C" DLL_EXPORT int generator_sizeof(int n)
   using namespace COMPILER;
   using namespace intel;
 
-  switch ((type::id)n) {
+  switch ((type::id_t)n) {
   case type::SHORT:
     return 2;
   case type::INT:
@@ -188,7 +188,7 @@ extern "C" DLL_EXPORT int generator_sizeof(int n)
   case type::LONG_DOUBLE:
     return literal::floating::long_double::size;
   default:
-    assert((type::id)n == type::POINTER);
+    assert((type::id_t)n == type::POINTER);
     return x64 ? 8 : 4;
   }
 }
@@ -623,7 +623,7 @@ void intel::mem::load() const
   const type* T = m_usr->m_type;
   assert(T->scalar());
   int size = T->size();
-  usr::flag f = m_usr->m_flag;
+  usr::flag_t f = m_usr->m_flag;
   refed.insert(refgen_t(m_label,f,size));
   if (T->real()) {
     if (x64) {
@@ -700,7 +700,7 @@ void intel::mem::load(reg::gpr r) const
   const type* T = m_usr->m_type;
   assert(T->scalar());
   int size = T->size();
-  usr::flag f = m_usr->m_flag;
+  usr::flag_t f = m_usr->m_flag;
   refed.insert(refgen_t(m_label,f,size));
   string ptr;
   if (mode == MS)
@@ -786,7 +786,7 @@ std::string intel::mem::gnu_refgen(const refgen_t& x)
   using namespace std;
   using namespace COMPILER;
   string label = x.m_label;
-  usr::flag f = x.m_flag;
+  usr::flag_t f = x.m_flag;
   ostringstream os;
   if (!x64) {
     assert(refgened.empty());
@@ -811,8 +811,8 @@ std::string intel::mem::ms_refgen(const refgen_t& x)
   using namespace std;
   using namespace COMPILER;
   string label = x.m_label;
-  usr::flag f = x.m_flag;
-  usr::flag m = usr::flag(usr::STATIC | usr::INLINE);
+  usr::flag_t f = x.m_flag;
+  usr::flag_t m = usr::flag_t(usr::STATIC | usr::INLINE);
   if (f & m)
     return "";
 
@@ -859,7 +859,7 @@ void intel::mem::indirect_code(reg::gpr r) const
   else
     out << '\t' << "lea" << sf << '\t' << rs << ", " << m_label << '\n';
   if (!m_usr->isconstant()) {
-    usr::flag f = m_usr->m_flag;
+    usr::flag_t f = m_usr->m_flag;
     int size = m_usr->m_type->size();
     refed.insert(refgen_t(m_label, f, size));
   }
@@ -967,7 +967,7 @@ void intel::mem::store(reg::gpr r) const
       }
     }
   }
-  usr::flag f = m_usr->m_flag;
+  usr::flag_t f = m_usr->m_flag;
   refed.insert(refgen_t(m_label, f, size));
 }
 
@@ -985,7 +985,7 @@ void intel::mem::get(reg::gpr r) const
   }
   else {
     out << '\t' << "lea" << sf << '\t' << rs << ", " << m_label << '\n';
-    usr::flag f = m_usr->m_flag;
+    usr::flag_t f = m_usr->m_flag;
     int size = m_usr->m_type->size();
     refed.insert(refgen_t(m_label, f, size));
   }
@@ -1012,7 +1012,7 @@ std::string intel::mem::expr(int delta, bool special) const
     if (mode == GNU)
       os << "(%rip)";
     else {
-      usr::flag f = m_usr->m_flag;
+      usr::flag_t f = m_usr->m_flag;
       refed.insert(refgen_t(m_label, f, size));
     }
   }
@@ -1022,7 +1022,7 @@ std::string intel::mem::expr(int delta, bool special) const
 bool intel::mem::is(COMPILER::usr* u)
 {
   using namespace COMPILER;
-  usr::flag flag = u->m_flag;
+  usr::flag_t flag = u->m_flag;
   if (!flag) {
     if (!u->m_scope->m_parent)
       return true;
@@ -1033,12 +1033,12 @@ bool intel::mem::is(COMPILER::usr* u)
     return false;
   }
 #ifdef CXX_GENERATOR
-  usr::flag mask = usr::flag(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG | usr::STATIC_DEF);
+  usr::flag mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG | usr::STATIC_DEF);
 #else // CXX_GENERATOR
-  usr::flag mask = usr::flag(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG);
+  usr::flag_t mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG);
 #endif // CXX_GENERATOR
   if (x64)
-    mask = usr::flag(mask | usr::CONST_PTR);
+    mask = usr::flag_t(mask | usr::CONST_PTR);
   return flag & mask;
 }
 
@@ -1054,7 +1054,7 @@ intel::mem::mem(COMPILER::usr* u) : address(MEM), m_usr(u)
 #else // CXX_GENERATOR
   m_label = external_header + name;
 #endif // CXX_GENERATOR
-  usr::flag f = u->m_flag;
+  usr::flag_t f = u->m_flag;
   if (f & usr::STATIC) {
     if (is_string(name))
       m_label = new_label((mode == GNU) ? ".LC" : "LC$");
@@ -1073,8 +1073,8 @@ bool intel::mem::genobj()
 {
   using namespace std;
   using namespace COMPILER;
-  usr::flag f = m_usr->m_flag;
-  usr::flag mask = usr::flag(usr::FUNCTION|usr::EXTERN);
+  usr::flag_t f = m_usr->m_flag;
+  usr::flag_t mask = usr::flag_t(usr::FUNCTION|usr::EXTERN);
   if (f & mask)
     return false;
 #ifdef CXX_GENERATOR

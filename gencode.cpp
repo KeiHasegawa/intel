@@ -32,8 +32,8 @@ void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::ta
   if (doll_need(name))
     name += '$';
   func_label = external_header + name;
-  usr::flag f = u->m_flag;
-  usr::flag m = usr::flag(usr::STATIC | usr::INLINE);
+  usr::flag_t f = u->m_flag;
+  usr::flag_t m = usr::flag_t(usr::STATIC | usr::INLINE);
   if (!(f & m) || (f & usr::EXTERN))
     out << '\t' << pseudo_global << '\t' << func_label << '\n';
   out << func_label << ((mode == GNU) ? ":" : "\tPROC") << '\n';
@@ -186,7 +186,7 @@ namespace intel {
   }
   inline bool cmp_id(const COMPILER::tac* tac, COMPILER::tac::id_t id)
   {
-    return tac->id == id;
+    return tac->m_id == id;
   }
 }  // end of namespace intel
 
@@ -260,7 +260,7 @@ bool intel::aggregate_func::ret::cmp(COMPILER::tac* x, COMPILER::tac* y)
 int intel::aggregate_func::ret::size(COMPILER::tac* tac)
 {
   using namespace COMPILER;
-  if ( tac->id != tac::CALL )
+  if ( tac->m_id != tac::CALL )
     return 0;
   var* y = tac->y;
   const type* T = y->m_type;
@@ -295,7 +295,7 @@ int intel::aggregate_func::ret::size(COMPILER::tac* tac)
 int intel::aggregate_func::param::calc(int offset, COMPILER::tac* tac)
 {
   using namespace COMPILER;
-  if (tac->id != tac::PARAM)
+  if (tac->m_id != tac::PARAM)
     return offset;
   var* y = tac->y;
   const type* T = y->m_type;
@@ -578,8 +578,8 @@ int intel::usr_local1(int offset, const std::pair<std::string,
 int intel::usr_local2(int offset, COMPILER::usr* u)
 {
   using namespace COMPILER;
-  usr::flag flag = u->m_flag;
-  usr::flag mask = usr::flag(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::TYPEDEF);
+  usr::flag_t flag = u->m_flag;
+  usr::flag_t mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::TYPEDEF);
   return flag & mask ? offset : decide_local(offset,u);
 }
 
@@ -588,8 +588,8 @@ int intel::decide_local(int offset, COMPILER::var* v)
   using namespace std;
   using namespace COMPILER;
   usr* u = v->usr_cast();
-  usr::flag f = u ? u->m_flag : usr::NONE;
-  assert(!(f & usr::flag(usr::FUNCTION | usr::TYPEDEF)));
+  usr::flag_t f = u ? u->m_flag : usr::NONE;
+  assert(!(f & usr::flag_t(usr::FUNCTION | usr::TYPEDEF)));
   if (f & usr::CONST_PTR) {
     address_descriptor.second[v] = new imm(u);
     return offset;
@@ -627,7 +627,7 @@ void intel::gencode(COMPILER::tac* ptr)
     output3ac(out,ptr);
     out << '\n';
   }
-  gencode_table[ptr->id](ptr);
+  gencode_table[ptr->m_id](ptr);
 }
 
 namespace intel {
@@ -3329,7 +3329,7 @@ void intel::call_impl::Void(COMPILER::tac* tac)
     out << label;
     if (mode == MS) {
       usr* func = tac->y->usr_cast();
-      usr::flag f = func->m_flag;
+      usr::flag_t f = func->m_flag;
       if (!(f & usr::STATIC))
         mem::refed.insert(mem::refgen_t(label,f,0));
     }
@@ -4179,6 +4179,10 @@ void intel::_alloc_(COMPILER::tac* tac)
 
 #if defined(_MSC_VER) || defined(__CYGWIN__)
   if (mode == GNU) {
+    out << '\t' << "add" << ps << '\t' << '$' << 15 << ", " << ax << '\n';
+    out << '\t' << "mov" << ps << '\t' << '$' << 15 << ", " << bx << '\n';
+    out << '\t' << "not" << ps << '\t' << bx << '\n';
+    out << '\t' << "and" << ps << '\t' << bx << ", " << ax << '\n';
     out << '\t' << "mov" << ps << '\t' << '$' << dec << m << ", " << bx << '\n';
     out << '\t' << "cmp" << ps << '\t' << bx << ", " << ax << '\n';
     string label = new_label(".label");
@@ -4195,6 +4199,10 @@ void intel::_alloc_(COMPILER::tac* tac)
     out << '\t' << "mov" << ps << '\t' << bx << ", " << fpexpr << '\n';
   }
   else {
+    out << '\t' << "add" << '\t' << ax << ", " << dec << 15 << '\n';
+    out << '\t' << "mov" << '\t' << bx << ", " << dec << 15 << '\n';
+    out << '\t' << "not" << '\t' << bx << '\n';
+    out << '\t' << "and" << '\t' << ax << ", " << bx << '\n';
     out << '\t' << "mov" << '\t' << bx << ", " << dec << m << '\n';
     out << '\t' << "cmp" << '\t' << ax << ", " << bx << '\n';
     string label = new_label("label$");
@@ -4222,6 +4230,10 @@ void intel::_alloc_(COMPILER::tac* tac)
     out << '\t' << "mov" << '\t' << ptr << fpexpr << ", " << bx << '\n';
   }
 #else  // defined(_MSC_VER) || defined(__CYGWIN__)
+  out << '\t' << "add" << ps << '\t' << '$' << 15 << ", " << ax << '\n';
+  out << '\t' << "mov" << ps << '\t' << '$' << 15 << ", " << bx << '\n';
+  out << '\t' << "not" << ps << '\t' << bx << '\n';
+  out << '\t' << "and" << ps << '\t' << bx << ", " << ax << '\n';
   out << '\t' << "sub" << ps << '\t' << ax << ", " << SP << '\n';
   out << '\t' << "mov" << ps << '\t' << fpexpr << ", " << bx << '\n';
   out << '\t' << "sub" << ps << '\t' << ax << ", " << bx << '\n';
@@ -4258,12 +4270,20 @@ void intel::_dealloc_(COMPILER::tac* tac)
   string fpexpr = os.str();
   string SP = sp();
   if (mode == GNU) {
+    out << '\t' << "add" << ps << '\t' << '$' << 15 << ", " << ax << '\n';
+    out << '\t' << "mov" << ps << '\t' << '$' << 15 << ", " << bx << '\n';
+    out << '\t' << "not" << ps << '\t' << bx << '\n';
+    out << '\t' << "and" << ps << '\t' << bx << ", " << ax << '\n';
     out << '\t' << "add" << ps << '\t' << ax << ", " << SP << '\n';
     out << '\t' << "mov" << ps << '\t' << fpexpr << ", " << bx << '\n';
     out << '\t' << "add" << ps << '\t' << ax << ", " << bx << '\n';
     out << '\t' << "mov" << ps << '\t' << bx << ", " << fpexpr << '\n';
   }
   else {
+    out << '\t' << "add" << '\t' << ax << ", " << dec << 15 << '\n';
+    out << '\t' << "mov" << '\t' << bx << ", " << dec << 15 << '\n';
+    out << '\t' << "not" << '\t' << bx << '\n';
+    out << '\t' << "and" << '\t' << ax << ", " << bx << '\n';
     out << '\t' << "add" << '\t' << SP << ", " << ax << '\n';
     out << '\t' << "mov" << '\t' << bx << ", " << fpexpr << '\n';
     out << '\t' << "add" << '\t' << bx << ", " << ax << '\n';
@@ -4378,7 +4398,7 @@ std::string intel::cxx_label(COMPILER::usr* u)
 {
   using namespace std;
   using namespace COMPILER;
-  usr::flag flag = u->m_flag;
+  usr::flag_t flag = u->m_flag;
   if ( flag & usr::C_SYMBOL )
     return u->m_name;
   string a = scope_name(u->m_scope);
@@ -4432,7 +4452,7 @@ std::string intel::func_name(COMPILER::usr* u)
 {
   using namespace std;
   using namespace COMPILER;
-  usr::flag flag = u->m_flag;
+  usr::flag_t flag = u->m_flag;
   if ( flag & usr::NEW_SCALAR ) return "nwj";
   if ( flag & usr::NEW_ARRAY ) return "naj";
   if ( flag & usr::DELETE_SCALAR ) return "dlPv";
