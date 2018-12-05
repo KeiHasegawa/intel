@@ -656,8 +656,7 @@ namespace intel {
   void to(tac*);
   void loff(tac*);
   void roff(tac*);
-  void _alloc_(tac*);
-  void _dealloc_(tac*);
+  void _alloca_(tac*);
   void _asm_(tac*);
   void _va_start(tac*);
   void _va_arg(tac*);
@@ -691,8 +690,7 @@ intel::gencode_table::gencode_table()
   (*this)[tac::TO] = to;
   (*this)[tac::LOFF] = loff;
   (*this)[tac::ROFF] = roff;
-  (*this)[tac::ALLOC] = _alloc_;
-  (*this)[tac::DEALLOC] = _dealloc_;
+  (*this)[tac::ALLOCA] = _alloca_;
   (*this)[tac::ASM] = _asm_;
   (*this)[tac::VASTART] = _va_start;
   (*this)[tac::VAARG] = _va_arg;
@@ -4155,7 +4153,7 @@ void intel::roff_impl::multi(COMPILER::tac* tac, int delta)
     copy(x, 0, size);
 }
 
-void intel::_alloc_(COMPILER::tac* tac)
+void intel::_alloca_(COMPILER::tac* tac)
 {
   using namespace std;
   using namespace COMPILER;
@@ -4248,46 +4246,6 @@ void intel::_alloc_(COMPILER::tac* tac)
   else {
     out << '\t' << "mov" << '\t';
     out << ms_pseudo(psize()) << " PTR " << q->expr() << ", " << bx << '\n';
-  }
-}
-
-void intel::_dealloc_(COMPILER::tac* tac)
-{
-  using namespace std;
-  using namespace COMPILER;
-  address* z = getaddr(tac->z);
-  z->load(reg::ax);
-  char ps = psuffix();
-  int psz = psize();
-  string ax = reg::name(reg::ax, psz);
-  string bx = reg::name(reg::bx, psz);
-  int n = -allocated::base;
-  ostringstream os;
-  if (mode == GNU)
-    os << n << '(' << fp() << ')';
-  else
-    os << ms_pseudo(psize()) << " PTR " << '[' << fp() << n << ']';
-  string fpexpr = os.str();
-  string SP = sp();
-  if (mode == GNU) {
-    out << '\t' << "add" << ps << '\t' << '$' << 15 << ", " << ax << '\n';
-    out << '\t' << "mov" << ps << '\t' << '$' << 15 << ", " << bx << '\n';
-    out << '\t' << "not" << ps << '\t' << bx << '\n';
-    out << '\t' << "and" << ps << '\t' << bx << ", " << ax << '\n';
-    out << '\t' << "add" << ps << '\t' << ax << ", " << SP << '\n';
-    out << '\t' << "mov" << ps << '\t' << fpexpr << ", " << bx << '\n';
-    out << '\t' << "add" << ps << '\t' << ax << ", " << bx << '\n';
-    out << '\t' << "mov" << ps << '\t' << bx << ", " << fpexpr << '\n';
-  }
-  else {
-    out << '\t' << "add" << '\t' << ax << ", " << dec << 15 << '\n';
-    out << '\t' << "mov" << '\t' << bx << ", " << dec << 15 << '\n';
-    out << '\t' << "not" << '\t' << bx << '\n';
-    out << '\t' << "and" << '\t' << ax << ", " << bx << '\n';
-    out << '\t' << "add" << '\t' << SP << ", " << ax << '\n';
-    out << '\t' << "mov" << '\t' << bx << ", " << fpexpr << '\n';
-    out << '\t' << "add" << '\t' << bx << ", " << ax << '\n';
-    out << '\t' << "mov" << '\t' << fpexpr << ", " << bx << '\n';
   }
 }
 
