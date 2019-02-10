@@ -68,13 +68,13 @@ int intel::option_handler(const char* option)
   if (string("--x86") == option) {
     x64 = false;
     intel::literal::floating::long_double::size = (mode == MS) ? 8 : 12;
-        if (mode == GNU) {
-                intel::first_param_offset = 8;
-        }
-        else {
-                intel::first_param_offset = 12;
-                external_header = "_";
-        }
+    if (mode == GNU) {
+      intel::first_param_offset = 8;
+    }
+    else {
+      intel::first_param_offset = 12;
+      external_header = "_";
+    }
     return 0;
   }
   if (string("--ms") == option) {
@@ -82,13 +82,13 @@ int intel::option_handler(const char* option)
     pseudo_global = "PUBLIC";
     comment_start = ";";
     intel::literal::floating::long_double::size = 8;
-        if (x64) {
-                intel::first_param_offset = 0x18;
-        }
-        else {
-                intel::first_param_offset = 12;
-                external_header = "_";
-        }
+    if (x64) {
+      intel::first_param_offset = 0x18;
+    }
+    else {
+      intel::first_param_offset = 12;
+      external_header = "_";
+    }
     return 0;
   }
   else {
@@ -319,6 +319,7 @@ intel::doll_need_impl::table_t::table_t()
 
   insert("push"); insert("PUSH");
   insert("pop"); insert("POP");
+  insert("ptr"); insert("PTR");
 }
 
 namespace intel {
@@ -1033,7 +1034,7 @@ bool intel::mem::is(COMPILER::usr* u)
     return false;
   }
 #ifdef CXX_GENERATOR
-  usr::flag mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG | usr::STATIC_DEF);
+  usr::flag_t mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG | usr::STATIC_DEF);
 #else // CXX_GENERATOR
   usr::flag_t mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG);
 #endif // CXX_GENERATOR
@@ -1078,7 +1079,7 @@ bool intel::mem::genobj()
   if (f & mask)
     return false;
 #ifdef CXX_GENERATOR
-  if ((flag & usr::STATIC) && m_usr->m_scope->m_id == scope::TAG)
+  if ((f & usr::STATIC) && m_usr->m_scope->m_id == scope::TAG)
     return false;
 #endif // CXX_GENERATOR
   if (literal::floating::big(m_usr)) {

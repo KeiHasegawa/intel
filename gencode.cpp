@@ -49,6 +49,13 @@ void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::ta
 #endif // CXX_GENERATOR
 }
 
+#ifdef CXX_GENERATOR
+namespace intel {
+  using namespace std;
+  vector<string> ctors;
+} // end of namespace intel
+#endif // CXX_GENERATOR
+
 namespace intel {
   void sched_stack(const COMPILER::fundef* func, const std::vector<COMPILER::tac*>& code);
 }
@@ -4431,19 +4438,13 @@ std::string intel::signature(const COMPILER::type* T)
 {
   using namespace std;
   using namespace COMPILER;
-#ifdef _MSC_VER
-#if _MSC_VER <= 1200
-  ostream_magic om;
-#endif // _MSC_VER <= 1200
-#endif // _MSC_VER
   ostringstream os;
   assert(T->m_id == type::FUNC);
   typedef const func_type FT;
   FT* ft = static_cast<FT*>(T);
   const vector<const type*>& param = ft->param();
-  typedef vector<const type*>::const_iterator IT;
-  for ( IT p = param.begin(); p != param.end() ; ++p )
-    (*p)->encode(os);
+  for (auto T : param)
+    T->encode(os);
   return os.str();
 }
 #endif // CXX_GENERATOR
