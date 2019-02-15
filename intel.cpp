@@ -824,6 +824,8 @@ std::string intel::mem::ms_refgen(const refgen_t& x)
     tmp.erase(tmp.size() - 1);
   if (mode == MS && !x64)
     tmp = tmp.substr(1, tmp.size()-1);  // eliminate '_'
+  if (tmp[0] == '$')
+    tmp = tmp.substr(1, tmp.size()-1);  // eliminate '$'
   if (defined.find(tmp) != defined.end())
     return "";
   ostringstream os;

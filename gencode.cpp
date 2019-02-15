@@ -26,12 +26,16 @@ void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::ta
 
   sec_hlp sentry(CODE);
   usr* u = func->m_usr;
+#ifdef CXX_GENERATOR
+  string name = cxx_label(u);
+#else // CXX_GENERATOR
   string name = u->m_name;
+#endif // CXX_GENERATOR
   defined.insert(name);
-
   if (doll_need(name))
     name += '$';
   func_label = external_header + name;
+  
   usr::flag_t f = u->m_flag;
   usr::flag_t m = usr::flag_t(usr::STATIC | usr::INLINE);
   if (!(f & m) || (f & usr::EXTERN))
@@ -153,14 +157,14 @@ void intel::leave()
   if (mode == GNU)
     out << fp() << ", " << sp() << '\n';
   else {
-          out << sp() << ", " << fp() << '\n';
-          out << '\t' << "pop" << '\t' << reg::name(reg::bx, psize()) << '\n';
+    out << sp() << ", " << fp() << '\n';
+    out << '\t' << "pop" << '\t' << reg::name(reg::bx, psize()) << '\n';
   }
 
   if (mode == GNU)
-          out << '\t' << "leave" << '\n';
+    out << '\t' << "leave" << '\n';
   else
-          out << '\t' << "pop" << '\t' << fp() << '\n';
+    out << '\t' << "pop" << '\t' << fp() << '\n';
   out << '\t' << "ret" << '\n';
   if (mode == MS)
     out << func_label << '\t' << "ENDP" << '\n';
