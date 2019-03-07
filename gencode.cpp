@@ -385,9 +385,14 @@ int intel::func_local(const COMPILER::fundef* func)
     out << '\n';
 
   const vector<scope*>& children = func->m_param->m_children;
+#ifdef CXX_GENERATOR
+  assert(!children.empty());
+#else
   assert(children.size() == 1);
-  scope* scope = children.back();
-  return local_variable(stack::local_area,scope);
+#endif
+  scope* ptr = children.back();
+  assert(ptr->m_id == scope::BLOCK);
+  return local_variable(stack::local_area, ptr);
 }
 
 bool intel::big_ret(const COMPILER::type* T)
@@ -568,6 +573,8 @@ int intel::local_variable(int n, COMPILER::scope* p)
 {
   using namespace std;
   using namespace COMPILER;
+  if ( p->m_id != scope::BLOCK)
+    return n;
   const map<string, vector<usr*> >& usrs = p->m_usrs;
   n = accumulate(usrs.begin(),usrs.end(),n,usr_local1);
   block* b = static_cast<block*>(p);
