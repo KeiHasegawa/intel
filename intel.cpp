@@ -1038,10 +1038,10 @@ bool intel::mem::is(COMPILER::usr* u)
 #endif // CXX_GENERATOR
     return false;
   }
-#ifdef CXX_GENERATOR
-  usr::flag_t mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG | usr::STATIC_DEF);
-#else // CXX_GENERATOR
   usr::flag_t mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG);
+
+#ifdef CXX_GENERATOR
+  mask = usr::flag_t(mask | usr::STATIC_DEF);
 #endif // CXX_GENERATOR
   if (x64)
     mask = usr::flag_t(mask | usr::CONST_PTR);
@@ -1079,13 +1079,15 @@ bool intel::mem::genobj()
 {
   using namespace std;
   using namespace COMPILER;
-  usr::flag_t f = m_usr->m_flag;
-  usr::flag_t mask = usr::flag_t(usr::FUNCTION|usr::EXTERN);
-  if (f & mask)
+  usr::flag_t flag = m_usr->m_flag;
+  usr::flag_t mask = usr::flag_t(usr::FUNCTION | usr::EXTERN);
+  if (flag & mask)
     return false;
 #ifdef CXX_GENERATOR
-  if ((f & usr::STATIC) && m_usr->m_scope->m_id == scope::TAG)
-    return false;
+  if (m_usr->m_scope->m_id == scope::TAG) {
+    if (!(flag & usr::STATIC_DEF))
+      return false;
+  }
 #endif // CXX_GENERATOR
   if (literal::floating::big(m_usr)) {
     sec_hlp sentry(ROMDATA);
@@ -1098,7 +1100,7 @@ bool intel::mem::genobj()
     literal::floating::output(m_usr);
     return true;
   }
-  if (literal::integer::big(m_usr) || (x64 && (f & usr::CONST_PTR))) {
+  if (literal::integer::big(m_usr) || (x64 && (flag & usr::CONST_PTR))) {
     sec_hlp sentry(ROMDATA);
     m_label = new_label((mode == GNU) ? ".LC" : "LC$");
     out << m_label << ":\n";
@@ -1108,10 +1110,10 @@ bool intel::mem::genobj()
   const type* T = m_usr->m_type;
   string name = m_usr->m_name;
   bool str = is_string(name);
-  if (f & usr::WITH_INI) {
+  if (flag & usr::WITH_INI) {
     sec_hlp sentry(T->modifiable() && !str ? RAM : ROMDATA);
     with_initial* p = static_cast<with_initial*>(m_usr);
-    if (!(f & ~usr::WITH_INI))
+    if (!(flag & ~usr::WITH_INI))
       out << '\t' << pseudo_global << '\t' << m_label << '\n';
     out << m_label << ":\n";
     if (str && name[0] != 'L' && mode == GNU) {
@@ -1142,7 +1144,7 @@ bool intel::mem::genobj()
   int n = size < 16 ? 16 : size + 16;
   if (mode == GNU) {
     sec_hlp sentry(T->modifiable() && !str ? BSS : ROMDATA);
-    if (f & usr::STATIC)
+    if (flag & usr::STATIC)
       out << '\t' << ".lcomm" << '\t' << m_label << ", " << n << '\n';
     else
       out << '\t' << ".comm" << '\t' << m_label << ", " << n << " # " << size << '\n';
