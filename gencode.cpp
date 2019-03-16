@@ -285,6 +285,10 @@ int intel::aggregate_func::ret::size(COMPILER::tac* tac)
   typedef const func_type FUNC;
   FUNC* func = static_cast<FUNC*>(T);
   T = func->return_type();
+#ifdef CXX_GENERATOR
+  if (!T)
+    return 0;
+#endif // CXX_GENERATOR
   assert(T);
   T = T->complete_type();
   int size = T->size();
@@ -450,6 +454,12 @@ int intel::call_arg::calculate(const std::vector<COMPILER::tac*>& code)
     T = T->unqualified();
     const func_type* ft = static_cast<const func_type*>(T);
     T = ft->return_type();
+#ifdef CXX_GENERATOR
+    if (!T) {
+      p = q + 1;
+      continue;
+    }
+#endif // CXX_GENERATOR
     T = T->complete_type();
     if ( T->aggregate() )
       m += x64 ? 8 : 4;
