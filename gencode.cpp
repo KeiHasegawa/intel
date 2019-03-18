@@ -4439,10 +4439,14 @@ std::string intel::func_name(COMPILER::usr* u)
   using namespace std;
   using namespace COMPILER;
   usr::flag_t flag = u->m_flag;
-  if ( flag & usr::NEW_SCALAR ) return "nwj";
-  if ( flag & usr::NEW_ARRAY ) return "naj";
-  if ( flag & usr::DELETE_SCALAR ) return "dlPv";
-  if ( flag & usr::DELETE_ARRAY ) return "daPv";
+  if (flag & usr::NEW_SCALAR)
+    return x64 ? "nwm" : "nwj";
+  if (flag & usr::NEW_ARRAY)
+    return x64 ? "nam" : "naj";
+  if (flag & usr::DELETE_SCALAR)
+    return "dlPv";
+  if (flag & usr::DELETE_ARRAY)
+    return "daPv";
 
   string s = u->m_name;
   typedef string::iterator IT;
