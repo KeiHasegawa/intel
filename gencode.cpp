@@ -3179,6 +3179,11 @@ void intel::param_impl::paramx64(COMPILER::tac* tac)
   }
 
   int src_size = T->integer() ? size : psize();
+#ifdef CXX_GENERATOR
+  T = T->unqualified();
+  if (T->m_id == type::POINTER_MEMBER)
+    src_size = T->size();
+#endif // CXX_GENERATOR
   string src = reg::name(reg::ax, src_size);
   string dst, dst2;
   if (param_impl::offset < 0x20) {
@@ -4385,7 +4390,7 @@ std::string intel::cxx_label(COMPILER::usr* u)
   using namespace std;
   using namespace COMPILER;
   usr::flag_t flag = u->m_flag;
-  if ( flag & usr::C_SYMBOL )
+  if (flag & usr::C_SYMBOL)
     return u->m_name;
   string a = scope_name(u->m_scope);
   string ret;
@@ -4405,11 +4410,11 @@ std::string intel::cxx_label(COMPILER::usr* u)
     if ( !a.empty() )
       os << b.length();
     os << b;
+    if (!a.empty())
+      os << 'E';
     b = os.str();
   }
   ret += b;
-  if ( !a.empty() )
-    ret += 'E';
   return ret;
 }
 
@@ -4449,13 +4454,17 @@ std::string intel::func_name(COMPILER::usr* u)
     return "daPv";
 
   string s = u->m_name;
-  typedef string::iterator IT;
-  for ( IT p = s.begin() ; p != s.end() ; ++p ){
-    if ( *p == '~' )
-      *p = '.';
-  }
   ostringstream os;
-  os << s.length() << s << signature(u->m_type);
+  if (flag & usr::CTOR)
+    os << s << s.length();
+  else if (flag & usr::DTOR)
+    os << "D1";
+  else
+    os << s.length() << s;
+  string tmp = scope_name(u->m_scope);
+  if (!tmp.empty())
+    os << 'E';
+  os << signature(u->m_type);
   return os.str();
 }
 

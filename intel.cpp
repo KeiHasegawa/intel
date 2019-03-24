@@ -1041,7 +1041,7 @@ bool intel::mem::is(COMPILER::usr* u)
   usr::flag_t mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG);
 
 #ifdef CXX_GENERATOR
-  mask = usr::flag_t(mask | usr::STATIC_DEF);
+  mask = usr::flag_t(mask | usr::STATIC_DEF | usr::C_SYMBOL);
 #endif // CXX_GENERATOR
   if (x64)
     mask = usr::flag_t(mask | usr::CONST_PTR);
