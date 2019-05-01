@@ -33,7 +33,7 @@ $(INTEL_XX_DLL) : $(XX_OBJS)
 	$(CXX) $(DEBUG_FLAG) $(PROF_FLAG) $(DLL_FLAG) -o $@ $(XX_OBJS)
 
 clean:
-	$(RM) *.o *~ $(INTEL_DLL) .vs x64 Debug Release
+	$(RM) *.o *~ $(INTEL_DLL) .vs x64 Debug Release DebugCXX ReleaseCXX
 	$(RM) *.obj $(INTEL_XX_DLL)
 
 %.obj : %.cpp
