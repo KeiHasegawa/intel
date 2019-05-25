@@ -3708,9 +3708,22 @@ void intel::loff_impl::single(COMPILER::tac* tac)
   address* z = getaddr(tac->z);
   const type* Tz = tac->z->m_type;
   int size = Tz->size();
-  if ( x64 )
+  if (x64)
     assert(size <= 8);
-  x->get(reg::bx);
+  if (x64 && tac->x->m_scope->m_id == scope::PARAM) {
+    string rbx = reg::name(reg::bx, psize());
+    if (mode == GNU) {
+      out << '\t' << "mov" << psuffix() << '\t' << x->expr();
+      out << ", " << rbx << '\n';
+    }
+    else {
+      string ptr = ms_pseudo(size) + " PTR ";
+      out << '\t' << "mov" << psuffix() << '\t' << rbx;
+      out << ", " << x->expr() << '\n';
+    }
+  }
+  else
+    x->get(reg::bx);
   y->load(reg::cx);
   int psz = psize();
   string bx = reg::name(reg::bx, psz);
@@ -3832,7 +3845,6 @@ void intel::loff_impl::multi(COMPILER::tac* tac)
     if ( y->isconstant() )
       return multi(tac,y->value());
   }
-  assert(tac->x->m_scope->m_id != scope::PARAM);
   const type* Tz = tac->z->m_type;
   int size = Tz->size();
   address* x = getaddr(tac->x);

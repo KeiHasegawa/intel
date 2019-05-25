@@ -323,6 +323,8 @@ intel::doll_need_impl::table_t::table_t()
   insert("push"); insert("PUSH");
   insert("pop"); insert("POP");
   insert("ptr"); insert("PTR");
+
+  insert("label"); insert("LABEL");
 }
 
 namespace intel {
