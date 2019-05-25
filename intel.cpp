@@ -1130,6 +1130,7 @@ bool intel::mem::genobj()
         out << '\t' << comment_start << name << '\n';
       const map<int, var*>& value = p->m_value;
       if (int n = T->size() - accumulate(value.begin(), value.end(), 0, pseudo)) {
+	assert(n > 0);
         if (mode == GNU)
           out << '\t' << ".space" << '\t' << n << '\n';
         else {
@@ -1178,6 +1179,7 @@ int intel::mem::pseudo(int offset, const std::pair<int, COMPILER::var*>& p)
   using namespace std;
   using namespace COMPILER;
   if (int n = p.first - offset) {
+    assert(n > 0);
     if (mode == GNU)
       out << '\t' << ".space" << '\t' << n << '\n';
     else {
