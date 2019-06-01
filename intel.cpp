@@ -143,10 +143,6 @@ void generator_generate(const COMPILER::generator::interface_t* ptr)
   genobj(ptr->m_root);
   if (ptr->m_func)
     genfunc(ptr->m_func, *ptr->m_code);
-#if 0
-  const vector<reference_constant*>& all = reference_constant::m_all;
-  for_each(all.begin(), all.end(), mem_fun(&reference_constant::output));
-#else
   uint64_float_t::obj.output();
   uint64_double_t::obj.output();
   uint64_ld_t::obj.output();
@@ -156,7 +152,6 @@ void generator_generate(const COMPILER::generator::interface_t* ptr)
   real_uint64_t::obj.output();
   float_uint64_t::obj.output();
   double_uint64_t::obj.output();
-#endif
 }
 
 void intel::reference_constant::output()
@@ -1130,7 +1125,7 @@ bool intel::mem::genobj()
         out << '\t' << comment_start << name << '\n';
       const map<int, var*>& value = p->m_value;
       if (int n = T->size() - accumulate(value.begin(), value.end(), 0, pseudo)) {
-	assert(n > 0);
+        assert(n > 0);
         if (mode == GNU)
           out << '\t' << ".space" << '\t' << n << '\n';
         else {
@@ -1571,8 +1566,6 @@ intel::real_uint64_t intel::real_uint64_t::obj;
 intel::float_uint64_t intel::float_uint64_t::obj;
 
 intel::double_uint64_t intel::double_uint64_t::obj;
-
-std::vector<intel::reference_constant*> intel::reference_constant::m_all;
 
 std::string intel::pseudo_global = ".globl";
 

@@ -211,9 +211,9 @@ namespace intel {
   extern void output_section(section);
   extern void end_section(section);
   struct sec_hlp {
-          enum section m_section;
-          sec_hlp(enum section s) : m_section(s) { output_section(m_section); }
-          ~sec_hlp() { end_section(m_section); }
+    enum section m_section;
+    sec_hlp(enum section s) : m_section(s) { output_section(m_section); }
+    ~sec_hlp() { end_section(m_section); }
   };
   extern std::string new_label(std::string head);
   extern std::pair<std::map<std::pair<int,COMPILER::goto3ac*>, std::string>, std::map<int, std::vector<std::string> > > label_table;
@@ -222,8 +222,6 @@ namespace intel {
   struct reference_constant {
     std::string m_label;
     bool m_out;
-    static std::vector<reference_constant*> m_all;
-    reference_constant() { m_all.push_back(this); }
     void output();
     virtual void output_value() const = 0;
   };
