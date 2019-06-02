@@ -3179,11 +3179,6 @@ void intel::param_impl::paramx64(COMPILER::tac* tac)
   }
 
   int src_size = T->integer() ? size : psize();
-#ifdef CXX_GENERATOR
-  T = T->unqualified();
-  if (T->m_id == type::POINTER_MEMBER)
-    src_size = T->size();
-#endif // CXX_GENERATOR
   string src = reg::name(reg::ax, src_size);
   string dst, dst2;
   if (param_impl::offset < 0x20) {
