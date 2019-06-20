@@ -4460,12 +4460,22 @@ std::string intel::func_name(COMPILER::usr* u)
   if (flag & usr::DELETE_ARRAY)
     return "daPv";
 
+  usr::flag2_t flag2 = u->m_flag2;
   string s = u->m_name;
   ostringstream os;
   if (flag & usr::CTOR)
     os << s << s.length();
   else if (flag & usr::DTOR)
     os << "D1";
+  else if (flag2 & usr::CONV_OPE) {
+    const type* T = u->m_type;
+    assert(T->m_id == type::FUNC);
+    typedef const func_type FT;
+    FT* ft = static_cast<FT*>(T);
+    T = ft->return_type();
+    os << "cv";
+    T->encode(os);
+  }
   else
     os << s.length() << s;
   string tmp = scope_name(u->m_scope);
