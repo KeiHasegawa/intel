@@ -48,17 +48,17 @@ void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::ta
   for_each(code.begin(),code.end(),gencode);
   leave();
 #ifdef CXX_GENERATOR
-  if (f & usr::INITIALIZE_FUNCTION)
-    ctors.push_back(func_label);
+  usr::flag2_t f2 = u->m_flag2;
+  usr::flag2_t m2 =
+    usr::flag2_t(usr::INITIALIZE_FUNCTION | usr::TERMINATE_FUNCTION);
+  if (f2 & m2) {
+    output_section((f2 & usr::INITIALIZE_FUNCTION) ? CTOR : DTOR);
+    int n = x64 ? 8 : 4;
+    out << '\t' << ".align" << '\t' << n << '\n';
+    out << '\t' << gnu_pseudo(n) << '\t' << func_label << '\n';
+  }
 #endif // CXX_GENERATOR
 }
-
-#ifdef CXX_GENERATOR
-namespace intel {
-  using namespace std;
-  vector<string> ctors;
-} // end of namespace intel
-#endif // CXX_GENERATOR
 
 namespace intel {
   void sched_stack(const COMPILER::fundef* func, const std::vector<COMPILER::tac*>& code);

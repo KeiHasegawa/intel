@@ -287,7 +287,6 @@ namespace intel {
 
 #ifdef CXX_GENERATOR
   std::string cxx_label(COMPILER::usr* u);
-  extern std::vector<std::string> ctors;
 #endif // CXX_GENERATOR
 
 }  // end of namespace intel
