@@ -17,6 +17,10 @@ namespace intel {
   }
   void leave();
   std::set<std::string> defined;
+#ifdef CXX_GENERATOR
+  std::vector<std::string> init_fun;
+  std::vector<std::string> term_fun;
+#endif // CXX_GENERATOR
 }
 
 void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::tac*>& code)
@@ -49,16 +53,83 @@ void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::ta
   leave();
 #ifdef CXX_GENERATOR
   usr::flag2_t f2 = u->m_flag2;
-  usr::flag2_t m2 =
-    usr::flag2_t(usr::INITIALIZE_FUNCTION | usr::TERMINATE_FUNCTION);
-  if (f2 & m2) {
-    output_section((f2 & usr::INITIALIZE_FUNCTION) ? CTOR : DTOR);
-    int n = x64 ? 8 : 4;
-    out << '\t' << ".align" << '\t' << n << '\n';
-    out << '\t' << gnu_pseudo(n) << '\t' << func_label << '\n';
-  }
+  if (f2 & usr::INITIALIZE_FUNCTION)
+    init_fun.push_back(func_label);
+  if (f2 & usr::TERMINATE_FUNCTION)
+    term_fun.push_back(func_label);
 #endif // CXX_GENERATOR
 }
+
+#ifdef CXX_GENERATOR
+namespace intel {
+  inline void init_call(std::string f)
+  {
+    out << '\t' << "call" << '\t' << f << '\n';
+  }
+  inline void term_call(std::string f)
+  {
+    using namespace std;
+    char ps = psuffix();
+    int psz = psize();
+    if (x64) {
+      out << '\t' << "mov" << ps << '\t';
+      string r = reg::name(reg::cx, psz);
+      if (mode == GNU)
+	out << '$' << f << ", " << r << '\n';
+      else
+	out << r << ", " << '$' << f << '\n';
+    }
+    else
+      out << '\t' << "push" << ps << '\t' << '$' << f << '\n';
+    out << '\t' << "call" << '\t' << "__cxa_atexit" << '\n';
+  }
+} // end of namespace intel
+
+void intel::init_term_fun()
+{
+  using namespace std;
+  using namespace COMPILER;
+  if (init_fun.empty() && term_fun.empty())
+    return;
+
+  output_section(CODE);
+  string name = "init_term";
+  out << name << ':' << '\n';
+  char ps = psuffix();
+  string SP = sp();
+  string FP = fp();
+  int psz = psize();
+  out << '\t' << "push" << ps << '\t' << FP << '\n';
+  out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+  out << '\t' << "mov" << ps << '\t';
+  if (mode == GNU)
+    out << SP << ", " << FP << '\n';
+  else
+    out << FP << ", " << SP << '\n';
+  int stack_size = 16;
+  out << '\t' << "sub" << ps << '\t';
+  if (mode == GNU)
+    out << '$' << dec << stack_size << ", " << SP << '\n';
+  else
+    out << SP << ", " << dec << stack_size << '\n';
+
+  for_each(begin(init_fun), end(init_fun), init_call);
+  for_each(rbegin(term_fun), rend(term_fun), term_call);
+
+  out << '\t' << "mov" << ps << '\t';
+  if (mode == GNU)
+    out << FP << ", " << SP << '\n';
+  else
+    out << SP << ", " << FP << '\n';
+  out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
+  out << '\t' << "pop" << ps << '\t' << FP << '\n';
+  out << '\t' << "ret" << '\n';
+  output_section(CTOR);
+  int n = x64 ? 8 : 4;
+  out << '\t' << ".align" << '\t' << n << '\n';
+  out << '\t' << gnu_pseudo(n) << '\t' << name << '\n';
+}
+#endif // CXX_GENERATOR
 
 namespace intel {
   void sched_stack(const COMPILER::fundef* func, const std::vector<COMPILER::tac*>& code);

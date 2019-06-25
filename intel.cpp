@@ -248,6 +248,10 @@ extern "C" DLL_EXPORT int generator_close_file()
   using namespace COMPILER;
   using namespace intel;
 
+#ifdef CXX_GENERATOR
+  init_term_fun();
+#endif // CXX_GENERATOR
+
   transform(mem::refed.begin(), mem::refed.end(), ostream_iterator<string>(out), mem::refgen);
 
   if (mode == MS)

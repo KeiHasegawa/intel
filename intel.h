@@ -287,6 +287,7 @@ namespace intel {
 
 #ifdef CXX_GENERATOR
   std::string cxx_label(COMPILER::usr* u);
+  extern void init_term_fun();
 #endif // CXX_GENERATOR
 
 }  // end of namespace intel
