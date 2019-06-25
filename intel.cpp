@@ -71,6 +71,7 @@ int intel::option_handler(const char* option)
   if (string("--x86") == option) {
     x64 = false;
     intel::literal::floating::long_double::size = (mode == MS) ? 8 : 12;
+#if 0
     if (mode == GNU) {
       intel::first_param_offset = 8;
     }
@@ -78,6 +79,11 @@ int intel::option_handler(const char* option)
       intel::first_param_offset = 12;
       external_header = "_";
     }
+#else
+    if (mode == MS)
+      external_header = "_";
+    intel::first_param_offset = 12;
+#endif
     return 0;
   }
   if (string("--ms") == option) {
@@ -85,6 +91,7 @@ int intel::option_handler(const char* option)
     pseudo_global = "PUBLIC";
     comment_start = ";";
     intel::literal::floating::long_double::size = 8;
+#if 0
     if (x64) {
       intel::first_param_offset = 0x18;
     }
@@ -92,6 +99,12 @@ int intel::option_handler(const char* option)
       intel::first_param_offset = 12;
       external_header = "_";
     }
+#else
+    if (!x64) {
+      intel::first_param_offset = 12;
+      external_header = "_";
+    }
+#endif
     return 0;
   }
   else {
@@ -120,7 +133,7 @@ extern "C" DLL_EXPORT int generator_open_file(const char* fn)
 }
 
 namespace intel {
-  void(*output3ac)(std::ostream&, COMPILER::tac*);
+  void (*output3ac)(std::ostream&, COMPILER::tac*);
 } // end of namespace intel
 
 extern "C" DLL_EXPORT void generator_spell(void* arg)

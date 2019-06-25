@@ -76,8 +76,12 @@ void intel::enter(const COMPILER::fundef* func,
   string FP = fp();
   int psz = psize();
   out << '\t' << "push" << ps << '\t' << FP << '\n';
+#if 0
   if (mode == MS)
     out << '\t' << "push" << '\t' << reg::name(reg::bx, psz) << '\n';
+#else
+  out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+#endif
   out << '\t' << "mov" << ps << '\t';
   if (mode == GNU)
     out << SP << ", " << FP << '\n';
@@ -153,18 +157,32 @@ void intel::leave()
     out << '\t' << comment_start << " leave\n";
   if ( !return_impl::leave_label.empty() )
     out << return_impl::leave_label << ":\n";
-  out << '\t' << "mov" << psuffix() << '\t';
+
+  char ps = psuffix();
+  out << '\t' << "mov" << ps << '\t';
+#if 0
   if (mode == GNU)
     out << fp() << ", " << sp() << '\n';
   else {
     out << sp() << ", " << fp() << '\n';
     out << '\t' << "pop" << '\t' << reg::name(reg::bx, psize()) << '\n';
   }
+#else
+  if (mode == GNU)
+    out << fp() << ", " << sp() << '\n';
+  else
+    out << sp() << ", " << fp() << '\n';
+  out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
+#endif
 
+#if 0
   if (mode == GNU)
     out << '\t' << "leave" << '\n';
   else
     out << '\t' << "pop" << '\t' << fp() << '\n';
+#else
+  out << '\t' << "pop" << ps << '\t' << fp() << '\n';
+#endif
   out << '\t' << "ret" << '\n';
   if (mode == MS)
     out << func_label << '\t' << "ENDP" << '\n';
@@ -332,7 +350,11 @@ namespace intel {
   int local_variable(int offset, COMPILER::scope* scope);
 }
 
+#if 0
 int intel::first_param_offset = 0x10;
+#else
+int intel::first_param_offset = 0x18;
+#endif
 
 namespace intel {
   mode_t mode = GNU;
