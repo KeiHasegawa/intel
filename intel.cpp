@@ -71,19 +71,9 @@ int intel::option_handler(const char* option)
   if (string("--x86") == option) {
     x64 = false;
     intel::literal::floating::long_double::size = (mode == MS) ? 8 : 12;
-#if 0
-    if (mode == GNU) {
-      intel::first_param_offset = 8;
-    }
-    else {
-      intel::first_param_offset = 12;
-      external_header = "_";
-    }
-#else
     if (mode == MS)
       external_header = "_";
     intel::first_param_offset = 12;
-#endif
     return 0;
   }
   if (string("--ms") == option) {
@@ -91,20 +81,10 @@ int intel::option_handler(const char* option)
     pseudo_global = "PUBLIC";
     comment_start = ";";
     intel::literal::floating::long_double::size = 8;
-#if 0
-    if (x64) {
-      intel::first_param_offset = 0x18;
-    }
-    else {
-      intel::first_param_offset = 12;
-      external_header = "_";
-    }
-#else
     if (!x64) {
       intel::first_param_offset = 12;
       external_header = "_";
     }
-#endif
     return 0;
   }
   else {
@@ -711,6 +691,28 @@ void intel::mem::load() const
     load(reg::ax);
 }
 
+namespace intel {
+  namespace mem_impl {
+    void load_label_x64(reg::gpr r, std::string label, usr::flag_t f, int size)
+    {
+      using namespace std;
+      string preg = reg::name(r, psize());
+      char ps = psuffix();
+      char sf = suffix(size);
+      string ptr;
+      if (mode == MS)
+	ptr = ms_pseudo(size) + " PTR ";
+      if (mode == GNU) {
+        out << '\t' << "mov" << ps << '\t' << ".refptr." << label << "(%rip)," << '\t' << preg << '\n';
+	mem::refed.insert(mem::refgen_t(label,f,size));
+      }
+      else {
+        out << '\t' << "lea" << ps << '\t' << preg << ", "<< '\t' << label << '\n';
+      }
+    }
+  } // end of namespace mem_impl
+} // end of namespace intel
+
 void intel::mem::load(reg::gpr r) const
 {
   using namespace std;
@@ -742,17 +744,12 @@ void intel::mem::load(reg::gpr r) const
   }
   else {
     if (x64) {
+      mem_impl::load_label_x64(r, m_label, f, size);
       string preg = reg::name(r, psize());
-      char ps = psuffix();
-      if (mode == GNU) {
-        out << '\t' << "mov" << ps << '\t' << ".refptr." << m_label << "(%rip)," << '\t' << preg << '\n';
-        refed.insert(refgen_t(m_label,f,size));
-        out << '\t' << "mov" << sf << '\t' << '(' << preg << "), " << dst << '\n';
-      }
-      else {
-        out << '\t' << "lea" << ps << '\t' << preg << ", "<< '\t' << m_label << '\n';
-        out << '\t' << "mov" << sf << '\t' << dst << ", " << ptr << '[' << preg << ']' << '\n';
-      }
+      if (mode == GNU)
+	out << '\t' << "mov" << sf << '\t' << '(' << preg << "), " << dst << '\n';
+      else
+	out << '\t' << "mov" << sf << '\t' << dst << ", " << ptr << '[' << preg << ']' << '\n';
     }
     else {
       if (size <= 4) {

@@ -71,14 +71,8 @@ namespace intel {
     using namespace std;
     char ps = psuffix();
     int psz = psize();
-    if (x64) {
-      out << '\t' << "mov" << ps << '\t';
-      string r = reg::name(reg::cx, psz);
-      if (mode == GNU)
-	out << '$' << f << ", " << r << '\n';
-      else
-	out << r << ", " << '$' << f << '\n';
-    }
+    if (x64)
+      mem_impl::load_label_x64(reg::cx, f, COMPILER::usr::NONE, 8);
     else
       out << '\t' << "push" << ps << '\t' << '$' << f << '\n';
     out << '\t' << "call" << '\t' << "__cxa_atexit" << '\n';
@@ -147,12 +141,7 @@ void intel::enter(const COMPILER::fundef* func,
   string FP = fp();
   int psz = psize();
   out << '\t' << "push" << ps << '\t' << FP << '\n';
-#if 0
-  if (mode == MS)
-    out << '\t' << "push" << '\t' << reg::name(reg::bx, psz) << '\n';
-#else
   out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
-#endif
   out << '\t' << "mov" << ps << '\t';
   if (mode == GNU)
     out << SP << ", " << FP << '\n';
@@ -160,7 +149,7 @@ void intel::enter(const COMPILER::fundef* func,
     out << FP << ", " << SP << '\n';
 
   sched_stack(func,code);
-  if (mode == MS && x64)
+  if (x64)
     stack::delta_sp += 8;
 
   int n = stack::delta_sp;
@@ -231,29 +220,13 @@ void intel::leave()
 
   char ps = psuffix();
   out << '\t' << "mov" << ps << '\t';
-#if 0
-  if (mode == GNU)
-    out << fp() << ", " << sp() << '\n';
-  else {
-    out << sp() << ", " << fp() << '\n';
-    out << '\t' << "pop" << '\t' << reg::name(reg::bx, psize()) << '\n';
-  }
-#else
   if (mode == GNU)
     out << fp() << ", " << sp() << '\n';
   else
     out << sp() << ", " << fp() << '\n';
   out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
-#endif
 
-#if 0
-  if (mode == GNU)
-    out << '\t' << "leave" << '\n';
-  else
-    out << '\t' << "pop" << '\t' << fp() << '\n';
-#else
   out << '\t' << "pop" << ps << '\t' << fp() << '\n';
-#endif
   out << '\t' << "ret" << '\n';
   if (mode == MS)
     out << func_label << '\t' << "ENDP" << '\n';
@@ -421,11 +394,7 @@ namespace intel {
   int local_variable(int offset, COMPILER::scope* scope);
 }
 
-#if 0
-int intel::first_param_offset = 0x10;
-#else
 int intel::first_param_offset = 0x18;
-#endif
 
 namespace intel {
   mode_t mode = GNU;

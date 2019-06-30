@@ -152,6 +152,10 @@ namespace intel {
     void get(reg::gpr) const;
     std::string expr(int delta = 0, bool special = false) const;
   };
+  namespace mem_impl {
+    void load_label_x64(reg::gpr r, std::string label,
+			COMPILER::usr::flag_t f, int size);
+  } // end of namespace mem_impl
   struct stack : address {
     COMPILER::var* m_var;
     int m_offset;
