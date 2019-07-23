@@ -4508,6 +4508,58 @@ std::string intel::scope_name(COMPILER::scope* p)
   return "";
 }
 
+namespace intel {
+  struct op_tbl_t : map<string, string> {
+    op_tbl_t()
+    {
+      (*this)["new"] = "new";
+      (*this)["delete"] = "delete";
+      (*this)["new []"] = "new_array";
+      (*this)["delete []"] = "delete_array";
+      (*this)["+"] = "add";
+      (*this)["-"] = "sub";
+      (*this)["*"] = "mul";
+      (*this)["/"] = "div";
+      (*this)["%"] = "mod";
+      (*this)["^"] = "xor";
+      (*this)["&"] = "and";
+      (*this)["|"] = "or";
+      (*this)["|"] = "or";
+      (*this)["~"] = "tilde";
+      (*this)["!"] = "not";
+      (*this)["="] = "assign";
+      (*this)["<"] = "lt";
+      (*this)[">"] = "gt";
+      (*this)["+="] = "add_assign";
+      (*this)["-="] = "sub_assign";
+      (*this)["*="] = "mul_assign";
+      (*this)["/="] = "div_assign";
+      (*this)["%="] = "mod_assign";
+      (*this)["^="] = "xor_assign";
+      (*this)["&="] = "and_assign";
+      (*this)["|="] = "or_assign";
+      (*this)["<<"] = "lsh";
+      (*this)[">>"] = "rsh";
+      (*this)["<<="] = "lsh_assign";
+      (*this)[">>="] = "rsh_assign";
+      (*this)["=="] = "eq";
+      (*this)["!="] = "ne";
+      (*this)["<="] = "le";
+      (*this)[">="] = "ge";
+      (*this)["&&"] = "and_and";
+      (*this)["||"] = "or_or";
+      (*this)["++"] = "plus_plus";
+      (*this)["--"] = "minus_minus";
+      (*this)[","] = "comma";
+      (*this)["->*"] = "arrow_aster";
+      (*this)[".*"] = "dot_aster";
+      (*this)["->"] = "arrow";
+      (*this)["()"] = "func";
+      (*this)["[]"] = "subscript";
+    }
+  } op_tbl;
+} // end of namespace intel
+
 std::string intel::func_name(COMPILER::usr* u)
 {
   using namespace std;
@@ -4537,6 +4589,11 @@ std::string intel::func_name(COMPILER::usr* u)
     T = ft->return_type();
     os << "cv";
     T->encode(os);
+  }
+  else if (flag2 & usr::OPERATOR) {
+    op_tbl_t::const_iterator p = op_tbl.find(s);
+    assert(p != op_tbl.end());
+    os << '.' << p->second << '.';
   }
   else
     os << s.length() << s;
