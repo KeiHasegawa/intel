@@ -1122,7 +1122,7 @@ bool intel::mem::genobj()
   string name = m_usr->m_name;
   bool str = is_string(name);
   if (flag & usr::WITH_INI) {
-    sec_hlp sentry(T->modifiable() && !str ? RAM : ROMDATA);
+    sec_hlp sentry(T->modifiable(true) && !str ? RAM : ROMDATA);
     with_initial* p = static_cast<with_initial*>(m_usr);
     if (!(flag & ~usr::WITH_INI))
       out << '\t' << pseudo_global << '\t' << m_label << '\n';
