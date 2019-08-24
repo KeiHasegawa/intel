@@ -16,6 +16,13 @@ void intel::genobj(const COMPILER::scope* p)
 {
   using namespace std;
   using namespace COMPILER;
+#ifdef CXX_GENERATOR
+  if (p->m_id == scope::TAG) {
+    const tag* ptr = static_cast<const tag*>(p);
+    if (ptr->m_template)
+      return;
+  }
+#endif // CXX_GENERATOR
   const map<string, vector<usr*> >& usrs = p->m_usrs;
   for_each(usrs.begin(), usrs.end(),usrs1);
   for_each(mem::ungen.begin(), mem::ungen.end(), mem_fun(&mem::genobj));
@@ -47,7 +54,7 @@ bool intel::usrs2(bool done, COMPILER::usr* u)
     else
       address_descriptor.second[u] = new imm(u);
   }
-  else if ( mem::is(u) ){
+  else if (mem::is(u)) {
     mem* m = new mem(u);
     if (is_external_declaration(u))
       address_descriptor.first[u] = m;
