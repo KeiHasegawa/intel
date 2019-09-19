@@ -1049,6 +1049,11 @@ bool intel::mem::is(COMPILER::usr* u)
 #endif // CXX_GENERATOR
     return false;
   }
+#ifdef CXX_GENERATOR
+  usr::flag2_t flag2 = u->m_flag2;
+  if (flag2 & usr::TEMPLATE)
+    return false;
+#endif // CXX_GENERATOR
   usr::flag_t mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG);
 
 #ifdef CXX_GENERATOR

@@ -4487,23 +4487,46 @@ std::string intel::cxx_label(COMPILER::usr* u)
   return ret;
 }
 
+namespace intel {
+  string instantiated_name(string name, bool no_return)
+  {
+    string::size_type p = name.find('<');
+    if (p == string::npos) {
+      if (no_return)
+	return name;
+    }
+    assert(p != string::npos);
+    name[p] = '.';
+    p = name.find('>', p);
+    assert(p != string::npos);
+    name[p] = '.';
+
+    p = 0;
+    while ((p = name.find(' ', p)) != string::npos)
+      name[p] = '.';
+    return name;
+  }
+} // end of nmaespace intel
+
 std::string intel::scope_name(COMPILER::scope* p)
 {
   using namespace std;
   using namespace COMPILER;
-  if ( p->m_id == scope::TAG ){
-    tag* tg = static_cast<tag*>(p);
-    string name = tg->m_name;
+  if (p->m_id == scope::TAG) {
+    tag* ptr = static_cast<tag*>(p);
+    string name = ptr->m_name;
+    if (ptr->m_src)
+      name = instantiated_name(name, false);
     ostringstream os;
     os << name.length() << name;
-    return scope_name(tg->m_parent) + os.str();
+    return scope_name(ptr->m_parent) + os.str();
   }
-  if ( p->m_id == scope::NAMESPACE ){
-    name_space* ns = static_cast<name_space*>(p);
-    string name = ns->m_name;
+  if (p->m_id == scope::NAMESPACE) {
+    name_space* ptr = static_cast<name_space*>(p);
+    string name = ptr->m_name;
     ostringstream os;
     os << name.length() << name;
-    return scope_name(ns->m_parent) + os.str();
+    return scope_name(ptr->m_parent) + os.str();
   }
   return "";
 }
@@ -4576,6 +4599,12 @@ std::string intel::func_name(COMPILER::usr* u)
 
   usr::flag2_t flag2 = u->m_flag2;
   string s = u->m_name;
+  scope* p = u->m_scope;
+  if (p->m_id == scope::TAG) {
+    tag* ptr = static_cast<tag*>(p);
+    if (ptr->m_src)
+      s = instantiated_name(s, true);
+  }
   ostringstream os;
   if (flag & usr::CTOR)
     os << s << s.length();
