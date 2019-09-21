@@ -4487,27 +4487,6 @@ std::string intel::cxx_label(COMPILER::usr* u)
   return ret;
 }
 
-namespace intel {
-  string instantiated_name(string name, bool no_return)
-  {
-    string::size_type p = name.find('<');
-    if (p == string::npos) {
-      if (no_return)
-	return name;
-    }
-    assert(p != string::npos);
-    name[p] = '.';
-    p = name.find('>', p);
-    assert(p != string::npos);
-    name[p] = '.';
-
-    p = 0;
-    while ((p = name.find(' ', p)) != string::npos)
-      name[p] = '.';
-    return name;
-  }
-} // end of nmaespace intel
-
 std::string intel::scope_name(COMPILER::scope* p)
 {
   using namespace std;
@@ -4515,10 +4494,20 @@ std::string intel::scope_name(COMPILER::scope* p)
   if (p->m_id == scope::TAG) {
     tag* ptr = static_cast<tag*>(p);
     string name = ptr->m_name;
-    if (ptr->m_src)
-      name = instantiated_name(name, false);
     ostringstream os;
-    os << name.length() << name;
+    if (ptr->m_kind2 == tag::INSTANTIATE) {
+      instantiated_tag* it = reinterpret_cast<instantiated_tag*>(ptr);
+      tag* src = reinterpret_cast<tag*>(it->m_src);
+      name = src->m_name;
+      os << name.length() << name;
+      os << 'I';
+      const vector<const type*>& vt = it->m_types;
+      for (auto T : vt)
+	T->encode(os);
+      os << 'E';
+    }
+    else
+      os << name.length() << name;
     return scope_name(ptr->m_parent) + os.str();
   }
   if (p->m_id == scope::NAMESPACE) {
@@ -4598,17 +4587,12 @@ std::string intel::func_name(COMPILER::usr* u)
     return "daPv";
 
   usr::flag2_t flag2 = u->m_flag2;
+  usr::flag2_t mask2 = usr::flag2_t(usr::TOR_BODY | usr::EXCLUDE_TOR);
   string s = u->m_name;
-  scope* p = u->m_scope;
-  if (p->m_id == scope::TAG) {
-    tag* ptr = static_cast<tag*>(p);
-    if (ptr->m_src)
-      s = instantiated_name(s, true);
-  }
   ostringstream os;
-  if (flag & usr::CTOR)
-    os << s << s.length();
-  else if (flag & usr::DTOR)
+  if ((flag & usr::CTOR) && !(flag2 & mask2))
+    os << "C1";
+  else if ((flag & usr::DTOR) && !(flag2 &mask2))
     os << "D1";
   else if (flag2 & usr::CONV_OPE) {
     const type* T = u->m_type;

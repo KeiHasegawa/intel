@@ -19,7 +19,7 @@ void intel::genobj(const COMPILER::scope* p)
 #ifdef CXX_GENERATOR
   if (p->m_id == scope::TAG) {
     const tag* ptr = static_cast<const tag*>(p);
-    if (ptr->m_template)
+    if (ptr->m_kind2 == tag::TEMPLATE)
       return;
   }
 #endif // CXX_GENERATOR
