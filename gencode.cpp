@@ -4501,9 +4501,11 @@ std::string intel::scope_name(COMPILER::scope* p)
       name = src->m_name;
       os << name.length() << name;
       os << 'I';
-      const vector<const type*>& vt = it->m_types;
-      for (auto T : vt)
-	T->encode(os);
+      const vector<pair<const type*, usr*> >& seed = it->m_seed;
+      for (auto p : seed) {
+	if (const type* T = p.first)
+	  T->encode(os);
+      }
       os << 'E';
     }
     else
