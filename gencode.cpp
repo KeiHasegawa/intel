@@ -4501,10 +4501,17 @@ std::string intel::scope_name(COMPILER::scope* p)
       name = src->m_name;
       os << name.length() << name;
       os << 'I';
-      const vector<pair<const type*, usr*> >& seed = it->m_seed;
+      const instantiated_tag::SEED& seed = it->m_seed;
       for (auto p : seed) {
 	if (const type* T = p.first)
 	  T->encode(os);
+	else {
+	  var* v = p.second;
+	  if (addrof* a = v->addrof_cast())
+	    v = a->m_ref;
+	  usr* u = v->usr_cast();
+	  os << u->m_name;
+	}
       }
       os << 'E';
     }
