@@ -21,6 +21,21 @@ void intel::genobj(const COMPILER::scope* p)
     const tag* ptr = static_cast<const tag*>(p);
     if (ptr->m_kind2 == tag::TEMPLATE)
       return;
+    if (ptr->m_kind2 == tag::INSTANTIATE) {
+      const instantiated_tag* it = static_cast<const instantiated_tag*>(ptr);
+      const instantiated_tag::SEED& seed = it->m_seed;
+      typedef instantiated_tag::SEED::const_iterator IT;
+      IT p = find_if(begin(seed), end(seed),
+		     [](const pair<const type*, var*>& x)
+		     {
+		       const type* T = x.first;
+		       if (!T)
+			 return false;
+		       return T->m_id == type::TEMPLATE_PARAM;
+		     });
+      if (p != end(seed))
+	return;
+    }
   }
 #endif // CXX_GENERATOR
   const map<string, vector<usr*> >& usrs = p->m_usrs;
