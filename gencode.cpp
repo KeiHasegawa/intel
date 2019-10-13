@@ -4619,6 +4619,17 @@ std::string intel::func_name(COMPILER::usr* u)
   }
   else
     os << s.length() << s;
+  if (flag2 & usr::EXPLICIT_INSTANTIATE) {
+    typedef instantiated_usr IU;
+    IU* iu = static_cast<IU*>(u);
+    os << 'I';
+    const IU::SEED& seed = iu->m_seed;
+    for (auto p : seed) {
+      if (const type* T = p.first)
+	T->encode(os);
+    }
+    os << "EPT_";
+  }
   string tmp = scope_name(u->m_scope);
   if (!tmp.empty())
     os << 'E';
