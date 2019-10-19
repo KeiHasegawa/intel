@@ -4627,6 +4627,12 @@ std::string intel::func_name(COMPILER::usr* u)
     for (auto p : seed) {
       if (const type* T = p.first)
 	T->encode(os);
+      else {
+	var* v = p.second;
+	assert(v->usr_cast());
+	usr* u = static_cast<usr*>(v);
+	os << u->m_name;
+      }
     }
     os << "EPT_";
   }
