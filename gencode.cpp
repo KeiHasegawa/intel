@@ -4495,7 +4495,7 @@ std::string intel::scope_name(COMPILER::scope* p)
     tag* ptr = static_cast<tag*>(p);
     string name = ptr->m_name;
     ostringstream os;
-    if (ptr->m_kind2 == tag::INSTANTIATE) {
+    if (ptr->m_flag & tag::INSTANTIATE) {
       instantiated_tag* it = reinterpret_cast<instantiated_tag*>(ptr);
       tag* src = reinterpret_cast<tag*>(it->m_src);
       name = src->m_name;
