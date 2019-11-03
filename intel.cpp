@@ -1039,6 +1039,12 @@ std::string intel::mem::expr(int delta, bool special) const
 bool intel::mem::is(COMPILER::usr* u)
 {
   using namespace COMPILER;
+#ifdef CXX_GENERATOR
+  usr::flag2_t flag2 = u->m_flag2;
+  usr::flag2_t mask2 = usr::flag2_t(usr::TEMPLATE | usr::PARTIAL_ORDERING);
+  if (flag2 & mask2)
+    return false;
+#endif // CXX_GENERATOR
   usr::flag_t flag = u->m_flag;
   if (!flag) {
     if (!u->m_scope->m_parent)
@@ -1049,11 +1055,6 @@ bool intel::mem::is(COMPILER::usr* u)
 #endif // CXX_GENERATOR
     return false;
   }
-#ifdef CXX_GENERATOR
-  usr::flag2_t flag2 = u->m_flag2;
-  if (flag2 & usr::TEMPLATE)
-    return false;
-#endif // CXX_GENERATOR
   usr::flag_t mask = usr::flag_t(usr::EXTERN | usr::STATIC | usr::INLINE | usr::FUNCTION | usr::WITH_INI | usr::SUB_CONST_LONG);
 
 #ifdef CXX_GENERATOR
