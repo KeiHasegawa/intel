@@ -60,8 +60,14 @@ bool intel::usrs2(bool done, COMPILER::usr* u)
   using namespace COMPILER;
   if (is_external_declaration(u)) {
     map<usr*, address*>::const_iterator p = address_descriptor.first.find(u);
-    if (p != address_descriptor.first.end())
+    if (p != address_descriptor.first.end()) {
+#ifdef CXX_GENERATOR
+      usr::flag_t flag = u->m_flag;
+      return flag & usr::WITH_INI;
+#else // CXX_GENERATOR
       return false;
+#endif // CXX_GENERATOR
+    }
   }
   if (imm::is(u)) {
     if (is_external_declaration(u))
