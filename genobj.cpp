@@ -10,6 +10,33 @@
 namespace intel {
   void usrs1(const std::pair<std::string, std::vector<COMPILER::usr*> >&);
   bool usrs2(bool done, COMPILER::usr*);
+#ifdef CXX_GENERATOR
+  bool incomplete(const std::pair<const COMPILER::type*, COMPILER::var*>& x)
+  {
+    using namespace std;
+    using namespace COMPILER;
+    const type* T = x.first;
+    if (!T)
+      return false;
+    T = T->unqualified();
+    if (T->m_id == type::TEMPLATE_PARAM)
+      return true;
+    if (tag* ptr = T->get_tag()) {
+      if (ptr->m_flag & tag::TYPENAMED) {
+	if (T->m_id == type::INCOMPLETE_TAGGED)
+	  return true;
+      }
+      if (ptr->m_flag & tag::INSTANTIATE) {
+	instantiated_tag* it = static_cast<instantiated_tag*>(ptr);
+	const instantiated_tag::SEED& seed = it->m_seed;
+	typedef instantiated_tag::SEED::const_iterator IT;
+	IT p = find_if(begin(seed), end(seed), incomplete);
+	return p != end(seed);
+      }
+    }
+    return false;
+  }
+#endif // CXX_GENERATOR
 }
 
 void intel::genobj(const COMPILER::scope* p)
@@ -25,14 +52,7 @@ void intel::genobj(const COMPILER::scope* p)
       const instantiated_tag* it = static_cast<const instantiated_tag*>(ptr);
       const instantiated_tag::SEED& seed = it->m_seed;
       typedef instantiated_tag::SEED::const_iterator IT;
-      IT p = find_if(begin(seed), end(seed),
-		     [](const pair<const type*, var*>& x)
-		     {
-		       const type* T = x.first;
-		       if (!T)
-			 return false;
-		       return T->m_id == type::TEMPLATE_PARAM;
-		     });
+      IT p = find_if(begin(seed), end(seed), incomplete);
       if (p != end(seed))
 	return;
     }
