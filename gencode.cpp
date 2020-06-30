@@ -4496,9 +4496,14 @@ std::string intel::scope_name(COMPILER::scope* p)
     string name = ptr->m_name;
     ostringstream os;
     if (ptr->m_flag & tag::INSTANTIATE) {
-      instantiated_tag* it = reinterpret_cast<instantiated_tag*>(ptr);
+      instantiated_tag* it = static_cast<instantiated_tag*>(ptr);
       tag* src = reinterpret_cast<tag*>(it->m_src);
       name = src->m_name;
+      tag::flag_t flag = src->m_flag;
+      if (flag & tag::PARTIAL_SPECIAL) {
+	string::size_type p = name.find_first_of('<');
+	name.erase(p);
+      }
       os << name.length() << name;
       os << 'I';
       const instantiated_tag::SEED& seed = it->m_seed;
