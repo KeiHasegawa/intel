@@ -1039,13 +1039,24 @@ std::string intel::mem::expr(int delta, bool special) const
 bool intel::mem::is(COMPILER::usr* u)
 {
   using namespace COMPILER;
+  usr::flag_t flag = u->m_flag;
 #ifdef CXX_GENERATOR
   usr::flag2_t flag2 = u->m_flag2;
   usr::flag2_t mask2 = usr::flag2_t(usr::TEMPLATE | usr::PARTIAL_ORDERING);
   if (flag2 & mask2)
     return false;
+  if (!(flag & usr::WITH_INI)) {
+    if (flag2 & usr::INSTANTIATE) {
+      typedef instantiated_usr IU;
+      IU* iu = static_cast<IU*>(u);
+      const IU::SEED& seed = iu->m_seed;
+      typedef IU::SEED::const_iterator IT;
+      IT p = find_if(begin(seed), end(seed), incomplete);
+      if (p != end(seed))
+	return false;
+    }
+  }
 #endif // CXX_GENERATOR
-  usr::flag_t flag = u->m_flag;
   if (!flag) {
     if (!u->m_scope->m_parent)
       return true;

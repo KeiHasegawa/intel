@@ -290,8 +290,10 @@ namespace intel {
   extern std::string comment_start;
 
 #ifdef CXX_GENERATOR
-  std::string cxx_label(COMPILER::usr* u);
+  extern std::string cxx_label(COMPILER::usr*);
   extern void init_term_fun();
+  extern bool
+  incomplete(const std::pair<const COMPILER::type*, COMPILER::var*>&);
 #endif // CXX_GENERATOR
 
 }  // end of namespace intel
