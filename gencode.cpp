@@ -751,6 +751,18 @@ namespace intel {
   void _va_start(tac*);
   void _va_arg(tac*);
   void _va_end(tac*);
+#ifdef CXX_GENERATOR
+  void alloce(tac*);
+  void throwe(tac*);
+  void try_begin(tac*);
+  void try_end(tac*);
+  void here(tac*);
+  void here_reason(tac*);
+  void here_info(tac*);
+  void unwind_resume(tac*);
+  void catch_begin(tac*);
+  void catch_end(tac*);
+#endif // CXX_GENERATOR
 } // end of namespace intel
 
 intel::gencode_table::gencode_table()
@@ -785,6 +797,18 @@ intel::gencode_table::gencode_table()
   (*this)[tac::VASTART] = _va_start;
   (*this)[tac::VAARG] = _va_arg;
   (*this)[tac::VAEND] = _va_end;
+#ifdef CXX_GENERATOR
+  (*this)[tac::ALLOCE] = alloce;
+  (*this)[tac::THROW] = throwe;
+  (*this)[tac::TRY_BEGIN] = try_begin;
+  (*this)[tac::TRY_END] = try_end;
+  (*this)[tac::HERE] = here;
+  (*this)[tac::HERE_REASON] = here_reason;
+  (*this)[tac::HERE_INFO] = here_info;
+  (*this)[tac::UNWIND_RESUME] = unwind_resume;
+  (*this)[tac::CATCH_BEGIN] = catch_begin;
+  (*this)[tac::CATCH_END] = catch_end;
+#endif // CXX_GENERATOR
 }
 
 namespace intel { namespace assign_impl {
@@ -4446,6 +4470,126 @@ void intel::_va_end(COMPILER::tac*)
 {
   // just ignore
 }
+
+#ifdef CXX_GENERATOR
+void intel::alloce(COMPILER::tac* tac)
+{
+  assert(!x64 && mode == GNU);
+  address* y = getaddr(tac->y);
+  assert(y->m_id == address::IMM);
+  out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
+  out << '\t' << "pushl" << '\t' << y->expr() << '\n';
+  out << '\t' << "call" << '\t' << "__cxa_allocate_exception" << '\n';
+  out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
+  address* x = getaddr(tac->x);
+  x->store();
+}
+
+void intel::throwe(COMPILER::tac* tac)
+{
+  assert(!x64 && mode == GNU);
+  address* y = getaddr(tac->y);
+  y->load();
+  throw3ac* p = static_cast<throw3ac*>(tac);
+  const type* T = p->m_type;
+  out << '\t' << "subl" << '\t' << "$4, %esp" << '\n';
+  out << '\t' << "pushl" << '\t' << "$0" << '\n';
+  out << '\t' << "pushl" << '\t' << '$' << "_ZTI";
+  T->encode(out);
+  out << '\n';
+  out << '\t' << "pushl" << '\t' << "%eax" << '\n';
+  out << '\t' << "call" << '\t' << "__cxa_throw" << '\n';
+}
+
+void intel::try_begin(COMPILER::tac* tac)
+{
+  string label = to_impl::label(tac);
+  out << label << ":\n";
+  exception::call_site_t info;
+  info.m_start = label;
+  exception::call_sites.push_back(info);
+}
+
+void intel::try_end(COMPILER::tac* tac)
+{
+  string label = to_impl::label(tac);
+  out << label << ":\n";
+  assert(!exception::call_sites.empty());
+  exception::call_site_t& info = exception::call_sites.back();
+  assert(!info.m_start.empty());
+  assert(info.m_end.empty());
+  info.m_end = label;
+  assert(info.m_landing.empty());
+}
+
+void intel::here(COMPILER::tac* tac)
+{
+  string label = to_impl::label(tac);
+  out << label << ":\n";
+  assert(!exception::call_sites.empty());
+  exception::call_site_t& info = exception::call_sites.back();
+  assert(!info.m_start.empty());
+  assert(!info.m_end.empty());
+  assert(info.m_landing.empty());
+  info.m_landing = label;
+}
+
+void intel::here_reason(COMPILER::tac* tac)
+{
+  assert(!x64 && mode == GNU);
+  address* x = getaddr(tac->x);
+  x->store(reg::dx);
+}
+
+void intel::here_info(COMPILER::tac* tac)
+{
+  assert(!x64 && mode == GNU);
+  address* x = getaddr(tac->x);
+  x->store(reg::ax);
+}
+
+void intel::unwind_resume(COMPILER::tac* tac)
+{
+  assert(!x64 && mode == GNU);
+  address* y = getaddr(tac->y);
+  y->load();
+  out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
+  out << '\t' << "pushl" << '\t' << "%eax" << '\n';
+
+  string label = to_impl::label(tac);
+  string start = label + ".start";
+  out << start << ":\n";
+  out << '\t' << "call" << '\t' << "_Unwind_Resume" << '\n';
+  string end = label + ".end";
+  out << end << ":\n";
+  exception::call_site_t info;
+  info.m_start = start;
+  info.m_end = end;
+  exception::call_sites.push_back(info);
+}
+
+void intel::catch_begin(COMPILER::tac* tac)
+{
+  assert(!x64 && mode == GNU);
+  address* y = getaddr(tac->y);
+  y->load();
+  out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
+  out << '\t' << "pushl" << '\t' << "%eax" << '\n';
+  out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
+  out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
+  address* x = getaddr(tac->x);
+  x->store();
+
+  const type* T = tac->x->m_type;
+  exception::call_site_t::types.push_back(T);
+}
+
+void intel::catch_end(COMPILER::tac* tac)
+{
+  assert(!x64 && mode == GNU);
+  out << '\t' << "call" << '\t' << "__cxa_end_catch" << '\n';
+}
+#endif // CXX_GENERATOR
 
 #ifdef CXX_GENERATOR
 namespace intel {

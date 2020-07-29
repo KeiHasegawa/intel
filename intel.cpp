@@ -134,8 +134,12 @@ void generator_generate(const COMPILER::generator::interface_t* ptr)
   using namespace std;
   using namespace intel;
   genobj(ptr->m_root);
-  if (ptr->m_func)
+  if (ptr->m_func) {
     genfunc(ptr->m_func, *ptr->m_code);
+#ifdef CXX_GENERATOR
+    exception::out_table(ptr->m_func);
+#endif
+  }
   uint64_float_t::obj.output();
   uint64_double_t::obj.output();
   uint64_ld_t::obj.output();
@@ -230,6 +234,7 @@ extern "C" DLL_EXPORT int generator_close_file()
 
 #ifdef CXX_GENERATOR
   init_term_fun();
+  exception::out_frame();
 #endif // CXX_GENERATOR
 
   transform(mem::refed.begin(), mem::refed.end(), ostream_iterator<string>(out), mem::refgen);
@@ -1518,6 +1523,13 @@ void intel::output_section(section kind)
         out << '\t' << ".section" << '\t';
         out << (kind == CTOR ? ".ctors," : ".dtors,");
         out << '"' << 'w' << '"' << '\n';
+      case EXCEPT_TABLE:
+	out << '\t' << ".section" << '\t' << ".gcc_except_table,";
+	out << '"' << 'a' << '"' << ",@progbits" << '\n';
+        break;
+      case EXCEPT_FRAME:
+	out << '\t' << ".section" << '\t' << ".eh_frame,";
+	out << '"' << 'a' << '"' << ",@progbits" << '\n';
         break;
       }
     }
@@ -1561,6 +1573,9 @@ void intel::end_section(section kind)
     break;
   case BSS:
     out << "_BSS ENDS" << '\n';
+  case EXCEPT_TABLE:
+  case EXCEPT_FRAME:
+    assert(0 && "not implemented");
     break;
   }
 }

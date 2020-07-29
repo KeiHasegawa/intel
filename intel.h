@@ -211,7 +211,8 @@ namespace intel {
   extern char suffix(int);
   extern char fsuffix(int);
 
-  enum section { NONE, CODE, ROMDATA, RAM, BSS, CTOR, DTOR };
+  enum section { NONE, CODE, ROMDATA, RAM, BSS, CTOR, DTOR,
+		 EXCEPT_TABLE, EXCEPT_FRAME };
   extern void output_section(section);
   extern void end_section(section);
   struct sec_hlp {
@@ -294,6 +295,28 @@ namespace intel {
   extern void init_term_fun();
   extern bool
   incomplete(const std::pair<const COMPILER::type*, COMPILER::var*>&);
+
+  namespace exception {
+    struct call_site_t {
+      std::string m_start;
+      std::string m_end;
+      std::string m_landing;
+      static std::vector<const COMPILER::type*> types;
+    };
+    extern std::vector<call_site_t> call_sites;
+    extern void out_table(const COMPILER::fundef*);
+    struct call_frame_t {
+      std::string m_addr;
+    };
+    struct frame_desc_t {
+      std::string m_fname;
+      std::string m_end;
+      std::vector<call_frame_t> m_cfis;
+    };
+    extern std::vector<frame_desc_t> fds;
+    extern void out_frame();
+  } // end of nmaespace exception
+
 #endif // CXX_GENERATOR
 
 }  // end of namespace intel
