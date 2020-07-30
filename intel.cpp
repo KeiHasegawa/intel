@@ -1523,6 +1523,7 @@ void intel::output_section(section kind)
         out << '\t' << ".section" << '\t';
         out << (kind == CTOR ? ".ctors," : ".dtors,");
         out << '"' << 'w' << '"' << '\n';
+	break;
       case EXCEPT_TABLE:
 	out << '\t' << ".section" << '\t' << ".gcc_except_table,";
 	out << '"' << 'a' << '"' << ",@progbits" << '\n';
