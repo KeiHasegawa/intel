@@ -94,7 +94,12 @@ void intel::init_term_fun()
   string FP = fp();
   int psz = psize();
   out << '\t' << "push" << ps << '\t' << FP << '\n';
+#if 1 // add 2020.08.02 12:42
+  if (mode == MS && !x64)
+    out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+#else
   out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+#endif
   out << '\t' << "mov" << ps << '\t';
   if (mode == GNU)
     out << SP << ", " << FP << '\n';
@@ -115,7 +120,12 @@ void intel::init_term_fun()
     out << FP << ", " << SP << '\n';
   else
     out << SP << ", " << FP << '\n';
+#if 1 // add 2020.08.02 12:43
+  if (mode == MS && !x64)
+    out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
+#else
   out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
+#endif
   out << '\t' << "pop" << ps << '\t' << FP << '\n';
   out << '\t' << "ret" << '\n';
   output_section(CTOR);
@@ -149,8 +159,10 @@ void intel::enter(const COMPILER::fundef* func,
     out << FP << ", " << SP << '\n';
 
   sched_stack(func,code);
+#if 0  // compile out 2020.08.02 12:44
   if (x64)
     stack::delta_sp += 8;
+#endif
 
   int n = stack::delta_sp;
   string ax = reg::name(reg::ax, psz);  
