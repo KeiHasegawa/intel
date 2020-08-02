@@ -306,12 +306,13 @@ namespace intel {
     extern std::vector<call_site_t> call_sites;
     extern void out_table(const COMPILER::fundef*);
     struct call_frame_t {
-      std::string m_addr;
+      std::string m_addr1;
+      std::string m_addr2;
     };
     struct frame_desc_t {
       std::string m_fname;
       std::string m_end;
-      std::vector<call_frame_t> m_cfis;
+      std::vector<call_frame_t> m_cfs;
     };
     extern std::vector<frame_desc_t> fds;
     extern void out_frame();
