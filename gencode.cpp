@@ -94,12 +94,17 @@ void intel::init_term_fun()
   string FP = fp();
   int psz = psize();
   out << '\t' << "push" << ps << '\t' << FP << '\n';
+#ifndef FIX_2020_08_05
   out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+#endif
   out << '\t' << "mov" << ps << '\t';
   if (mode == GNU)
     out << SP << ", " << FP << '\n';
   else
     out << FP << ", " << SP << '\n';
+#ifdef FIX_2020_08_05
+  out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+#endif
   int stack_size = 16;
   out << '\t' << "sub" << ps << '\t';
   if (mode == GNU)
@@ -115,6 +120,14 @@ void intel::init_term_fun()
     out << FP << ", " << SP << '\n';
   else
     out << SP << ", " << FP << '\n';
+#ifdef FIX_2020_08_05
+  int m = x64 ? 8 : 4;
+  out << '\t' << "sub" << ps << '\t';
+  if (mode == GNU)
+    out << '$' << m << " , " << SP << '\n';
+  else
+    out << SP << " , " << m << '\n';
+#endif
   out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
   out << '\t' << "pop" << ps << '\t' << FP << '\n';
   out << '\t' << "ret" << '\n';
@@ -141,12 +154,17 @@ void intel::enter(const COMPILER::fundef* func,
   string FP = fp();
   int psz = psize();
   out << '\t' << "push" << ps << '\t' << FP << '\n';
+#ifndef FIX_2020_08_05
   out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+#endif
   out << '\t' << "mov" << ps << '\t';
   if (mode == GNU)
     out << SP << ", " << FP << '\n';
   else
     out << FP << ", " << SP << '\n';
+#ifdef FIX_2020_08_05
+  out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+#endif
 
   sched_stack(func,code);
   if (x64)
@@ -224,6 +242,14 @@ void intel::leave()
     out << fp() << ", " << sp() << '\n';
   else
     out << sp() << ", " << fp() << '\n';
+#ifdef FIX_2020_08_05
+  int m = x64 ? 8 : 4;
+  out << '\t' << "sub" << ps << '\t';
+  if (mode == GNU)
+    out << '$' << m << " , " << sp() << '\n';
+  else
+    out << sp() << " , " << m << '\n';
+#endif
   out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
   out << '\t' << "pop" << ps << '\t' << fp() << '\n';
   out << '\t' << "ret" << '\n';
@@ -393,7 +419,11 @@ namespace intel {
   int local_variable(int offset, COMPILER::scope* scope);
 }
 
+#ifdef FIX_2020_08_05
+int intel::first_param_offset = 0x10;
+#else
 int intel::first_param_offset = 0x18;
+#endif
 
 namespace intel {
   mode_t mode = GNU;

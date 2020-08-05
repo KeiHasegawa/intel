@@ -123,7 +123,7 @@ namespace intel {
 	out << '\t' << ".uleb128 0x2" << '\n';
       }
       else {
-o	out << '\t' << ".byte	0xd" << ' ';
+	out << '\t' << ".byte	0xd" << ' ';
 	out << comment_start << " DW_CFA_def_cfa_register" << '\n';
 	out << ".uleb128 0x5" << '\n';
       }

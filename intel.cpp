@@ -73,7 +73,11 @@ int intel::option_handler(const char* option)
     intel::literal::floating::long_double::size = (mode == MS) ? 8 : 12;
     if (mode == MS)
       external_header = "_";
+#ifdef FIX_2020_08_05
+    intel::first_param_offset = 8;
+#else
     intel::first_param_offset = 12;
+#endif
     return 0;
   }
   if (string("--ms") == option) {

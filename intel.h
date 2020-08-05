@@ -1,6 +1,8 @@
 #ifndef _INTEL_H_
 #define _INTEL_H_
 
+#define FIX_2020_08_05
+
 #ifdef _MSC_VER
 #define DLL_EXPORT __declspec(dllexport)
 #else // _MSC_VER
@@ -16,8 +18,9 @@
 namespace intel {
   extern bool debug_flag;
   extern bool x64;
-  extern int first_param_offset;  // offset from frame pointer ( %rbp or %ebp ) especially for x64
-                                  // after parameters are saved
+  extern int first_param_offset;  // offset from frame pointer ( %rbp or %ebp )
+                                  // especially for x64, at called function,
+                                  // parameters are saved at this point.
   enum mode_t { GNU, MS };
   extern mode_t mode;
   extern bool doll_need(std::string);
