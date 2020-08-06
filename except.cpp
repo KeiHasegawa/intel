@@ -60,12 +60,16 @@ namespace intel {
       for (const auto& info : call_sites)
 	out_action_record(info);
     }
+    string label(const type* T, char c)
+    {
+      ostringstream os;
+      os << "_ZT" << c;
+      T->encode(os);
+      return os.str();
+    }
     void out_type(const type* T)
     {
-      // Type info of `T'
-      out << '\t' << ".long _ZTI";
-      T->encode(out);
-      out << '\n';
+      out << '\t' << ".long       " << label(T, 'I') << '\n';
     }
     void out_lsda()
     {
@@ -83,6 +87,34 @@ namespace intel {
       out << end << ':' << '\n';
     }
     bool table_outputed;
+    void out_type_info(const type* T)
+    {
+      debug_break();
+      if (!T->get_tag())
+	return;
+      string L1 = label(T, 'I');
+      out << '\t' << ".weak	" << L1 << '\n';
+      out << '\t' << ".section	.rodata." << L1 << ",\"aG\",@progbits,";
+      out << L1 << ",comdat" << '\n';
+      out << '\t' << ".align 4" << '\n';
+      out << '\t' << ".type	" << L1 << ", @object" << '\n';
+      out << '\t' << ".size	" << L1 << ", 8" << '\n';
+      out << L1 << ':' << '\n';
+      out << '\t' << ".long	_ZTVN10__cxxabiv117__class_type_infoE+8" << '\n';
+      string L2 = label(T, 'S');
+      out << '\t' << ".long	" << L2 << '\n';
+      out << '\t' << ".weak	" << L2 << '\n';
+      out << '\t' << ".section	.rodata." << L2 << ",\"aG\",@progbits,";
+      out << L2 << ",comdat" << '\n';
+      out << '\t' << ".align 4" << '\n';
+      out << '\t' << ".type	" << L2 << ", @object" << '\n';
+      ostringstream os;
+      T->encode(os);
+      string s = os.str();
+      out << '\t' << ".size	" << L2 << ", " << s.length()+1 << '\n';
+      out << L2 << ':' << '\n';
+      out << '\t' << ".string	" << '"' << s << '"' << '\n';
+    }
     void out_table()
     {
       if (call_sites.empty()) {
@@ -91,7 +123,6 @@ namespace intel {
       }
       output_section(EXCEPT_TABLE);
       out << '\t' << ".align 4" << '\n';
-      debug_break();
       ostringstream os;
       if (mode == GNU)
 	os << '.';
@@ -107,8 +138,10 @@ namespace intel {
       out << '\t' << ".byte	0" << '\n'; // Type Format
       out_lsda();
       call_sites.clear();
-      call_site_t::types.clear();
       end_section(EXCEPT_TABLE);
+      for (auto T : call_site_t::types)
+	out_type_info(T);
+      call_site_t::types.clear();
       table_outputed = true;
     }
     void call_frame_t::out_cf()

@@ -4616,8 +4616,7 @@ void intel::throwe(COMPILER::tac* tac)
   const type* T = p->m_type;
   out << '\t' << "subl" << '\t' << "$4, %esp" << '\n';
   out << '\t' << "pushl" << '\t' << "$0" << '\n';
-  out << '\t' << "pushl" << '\t' << '$' << "_ZTI";
-  T->encode(out);
+  out << '\t' << "pushl" << '\t' << '$' << exception::label(T, 'I');
   out << '\n';
   out << '\t' << "pushl" << '\t' << "%eax" << '\n';
   out << '\t' << "call" << '\t' << "__cxa_throw" << '\n';
@@ -4703,6 +4702,12 @@ void intel::catch_begin(COMPILER::tac* tac)
   x->store();
 
   const type* T = tac->x->m_type;
+  T = T->unqualified();
+  if (T->m_id == type::REFERENCE) {
+    typedef const reference_type RT;
+    RT* rt = static_cast<RT*>(T);
+    T = rt->referenced_type();
+  }
   exception::call_site_t::types.push_back(T);
 }
 
