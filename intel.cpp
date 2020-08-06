@@ -1578,6 +1578,7 @@ void intel::end_section(section kind)
     break;
   case BSS:
     out << "_BSS ENDS" << '\n';
+    break;
   case EXCEPT_TABLE:
   case EXCEPT_FRAME:
     assert(0 && "not implemented");
