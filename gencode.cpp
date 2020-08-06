@@ -10,12 +10,14 @@
 namespace intel {
   std::string func_label;
   void enter(const COMPILER::fundef* func, const std::vector<COMPILER::tac*>& code);
+
+  const COMPILER::fundef* curr_func;
   void gencode(COMPILER::tac* tac);
   namespace return_impl {
     COMPILER::tac* last3ac;
     std::string leave_label;
   }
-  void leave();
+  void leave(const COMPILER::fundef* func);
   std::set<std::string> defined;
 #ifdef CXX_GENERATOR
   std::vector<std::string> init_fun;
@@ -23,7 +25,8 @@ namespace intel {
 #endif // CXX_GENERATOR
 }
 
-void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::tac*>& code)
+void intel::genfunc(const COMPILER::fundef* func,
+                    const std::vector<COMPILER::tac*>& code)
 {
   using namespace std;
   using namespace COMPILER;
@@ -39,7 +42,7 @@ void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::ta
   if (doll_need(name))
     name += '$';
   func_label = external_header + name;
-  
+
   usr::flag_t f = u->m_flag;
   usr::flag_t m = usr::flag_t(usr::STATIC | usr::INLINE);
   if (!(f & m) || (f & usr::EXTERN))
@@ -49,8 +52,10 @@ void intel::genfunc(const COMPILER::fundef* func, const std::vector<COMPILER::ta
   if (!code.empty())
     return_impl::last3ac = *code.rbegin();
   return_impl::leave_label.erase();
+  curr_func = func;
   for_each(code.begin(),code.end(),gencode);
-  leave();
+  curr_func = 0;
+  leave(func);
 #ifdef CXX_GENERATOR
   usr::flag2_t f2 = u->m_flag2;
   if (f2 & usr::INITIALIZE_FUNCTION)
@@ -153,7 +158,30 @@ void intel::enter(const COMPILER::fundef* func,
   string SP = sp();
   string FP = fp();
   int psz = psize();
+
+#ifdef CXX_GENERATOR
+  usr* u = func->m_usr;
+  usr::flag2_t f2 = u->m_flag2;
+  usr::flag2_t mask =
+    usr::flag2_t(usr::INITIALIZE_FUNCTION | usr::TERMINATE_FUNCTION);
+  if (!(f2 & mask)) {
+    exception::frame_desc_t fd;
+    fd.m_fname = func_label;
+    exception::fds.push_back(fd);
+  }
+#endif // CXX_GENERATOR
+
   out << '\t' << "push" << ps << '\t' << FP << '\n';
+#ifdef CXX_GENERATOR
+  if (!(f2 & mask)) {
+    string label = exception::LFCI_label();
+    out << label << ':' << '\n';
+    assert(!exception::fds.empty());
+    exception::frame_desc_t& fd = exception::fds.back();
+    vector<exception::call_frame_t*>& cfs = fd.m_cfs;
+    cfs.push_back(new exception::save_fp(fd.m_fname, label));
+  }
+#endif // CXX_GENERATOR
 #ifndef FIX_2020_08_05
   out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
 #endif
@@ -162,6 +190,20 @@ void intel::enter(const COMPILER::fundef* func,
     out << SP << ", " << FP << '\n';
   else
     out << FP << ", " << SP << '\n';
+#ifdef CXX_GENERATOR
+  if (!(f2 & mask)) {
+    string label = exception::LFCI_label();
+    out << label << ':' << '\n';
+    assert(!exception::fds.empty());
+    exception::frame_desc_t& fd = exception::fds.back();
+    vector<exception::call_frame_t*>& cfs = fd.m_cfs;
+    assert(!cfs.empty());
+    exception::call_frame_t* cf = cfs.back();
+    string begin = cf->m_end;
+    cfs.push_back(new exception::save_sp(begin, label));
+  }
+#endif // CXX_GENERATOR
+
 #ifdef FIX_2020_08_05
   out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
 #endif
@@ -227,7 +269,7 @@ namespace intel { namespace aggregate_func {
   }  // end of namespace param
 } } // end of namespace aggregate_func and intel
 
-void intel::leave()
+void intel::leave(const COMPILER::fundef* func)
 {
   using namespace std;
   using namespace COMPILER;
@@ -252,7 +294,38 @@ void intel::leave()
 #endif
   out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
   out << '\t' << "pop" << ps << '\t' << fp() << '\n';
+#ifdef CXX_GENERATOR
+  usr* u = func->m_usr;
+  usr::flag2_t f2 = u->m_flag2;
+  usr::flag2_t mask =
+    usr::flag2_t(usr::INITIALIZE_FUNCTION | usr::TERMINATE_FUNCTION);
+  if (!(f2 & mask)) {
+    string label = exception::LFCI_label();
+    out << label << ':' << '\n';
+    assert(!exception::fds.empty());
+    exception::frame_desc_t& fd = exception::fds.back();
+    vector<exception::call_frame_t*>& cfs = fd.m_cfs;
+    assert(!cfs.empty());
+    exception::call_frame_t* cf = cfs.back();
+    string begin = cf->m_end;
+    cfs.push_back(new exception::recover(begin, label));
+  }
+#endif // CXX_GENERATOR
   out << '\t' << "ret" << '\n';
+#ifdef CXX_GENERATOR
+  if (!(f2 & mask)) {
+    string end;
+    if (mode == GNU)
+      end = '.' + func_label + ".end";
+    else
+      end = func_label + ".end" + '$';
+    out << end << ':' << '\n';
+    assert(!exception::fds.empty());
+    exception::frame_desc_t& fd = exception::fds.back();
+    fd.m_end = end;
+  }
+#endif // CXX_GENERATOR
+
   if (mode == MS)
     out << func_label << '\t' << "ENDP" << '\n';
 
@@ -3449,6 +3522,13 @@ void intel::call_impl::multi(COMPILER::tac* tac)
   Void(tac);
 }
 
+namespace intel {
+  namespace to_impl {
+    using namespace std;
+    string label(COMPILER::tac*);
+  }  // end of namespace to_impl
+}  // end of namespace intel
+
 void intel::call_impl::Void(COMPILER::tac* tac)
 {
   using namespace COMPILER;
@@ -3457,6 +3537,23 @@ void intel::call_impl::Void(COMPILER::tac* tac)
   const type* T = tac->y->m_type;
   if (T->scalar())
     y->load(reg::ax);
+#ifdef CXX_GENERATOR
+  usr* u = curr_func->m_usr;
+  usr::flag2_t f2 = u->m_flag2;
+  usr::flag2_t mask =
+    usr::flag2_t(usr::INITIALIZE_FUNCTION | usr::TERMINATE_FUNCTION);
+  if (!(f2 & mask)) {
+    string label = exception::LFCI_label();
+    out << label << ':' << '\n';
+    assert(!exception::fds.empty());
+    exception::frame_desc_t& fds = exception::fds.back();
+    vector<exception::call_frame_t*>& cfs = fds.m_cfs;
+    assert(!cfs.empty());
+    exception::call_frame_t* cf = cfs.back();
+    string begin = cf->m_end;
+    cfs.push_back(new exception::call(begin, label));
+  }
+#endif // CXX_GENERATOR
   out << '\t' << "call" << '\t';
   if ( T->scalar() ) {
     if (mode == GNU )
@@ -3541,10 +3638,6 @@ namespace intel {
   namespace goto_impl {
     void cond(COMPILER::goto3ac*);
   }  // end of namespace goto_impl
-  namespace to_impl {
-    using namespace std;
-    string label(COMPILER::tac*);
-  }  // end of namespace to_impl
 }  // end of namespace intel
 
 void intel::_goto(COMPILER::tac* tac)

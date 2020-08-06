@@ -69,6 +69,7 @@ namespace intel {
   inline std::string dot_long() { return mode == GNU ? ".long" : "DD"; }
   extern std::ostream out;
   extern void genobj(const COMPILER::scope*);
+  extern std::string func_label;
   extern void genfunc(const COMPILER::fundef*, const std::vector<COMPILER::tac*>&);
   namespace reg {
     enum gpr { ax, bx, cx, dx, si, di, r8, r9 };
@@ -307,18 +308,39 @@ namespace intel {
       static std::vector<const COMPILER::type*> types;
     };
     extern std::vector<call_site_t> call_sites;
-    extern void out_table(const COMPILER::fundef*);
+    extern void out_table();
     struct call_frame_t {
-      std::string m_addr1;
-      std::string m_addr2;
+      std::string m_begin;
+      std::string m_end;
+      call_frame_t(std::string b, std::string e) : m_begin(b), m_end(e) {}
+      virtual void out_cf();
+      virtual ~call_frame_t(){}
+    };
+    struct save_fp : call_frame_t {
+      save_fp(std::string b, std::string e) : call_frame_t(b, e) {}
+      void out_cf();
+    };
+    struct save_sp : call_frame_t {
+      save_sp(std::string b, std::string e) : call_frame_t(b, e) {}
+      void out_cf();
+    };
+    struct recover : call_frame_t {
+      recover(std::string b, std::string e) : call_frame_t(b, e) {}
+      void out_cf();
+    };
+    struct call : call_frame_t {
+      call(std::string b, std::string e) : call_frame_t(b, e) {}
+      void out_cf();
     };
     struct frame_desc_t {
       std::string m_fname;
       std::string m_end;
-      std::vector<call_frame_t> m_cfs;
+      std::vector<call_frame_t*> m_cfs;
+      std::string m_lsda;
     };
     extern std::vector<frame_desc_t> fds;
     extern void out_frame();
+    extern std::string LFCI_label();
   } // end of nmaespace exception
 
 #endif // CXX_GENERATOR

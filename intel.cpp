@@ -141,7 +141,7 @@ void generator_generate(const COMPILER::generator::interface_t* ptr)
   if (ptr->m_func) {
     genfunc(ptr->m_func, *ptr->m_code);
 #ifdef CXX_GENERATOR
-    exception::out_table(ptr->m_func);
+    exception::out_table();
 #endif
   }
   uint64_float_t::obj.output();
