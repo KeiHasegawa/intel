@@ -142,6 +142,11 @@ void generator_generate(const COMPILER::generator::interface_t* ptr)
     genfunc(ptr->m_func, *ptr->m_code);
 #ifdef CXX_GENERATOR
     exception::out_table();
+    for (auto T : exception::throw_types) {
+      if (T->tmp())
+	exception::out_type_info(T);
+    }
+    exception::throw_types.clear();
 #endif
   }
   uint64_float_t::obj.output();

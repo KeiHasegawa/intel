@@ -4631,9 +4631,7 @@ void intel::throwe(COMPILER::tac* tac)
   out << '\t' << "pushl" << '\t' << "%eax" << '\n';
   out << '\t' << "call" << '\t' << "__cxa_throw" << '\n';
 
-#ifdef FIX_2020_08_09
-  exception::types.push_back(T);
-#endif
+  exception::throw_types.push_back(T);
 }
 
 void intel::try_begin(COMPILER::tac* tac)
@@ -4712,7 +4710,10 @@ void intel::catch_begin(COMPILER::tac* tac)
   out << '\t' << "pushl" << '\t' << "%eax" << '\n';
   out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
   out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
-#ifndef FIX_2020_08_09
+  if (!tac->x) {
+    exception::call_site_t::types.push_back(0);
+    return;
+  }
   address* x = getaddr(tac->x);
   x->store();
 
@@ -4724,12 +4725,6 @@ void intel::catch_begin(COMPILER::tac* tac)
     T = rt->referenced_type();
   }
   exception::call_site_t::types.push_back(T);
-#else
-  if (tac->x) {
-    address* x = getaddr(tac->x);
-    x->store();
-  }
-#endif
 }
 
 void intel::catch_end(COMPILER::tac* tac)

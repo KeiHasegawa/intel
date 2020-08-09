@@ -12,11 +12,9 @@ namespace intel {
     using namespace std;
     using namespace COMPILER;
     vector<call_site_t> call_sites;
-#ifdef FIX_2020_08_09
     vector<const type*> types;
-#else
     vector<const type*> call_site_t::types;
-#endif
+    vector<const type*> throw_types;
     vector<frame_desc_t> fds;
     void out_call_site(const call_site_t& info)
     {
@@ -55,6 +53,7 @@ namespace intel {
     }
     void out_action_record(const call_site_t& info)
     {
+      debug_break();
       string landing = info.m_landing;
       int n = landing.empty() ? 0 : 1;
       out << '\t' << ".byte " << n << '\n'; // Action record table
@@ -73,7 +72,12 @@ namespace intel {
     }
     void out_type(const type* T)
     {
-      out << '\t' << ".long       " << label(T, 'I') << '\n';
+      out << '\t' << ".long	";
+      if (T)
+	out << label(T, 'I');
+      else
+	out << 0;
+      out << '\n';
     }
     void out_lsda()
     {
@@ -86,19 +90,15 @@ namespace intel {
       out_action_records();
 
       out << '\t' << ".align 4" << '\n';
-#ifdef FIX_2020_08_09
-      for (auto T : types)
-	out_type(T);
-#else
       for (auto T : call_site_t::types)
  	out_type(T);
-#endif
       out << end << ':' << '\n';
     }
     bool table_outputed;
     void out_type_info(const type* T)
     {
-      debug_break();
+      if (!T)
+	return;
       if (!T->get_tag())
 	return;
       string L1 = label(T, 'I');
@@ -126,7 +126,6 @@ namespace intel {
     }
     void out_table()
     {
-#ifndef FIX_2020_08_09
       if (call_sites.empty()) {
 	assert(call_site_t::types.empty());
 	return;
@@ -153,33 +152,6 @@ namespace intel {
 	out_type_info(T);
       call_site_t::types.clear();
       table_outputed = true;
-#else
-      if (!call_sites.empty()) {
-	output_section(EXCEPT_TABLE);
-	out << '\t' << ".align 4" << '\n';
-	ostringstream os;
-	if (mode == GNU)
-	  os << '.';
-	os << "LLSDA" << '.' << func_label;
-	if (mode == MS)
-	  os << '$';
-	string label = os.str();
-	out << label << ':' << '\n';
-	assert(!exception::fds.empty());
-	exception::frame_desc_t& fd = exception::fds.back();
-	fd.m_lsda = label;
-	out << '\t' << ".byte	0xff" << '\n'; // LDSA header
-	out << '\t' << ".byte	0" << '\n'; // Type Format
-	out_lsda();
-	call_sites.clear();
-	end_section(EXCEPT_TABLE);
-	table_outputed = true;
-      }
-
-      for (auto T : types)
-	out_type_info(T);
-      types.clear();
-#endif
     }
     void call_frame_t::out_cf()
     {
