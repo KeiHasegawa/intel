@@ -102,13 +102,16 @@ void intel::init_term_fun()
 #ifndef FIX_2020_08_05
   out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
 #endif
+  if (mode == MS && !x64)
+    out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
   out << '\t' << "mov" << ps << '\t';
   if (mode == GNU)
     out << SP << ", " << FP << '\n';
   else
     out << FP << ", " << SP << '\n';
 #ifdef FIX_2020_08_05
-  out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+  if (mode != MS || x64)
+    out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
 #endif
   int stack_size = 16;
   out << '\t' << "sub" << ps << '\t';
@@ -126,12 +129,14 @@ void intel::init_term_fun()
   else
     out << SP << ", " << FP << '\n';
 #ifdef FIX_2020_08_05
-  int m = x64 ? 8 : 4;
-  out << '\t' << "sub" << ps << '\t';
-  if (mode == GNU)
-    out << '$' << m << " , " << SP << '\n';
-  else
-    out << SP << " , " << m << '\n';
+  if (mode != MS || x64) {
+    int m = x64 ? 8 : 4;
+    out << '\t' << "sub" << ps << '\t';
+    if (mode == GNU)
+      out << '$' << m << " , " << SP << '\n';
+    else
+      out << SP << " , " << m << '\n';
+  }
 #endif
   out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
   out << '\t' << "pop" << ps << '\t' << FP << '\n';
@@ -185,6 +190,8 @@ void intel::enter(const COMPILER::fundef* func,
 #ifndef FIX_2020_08_05
   out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
 #endif
+  if (mode == MS && !x64)
+    out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
   out << '\t' << "mov" << ps << '\t';
   if (mode == GNU)
     out << SP << ", " << FP << '\n';
@@ -205,7 +212,8 @@ void intel::enter(const COMPILER::fundef* func,
 #endif // CXX_GENERATOR
 
 #ifdef FIX_2020_08_05
-  out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+  if (mode != MS || x64)
+    out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
 #endif
 
   sched_stack(func,code);
@@ -285,12 +293,14 @@ void intel::leave(const COMPILER::fundef* func)
   else
     out << sp() << ", " << fp() << '\n';
 #ifdef FIX_2020_08_05
-  int m = x64 ? 8 : 4;
-  out << '\t' << "sub" << ps << '\t';
-  if (mode == GNU)
-    out << '$' << m << " , " << sp() << '\n';
-  else
-    out << sp() << " , " << m << '\n';
+  if (mode != MS || x64) {
+    int m = x64 ? 8 : 4;
+    out << '\t' << "sub" << ps << '\t';
+    if (mode == GNU)
+      out << '$' << m << " , " << sp() << '\n';
+    else
+      out << sp() << " , " << m << '\n';
+  }
 #endif
   out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
   out << '\t' << "pop" << ps << '\t' << fp() << '\n';
@@ -4620,6 +4630,10 @@ void intel::throwe(COMPILER::tac* tac)
   out << '\n';
   out << '\t' << "pushl" << '\t' << "%eax" << '\n';
   out << '\t' << "call" << '\t' << "__cxa_throw" << '\n';
+
+#ifdef FIX_2020_08_09
+  exception::types.push_back(T);
+#endif
 }
 
 void intel::try_begin(COMPILER::tac* tac)
@@ -4698,6 +4712,7 @@ void intel::catch_begin(COMPILER::tac* tac)
   out << '\t' << "pushl" << '\t' << "%eax" << '\n';
   out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
   out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
+#ifndef FIX_2020_08_09
   address* x = getaddr(tac->x);
   x->store();
 
@@ -4709,6 +4724,12 @@ void intel::catch_begin(COMPILER::tac* tac)
     T = rt->referenced_type();
   }
   exception::call_site_t::types.push_back(T);
+#else
+  if (tac->x) {
+    address* x = getaddr(tac->x);
+    x->store();
+  }
+#endif
 }
 
 void intel::catch_end(COMPILER::tac* tac)

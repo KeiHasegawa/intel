@@ -301,12 +301,21 @@ namespace intel {
   incomplete(const std::pair<const COMPILER::type*, COMPILER::var*>&);
 
   namespace exception {
+#ifndef FIX_2020_08_09
     struct call_site_t {
       std::string m_start;
       std::string m_end;
       std::string m_landing;
       static std::vector<const COMPILER::type*> types;
     };
+#else
+    struct call_site_t {
+      std::string m_start;
+      std::string m_end;
+      std::string m_landing;
+    };
+    extern std::vector<const COMPILER::type*> types;
+#endif
     extern std::string label(const COMPILER::type*, char);
     extern std::vector<call_site_t> call_sites;
     extern void out_table();

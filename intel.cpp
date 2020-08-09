@@ -74,7 +74,7 @@ int intel::option_handler(const char* option)
     if (mode == MS)
       external_header = "_";
 #ifdef FIX_2020_08_05
-    intel::first_param_offset = 8;
+    intel::first_param_offset = (mode == MS) ? 12 : 8;
 #else
     intel::first_param_offset = 12;
 #endif
