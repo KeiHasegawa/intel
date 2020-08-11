@@ -10,8 +10,6 @@
 namespace intel {
   std::string func_label;
   void enter(const COMPILER::fundef* func, const std::vector<COMPILER::tac*>& code);
-
-  const COMPILER::fundef* curr_func;
   void gencode(COMPILER::tac* tac);
   namespace return_impl {
     COMPILER::tac* last3ac;
@@ -52,9 +50,7 @@ void intel::genfunc(const COMPILER::fundef* func,
   if (!code.empty())
     return_impl::last3ac = *code.rbegin();
   return_impl::leave_label.erase();
-  curr_func = func;
   for_each(code.begin(),code.end(),gencode);
-  curr_func = 0;
   leave(func);
 #ifdef CXX_GENERATOR
   usr::flag2_t f2 = u->m_flag2;
@@ -179,7 +175,7 @@ void intel::enter(const COMPILER::fundef* func,
   out << '\t' << "push" << ps << '\t' << FP << '\n';
 #ifdef CXX_GENERATOR
   if (!(f2 & mask)) {
-    string label = exception::LFCI_label();
+    string label = exception::LCFI_label();
     out << label << ':' << '\n';
     assert(!exception::fds.empty());
     exception::frame_desc_t& fd = exception::fds.back();
@@ -199,7 +195,7 @@ void intel::enter(const COMPILER::fundef* func,
     out << FP << ", " << SP << '\n';
 #ifdef CXX_GENERATOR
   if (!(f2 & mask)) {
-    string label = exception::LFCI_label();
+    string label = exception::LCFI_label();
     out << label << ':' << '\n';
     assert(!exception::fds.empty());
     exception::frame_desc_t& fd = exception::fds.back();
@@ -215,7 +211,6 @@ void intel::enter(const COMPILER::fundef* func,
   if (mode != MS || x64)
     out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
 #endif
-
   sched_stack(func,code);
   if (x64)
     stack::delta_sp += 8;
@@ -246,6 +241,19 @@ void intel::enter(const COMPILER::fundef* func,
   }
 #else // defined(_MSC_VER) || defined(__CYGWIN__)
   out << '\t' << "sub" << ps << '\t' << "$" << dec << n << ", " << SP << '\n';
+#ifdef CXX_GENERATOR
+  if (!(f2 & mask)) {
+    string label = exception::LCFI_label();
+    out << label << ':' << '\n';
+    assert(!exception::fds.empty());
+    exception::frame_desc_t& fd = exception::fds.back();
+    vector<exception::call_frame_t*>& cfs = fd.m_cfs;
+    assert(!cfs.empty());
+    exception::call_frame_t* cf = cfs.back();
+    string begin = cf->m_end;
+    cfs.push_back(new exception::save_bx(begin, label));
+  }
+#endif // CXX_GENERATOR
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
 
 #if defined(_MSC_VER) || defined(__CYGWIN__)
@@ -310,7 +318,7 @@ void intel::leave(const COMPILER::fundef* func)
   usr::flag2_t mask =
     usr::flag2_t(usr::INITIALIZE_FUNCTION | usr::TERMINATE_FUNCTION);
   if (!(f2 & mask)) {
-    string label = exception::LFCI_label();
+    string label = exception::LCFI_label();
     out << label << ':' << '\n';
     assert(!exception::fds.empty());
     exception::frame_desc_t& fd = exception::fds.back();
@@ -866,11 +874,13 @@ namespace intel {
 #ifdef CXX_GENERATOR
   void alloce(tac*);
   void throwe(tac*);
+  void rethrow(tac*);
   void try_begin(tac*);
   void try_end(tac*);
   void here(tac*);
   void here_reason(tac*);
   void here_info(tac*);
+  void there(tac*);
   void unwind_resume(tac*);
   void catch_begin(tac*);
   void catch_end(tac*);
@@ -912,11 +922,13 @@ intel::gencode_table::gencode_table()
 #ifdef CXX_GENERATOR
   (*this)[tac::ALLOCE] = alloce;
   (*this)[tac::THROW] = throwe;
+  (*this)[tac::RETHROW] = rethrow;
   (*this)[tac::TRY_BEGIN] = try_begin;
   (*this)[tac::TRY_END] = try_end;
   (*this)[tac::HERE] = here;
   (*this)[tac::HERE_REASON] = here_reason;
   (*this)[tac::HERE_INFO] = here_info;
+  (*this)[tac::THERE] = there;
   (*this)[tac::UNWIND_RESUME] = unwind_resume;
   (*this)[tac::CATCH_BEGIN] = catch_begin;
   (*this)[tac::CATCH_END] = catch_end;
@@ -3547,23 +3559,6 @@ void intel::call_impl::Void(COMPILER::tac* tac)
   const type* T = tac->y->m_type;
   if (T->scalar())
     y->load(reg::ax);
-#ifdef CXX_GENERATOR
-  usr* u = curr_func->m_usr;
-  usr::flag2_t f2 = u->m_flag2;
-  usr::flag2_t mask =
-    usr::flag2_t(usr::INITIALIZE_FUNCTION | usr::TERMINATE_FUNCTION);
-  if (!(f2 & mask)) {
-    string label = exception::LFCI_label();
-    out << label << ':' << '\n';
-    assert(!exception::fds.empty());
-    exception::frame_desc_t& fds = exception::fds.back();
-    vector<exception::call_frame_t*>& cfs = fds.m_cfs;
-    assert(!cfs.empty());
-    exception::call_frame_t* cf = cfs.back();
-    string begin = cf->m_end;
-    cfs.push_back(new exception::call(begin, label));
-  }
-#endif // CXX_GENERATOR
   out << '\t' << "call" << '\t';
   if ( T->scalar() ) {
     if (mode == GNU )
@@ -4634,6 +4629,21 @@ void intel::throwe(COMPILER::tac* tac)
   exception::throw_types.push_back(T);
 }
 
+void intel::rethrow(COMPILER::tac* tac)
+{
+  assert(!x64 && mode == GNU);
+  string start = new_label((mode == GNU) ? ".label" : "label$");
+  out << start << ":\n";
+  out << '\t' << "call" << '\t' << "__cxa_rethrow" << '\n';
+  string end = new_label((mode == GNU) ? ".label" : "label$");
+  out << end << ":\n";
+
+  exception::call_site_t info;
+  info.m_start = start;
+  info.m_end = end;
+  exception::call_sites.push_back(info);
+}
+
 void intel::try_begin(COMPILER::tac* tac)
 {
   string label = to_impl::label(tac);
@@ -4657,6 +4667,7 @@ void intel::try_end(COMPILER::tac* tac)
 
 void intel::here(COMPILER::tac* tac)
 {
+  assert(!x64 && mode == GNU);
   string label = to_impl::label(tac);
   out << label << ":\n";
   assert(!exception::call_sites.empty());
@@ -4665,6 +4676,7 @@ void intel::here(COMPILER::tac* tac)
   assert(!info.m_end.empty());
   assert(info.m_landing.empty());
   info.m_landing = label;
+  info.m_action = 1;
 }
 
 void intel::here_reason(COMPILER::tac* tac)
@@ -4679,6 +4691,20 @@ void intel::here_info(COMPILER::tac* tac)
   assert(!x64 && mode == GNU);
   address* x = getaddr(tac->x);
   x->store(reg::ax);
+}
+
+void intel::there(COMPILER::tac* tac)
+{
+  assert(!x64 && mode == GNU);
+  string label = to_impl::label(tac);
+  out << label << ":\n";
+  assert(!exception::call_sites.empty());
+  exception::call_site_t& info = exception::call_sites.back();
+  assert(!info.m_start.empty());
+  assert(!info.m_end.empty());
+  assert(info.m_landing.empty());
+  info.m_landing = label;
+  info.m_action = 0;
 }
 
 void intel::unwind_resume(COMPILER::tac* tac)

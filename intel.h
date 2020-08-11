@@ -305,6 +305,8 @@ namespace intel {
       std::string m_start;
       std::string m_end;
       std::string m_landing;
+      int m_action;
+      call_site_t() : m_action(0) {}
       static std::vector<const COMPILER::type*> types;
     };
     extern void out_type_info(const COMPILER::type* T);
@@ -327,12 +329,12 @@ namespace intel {
       save_sp(std::string b, std::string e) : call_frame_t(b, e) {}
       void out_cf();
     };
-    struct recover : call_frame_t {
-      recover(std::string b, std::string e) : call_frame_t(b, e) {}
+    struct save_bx : call_frame_t {
+      save_bx(std::string b, std::string e) : call_frame_t(b, e) {}
       void out_cf();
     };
-    struct call : call_frame_t {
-      call(std::string b, std::string e) : call_frame_t(b, e) {}
+    struct recover : call_frame_t {
+      recover(std::string b, std::string e) : call_frame_t(b, e) {}
       void out_cf();
     };
     struct frame_desc_t {
@@ -343,7 +345,7 @@ namespace intel {
     };
     extern std::vector<frame_desc_t> fds;
     extern void out_frame();
-    extern std::string LFCI_label();
+    extern std::string LCFI_label();
   } // end of nmaespace exception
 
 #endif // CXX_GENERATOR

@@ -25,17 +25,16 @@ namespace intel {
       // region start
       out << '\t' << ".uleb128 " << start << '-' << func_label << '\n';
 
-      out << '\t' << ".uleb128 " << end << '-' << func_label << '\n'; // length
+      // length
+      out << '\t' << ".uleb128 " << end << '-' << start << '\n';
 
-      if (landing.empty()) {
-	out << '\t' << ".uleb128 0" << '\n'; // landing pad
-	out << '\t' << ".uleb128 0" << '\n';  // action
-      }
-      else {
-	// landing pad
+       // landing pad
+      if (landing.empty())
+	out << '\t' << ".uleb128 0" << '\n';
+      else
 	out << '\t' << ".uleb128 " << landing << '-' << func_label << '\n';
-	out << '\t' << ".uleb128 0x1" << '\n'; // action
-      }
+
+      out << '\t' << ".uleb128 " << info.m_action << '\n'; // action
     }
     void out_call_sites()
     {
@@ -51,17 +50,10 @@ namespace intel {
 	out_call_site(info);
       out << end << ':' << '\n';
     }
-    void out_action_record(const call_site_t& info)
-    {
-      debug_break();
-      string landing = info.m_landing;
-      int n = landing.empty() ? 0 : 1;
-      out << '\t' << ".byte " << n << '\n'; // Action record table
-    }
     void out_action_records()
     {
-      for (const auto& info : call_sites)
-	out_action_record(info);
+      out << '\t' << ".byte " << 1 << '\n';
+      out << '\t' << ".byte " << 0 << '\n';
     }
     string label(const type* T, char c)
     {
@@ -175,6 +167,12 @@ namespace intel {
       out << '\t' << ".byte	0xd" << '\n'; // DW_CFA_def_cfa_register
       out << '\t' << ".uleb128 0x5" << '\n';
     }
+    void save_bx::out_cf()
+    {
+      call_frame_t::out_cf();
+      out << '\t' << ".byte	0x83" << '\n';
+      out << '\t' << ".uleb128 0x3" << '\n';
+    }
     void recover::out_cf()
     {
       call_frame_t::out_cf();
@@ -183,12 +181,6 @@ namespace intel {
       out << '\t' << ".byte	0xc" << '\n';
       out << '\t' << ".uleb128 0x4" << '\n';
       out << '\t' << ".uleb128 0x4" << '\n';
-    }
-    void call::out_cf()
-    {
-      call_frame_t::out_cf();
-      out << '\t' << ".byte	0x83" << '\n';
-      out << '\t' << ".uleb128 0x3" << '\n';
     }
     void out_fd(const frame_desc_t& info, string frame_start)
     {
@@ -302,13 +294,13 @@ namespace intel {
       out_cie(start);
       end_section(EXCEPT_FRAME);
     }
-    string LFCI_label()
+    string LCFI_label()
     {
       static int counter;
       ostringstream os;
       if (mode == GNU)
 	os << '.';
-      os << "LFCI" << counter++;
+      os << "LCFI" << counter++;
       if (mode == MS)
 	os << '$';
       return os.str();
