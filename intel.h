@@ -1,8 +1,6 @@
 #ifndef _INTEL_H_
 #define _INTEL_H_
 
-#define FIX_2020_08_05
-
 #ifdef _MSC_VER
 #define DLL_EXPORT __declspec(dllexport)
 #else // _MSC_VER
