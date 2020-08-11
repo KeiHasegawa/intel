@@ -137,12 +137,12 @@ void generator_generate(const COMPILER::generator::interface_t* ptr)
   if (ptr->m_func) {
     genfunc(ptr->m_func, *ptr->m_code);
 #ifdef CXX_GENERATOR
-    exception::out_table();
-    for (auto T : exception::throw_types) {
+    except::out_table();
+    for (auto T : except::throw_types) {
       if (T->tmp())
-	exception::out_type_info(T);
+	except::out_type_info(T);
     }
-    exception::throw_types.clear();
+    except::throw_types.clear();
 #endif
   }
   uint64_float_t::obj.output();
@@ -239,7 +239,7 @@ extern "C" DLL_EXPORT int generator_close_file()
 
 #ifdef CXX_GENERATOR
   init_term_fun();
-  exception::out_frame();
+  except::out_frame();
 #endif // CXX_GENERATOR
 
   transform(mem::refed.begin(), mem::refed.end(), ostream_iterator<string>(out), mem::refgen);

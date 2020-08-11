@@ -159,21 +159,21 @@ void intel::enter(const COMPILER::fundef* func,
   usr::flag2_t mask =
     usr::flag2_t(usr::INITIALIZE_FUNCTION | usr::TERMINATE_FUNCTION);
   if (!(f2 & mask)) {
-    exception::frame_desc_t fd;
+    except::frame_desc_t fd;
     fd.m_fname = func_label;
-    exception::fds.push_back(fd);
+    except::fds.push_back(fd);
   }
 #endif // CXX_GENERATOR
 
   out << '\t' << "push" << ps << '\t' << FP << '\n';
 #ifdef CXX_GENERATOR
   if (!(f2 & mask)) {
-    string label = exception::LCFI_label();
+    string label = except::LCFI_label();
     out << label << ':' << '\n';
-    assert(!exception::fds.empty());
-    exception::frame_desc_t& fd = exception::fds.back();
-    vector<exception::call_frame_t*>& cfs = fd.m_cfs;
-    cfs.push_back(new exception::save_fp(fd.m_fname, label));
+    assert(!except::fds.empty());
+    except::frame_desc_t& fd = except::fds.back();
+    vector<except::call_frame_t*>& cfs = fd.m_cfs;
+    cfs.push_back(new except::save_fp(fd.m_fname, label));
   }
 #endif // CXX_GENERATOR
   if (mode == MS && !x64)
@@ -185,15 +185,15 @@ void intel::enter(const COMPILER::fundef* func,
     out << FP << ", " << SP << '\n';
 #ifdef CXX_GENERATOR
   if (!(f2 & mask)) {
-    string label = exception::LCFI_label();
+    string label = except::LCFI_label();
     out << label << ':' << '\n';
-    assert(!exception::fds.empty());
-    exception::frame_desc_t& fd = exception::fds.back();
-    vector<exception::call_frame_t*>& cfs = fd.m_cfs;
+    assert(!except::fds.empty());
+    except::frame_desc_t& fd = except::fds.back();
+    vector<except::call_frame_t*>& cfs = fd.m_cfs;
     assert(!cfs.empty());
-    exception::call_frame_t* cf = cfs.back();
+    except::call_frame_t* cf = cfs.back();
     string begin = cf->m_end;
-    cfs.push_back(new exception::save_sp(begin, label));
+    cfs.push_back(new except::save_sp(begin, label));
   }
 #endif // CXX_GENERATOR
 
@@ -231,15 +231,15 @@ void intel::enter(const COMPILER::fundef* func,
   out << '\t' << "sub" << ps << '\t' << "$" << dec << n << ", " << SP << '\n';
 #ifdef CXX_GENERATOR
   if (!(f2 & mask)) {
-    string label = exception::LCFI_label();
+    string label = except::LCFI_label();
     out << label << ':' << '\n';
-    assert(!exception::fds.empty());
-    exception::frame_desc_t& fd = exception::fds.back();
-    vector<exception::call_frame_t*>& cfs = fd.m_cfs;
+    assert(!except::fds.empty());
+    except::frame_desc_t& fd = except::fds.back();
+    vector<except::call_frame_t*>& cfs = fd.m_cfs;
     assert(!cfs.empty());
-    exception::call_frame_t* cf = cfs.back();
+    except::call_frame_t* cf = cfs.back();
     string begin = cf->m_end;
-    cfs.push_back(new exception::save_bx(begin, label));
+    cfs.push_back(new except::save_bx(begin, label));
   }
 #endif // CXX_GENERATOR
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
@@ -304,15 +304,15 @@ void intel::leave(const COMPILER::fundef* func)
   usr::flag2_t mask =
     usr::flag2_t(usr::INITIALIZE_FUNCTION | usr::TERMINATE_FUNCTION);
   if (!(f2 & mask)) {
-    string label = exception::LCFI_label();
+    string label = except::LCFI_label();
     out << label << ':' << '\n';
-    assert(!exception::fds.empty());
-    exception::frame_desc_t& fd = exception::fds.back();
-    vector<exception::call_frame_t*>& cfs = fd.m_cfs;
+    assert(!except::fds.empty());
+    except::frame_desc_t& fd = except::fds.back();
+    vector<except::call_frame_t*>& cfs = fd.m_cfs;
     assert(!cfs.empty());
-    exception::call_frame_t* cf = cfs.back();
+    except::call_frame_t* cf = cfs.back();
     string begin = cf->m_end;
-    cfs.push_back(new exception::recover(begin, label));
+    cfs.push_back(new except::recover(begin, label));
   }
 #endif // CXX_GENERATOR
   out << '\t' << "ret" << '\n';
@@ -324,8 +324,8 @@ void intel::leave(const COMPILER::fundef* func)
     else
       end = func_label + ".end" + '$';
     out << end << ':' << '\n';
-    assert(!exception::fds.empty());
-    exception::frame_desc_t& fd = exception::fds.back();
+    assert(!except::fds.empty());
+    except::frame_desc_t& fd = except::fds.back();
     fd.m_end = end;
   }
 #endif // CXX_GENERATOR
@@ -4603,12 +4603,12 @@ void intel::throwe(COMPILER::tac* tac)
   const type* T = p->m_type;
   out << '\t' << "subl" << '\t' << "$4, %esp" << '\n';
   out << '\t' << "pushl" << '\t' << "$0" << '\n';
-  out << '\t' << "pushl" << '\t' << '$' << exception::label(T, 'I');
+  out << '\t' << "pushl" << '\t' << '$' << except::label(T, 'I');
   out << '\n';
   out << '\t' << "pushl" << '\t' << "%eax" << '\n';
   out << '\t' << "call" << '\t' << "__cxa_throw" << '\n';
 
-  exception::throw_types.push_back(T);
+  except::throw_types.push_back(T);
 }
 
 void intel::rethrow(COMPILER::tac* tac)
@@ -4620,27 +4620,27 @@ void intel::rethrow(COMPILER::tac* tac)
   string end = new_label((mode == GNU) ? ".label" : "label$");
   out << end << ":\n";
 
-  exception::call_site_t info;
+  except::call_site_t info;
   info.m_start = start;
   info.m_end = end;
-  exception::call_sites.push_back(info);
+  except::call_sites.push_back(info);
 }
 
 void intel::try_begin(COMPILER::tac* tac)
 {
   string label = to_impl::label(tac);
   out << label << ":\n";
-  exception::call_site_t info;
+  except::call_site_t info;
   info.m_start = label;
-  exception::call_sites.push_back(info);
+  except::call_sites.push_back(info);
 }
 
 void intel::try_end(COMPILER::tac* tac)
 {
   string label = to_impl::label(tac);
   out << label << ":\n";
-  assert(!exception::call_sites.empty());
-  exception::call_site_t& info = exception::call_sites.back();
+  assert(!except::call_sites.empty());
+  except::call_site_t& info = except::call_sites.back();
   assert(!info.m_start.empty());
   assert(info.m_end.empty());
   info.m_end = label;
@@ -4652,8 +4652,8 @@ void intel::here(COMPILER::tac* tac)
   assert(!x64 && mode == GNU);
   string label = to_impl::label(tac);
   out << label << ":\n";
-  assert(!exception::call_sites.empty());
-  exception::call_site_t& info = exception::call_sites.back();
+  assert(!except::call_sites.empty());
+  except::call_site_t& info = except::call_sites.back();
   assert(!info.m_start.empty());
   assert(!info.m_end.empty());
   assert(info.m_landing.empty());
@@ -4680,8 +4680,8 @@ void intel::there(COMPILER::tac* tac)
   assert(!x64 && mode == GNU);
   string label = to_impl::label(tac);
   out << label << ":\n";
-  assert(!exception::call_sites.empty());
-  exception::call_site_t& info = exception::call_sites.back();
+  assert(!except::call_sites.empty());
+  except::call_site_t& info = except::call_sites.back();
   assert(!info.m_start.empty());
   assert(!info.m_end.empty());
   assert(info.m_landing.empty());
@@ -4703,10 +4703,10 @@ void intel::unwind_resume(COMPILER::tac* tac)
   out << '\t' << "call" << '\t' << "_Unwind_Resume" << '\n';
   string end = label + ".end";
   out << end << ":\n";
-  exception::call_site_t info;
+  except::call_site_t info;
   info.m_start = start;
   info.m_end = end;
-  exception::call_sites.push_back(info);
+  except::call_sites.push_back(info);
 }
 
 void intel::catch_begin(COMPILER::tac* tac)
@@ -4719,7 +4719,7 @@ void intel::catch_begin(COMPILER::tac* tac)
   out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
   out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
   if (!tac->x) {
-    exception::call_site_t::types.push_back(0);
+    except::call_site_t::types.push_back(0);
     return;
   }
   address* x = getaddr(tac->x);
@@ -4732,7 +4732,7 @@ void intel::catch_begin(COMPILER::tac* tac)
     RT* rt = static_cast<RT*>(T);
     T = rt->referenced_type();
   }
-  exception::call_site_t::types.push_back(T);
+  except::call_site_t::types.push_back(T);
 }
 
 void intel::catch_end(COMPILER::tac* tac)

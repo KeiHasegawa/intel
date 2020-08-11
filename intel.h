@@ -298,7 +298,7 @@ namespace intel {
   extern bool
   incomplete(const std::pair<const COMPILER::type*, COMPILER::var*>&);
 
-  namespace exception {
+  namespace except {
     struct call_site_t {
       std::string m_start;
       std::string m_end;
@@ -344,7 +344,7 @@ namespace intel {
     extern std::vector<frame_desc_t> fds;
     extern void out_frame();
     extern std::string LCFI_label();
-  } // end of nmaespace exception
+  } // end of nmaespace except
 
 #endif // CXX_GENERATOR
 

@@ -8,7 +8,7 @@ void debug_break()
 }
 
 namespace intel {
-  namespace exception {
+  namespace except {
     using namespace std;
     using namespace COMPILER;
     vector<call_site_t> call_sites;
@@ -132,8 +132,8 @@ namespace intel {
 	os << '$';
       string label = os.str();
       out << label << ':' << '\n';
-      assert(!exception::fds.empty());
-      exception::frame_desc_t& fd = exception::fds.back();
+      assert(!except::fds.empty());
+      except::frame_desc_t& fd = except::fds.back();
       fd.m_lsda = label;
       out << '\t' << ".byte	0xff" << '\n'; // LDSA header
       out << '\t' << ".byte	0" << '\n'; // Type Format
@@ -305,7 +305,7 @@ namespace intel {
 	os << '$';
       return os.str();
     }
-  } // end of nmaespace exception
+  } // end of nmaespace except
 } // end of namespace intel
 
 
