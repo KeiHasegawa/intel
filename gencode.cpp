@@ -3850,9 +3850,9 @@ namespace intel {
       using namespace std;
       ostringstream os;
       if (mode == GNU)
-        os << '.' << func_label << tac;
+        os << '.' << 'L' << func_label << tac;
       else
-        os << func_label << tac << '$';
+        os << 'L' << func_label << tac << '$';
       return os.str();
     }
   }  // end of namespace to_impl
@@ -4658,7 +4658,13 @@ void intel::here(COMPILER::tac* tac)
   assert(!info.m_end.empty());
   assert(info.m_landing.empty());
   info.m_landing = label;
-  info.m_action = 1;
+  here3ac* p = static_cast<here3ac*>(tac);
+  if (p->m_for_dest) {
+    info.m_action = 0;
+    info.m_for_dest = true;
+  }
+  else
+    info.m_action = 1;
 }
 
 void intel::here_reason(COMPILER::tac* tac)
@@ -4723,9 +4729,8 @@ void intel::catch_begin(COMPILER::tac* tac)
     return;
   }
   address* x = getaddr(tac->x);
-  x->store();
-
   const type* T = tac->x->m_type;
+  T->scalar() ? x->store() : copy(x, 0, T->size());
   T = T->unqualified();
   if (T->m_id == type::REFERENCE) {
     typedef const reference_type RT;

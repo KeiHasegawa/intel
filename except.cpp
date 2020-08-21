@@ -15,6 +15,7 @@ namespace intel {
     vector<const type*> types;
     vector<const type*> call_site_t::types;
     vector<const type*> throw_types;
+    set<const type*> types_to_output;
     vector<frame_desc_t> fds;
     void out_call_site(const call_site_t& info)
     {
@@ -71,19 +72,25 @@ namespace intel {
 	out << 0;
       out << '\n';
     }
-    void out_lsda()
+    void out_lsda(bool for_dest)
     {
-      string start = ".LLSDATTD." + func_label;
-      string end =   ".LLSDATT."  + func_label;
-      out << '\t' << ".uleb128 " << end << '-' << start << '\n'; // LSDA length
-      out << start << ':' << '\n';
+      if (for_dest) {
+	out_call_sites();
+	assert(call_site_t::types.empty());
+	return;
+      }
 
+      string start = ".LLSDATTD." + func_label;
+      string end   = ".LLSDATT."  + func_label;
+
+      // LSDA length
+      out << '\t' << ".uleb128 " << end << '-' << start << '\n';
+      out << start << ':' << '\n';
       out_call_sites();
       out_action_records();
-
       out << '\t' << ".align 4" << '\n';
       for (auto T : call_site_t::types)
- 	out_type(T);
+	out_type(T);
       out << end << ':' << '\n';
     }
     bool table_outputed;
@@ -118,6 +125,7 @@ namespace intel {
     }
     void out_table()
     {
+      debug_break();
       if (call_sites.empty()) {
 	assert(call_site_t::types.empty());
 	return;
@@ -135,13 +143,22 @@ namespace intel {
       assert(!except::fds.empty());
       except::frame_desc_t& fd = except::fds.back();
       fd.m_lsda = label;
+      typedef vector<call_site_t>::const_iterator IT;
+      IT p = find_if(begin(call_sites), end(call_sites),
+		     [](const call_site_t& info){ return info.m_for_dest; });
+      bool for_dest = (p != end(call_sites));
       out << '\t' << ".byte	0xff" << '\n'; // LDSA header
-      out << '\t' << ".byte	0" << '\n'; // Type Format
-      out_lsda();
+      out << '\t' << ".byte	";
+      if (!for_dest)
+	out << 0;
+      else
+	out << "0xff";
+      out << '\n'; // Type Format
+      out_lsda(for_dest);
       call_sites.clear();
       end_section(EXCEPT_TABLE);
       for (auto T : call_site_t::types)
-	out_type_info(T);
+	out_type_info(T), types_to_output.erase(T);
       call_site_t::types.clear();
       table_outputed = true;
     }
@@ -225,8 +242,8 @@ namespace intel {
     // output Common Infomation Entry
     void out_cie(string frame_start)
     {
-      string start = ".SCIE";
-      string end =   ".ECIE";
+      string start = ".LSCIE";
+      string end =   ".LECIE";
       // Length of CIE
       out << '\t' << ".long	" << end << '-' << start << '\n';
 

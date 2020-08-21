@@ -141,6 +141,8 @@ void generator_generate(const COMPILER::generator::interface_t* ptr)
     for (auto T : except::throw_types) {
       if (T->tmp())
 	except::out_type_info(T);
+      else
+	except::types_to_output.insert(T);
     }
     except::throw_types.clear();
 #endif
@@ -240,6 +242,8 @@ extern "C" DLL_EXPORT int generator_close_file()
 #ifdef CXX_GENERATOR
   init_term_fun();
   except::out_frame();
+  for (auto T : except::types_to_output)
+    except::out_type_info(T);
 #endif // CXX_GENERATOR
 
   transform(mem::refed.begin(), mem::refed.end(), ostream_iterator<string>(out), mem::refgen);

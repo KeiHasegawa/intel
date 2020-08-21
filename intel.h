@@ -304,11 +304,13 @@ namespace intel {
       std::string m_end;
       std::string m_landing;
       int m_action;
-      call_site_t() : m_action(0) {}
+      bool m_for_dest;
+      call_site_t() : m_action(0), m_for_dest(false) {}
       static std::vector<const COMPILER::type*> types;
     };
     extern void out_type_info(const COMPILER::type* T);
     extern std::vector<const COMPILER::type*> throw_types;
+    extern std::set<const COMPILER::type*> types_to_output;
     extern std::string label(const COMPILER::type*, char);
     extern std::vector<call_site_t> call_sites;
     extern void out_table();
