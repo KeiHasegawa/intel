@@ -119,7 +119,8 @@ namespace intel {
       debug_break();
       if (!T)
 	return;
-      if (!T->get_tag())
+      tag* ptr = T->get_tag();
+      if (!ptr)
 	return;
       string L1 = label(T, 'I');
       out << '\t' << ".weak	" << L1 << '\n';
@@ -129,9 +130,25 @@ namespace intel {
       out << '\t' << ".type	" << L1 << ", @object" << '\n';
       out << '\t' << ".size	" << L1 << ", 8" << '\n';
       out << L1 << ':' << '\n';
-      out << '\t' << ".long	_ZTVN10__cxxabiv117__class_type_infoE+8" << '\n';
+      out << '\t' << ".long	";
+      vector<base*>* bases = ptr->m_bases;
+      if (!bases)
+	out << "_ZTVN10__cxxabiv117__class_type_infoE+8";
+      else
+	out << "_ZTVN10__cxxabiv120__si_class_type_infoE+8";
+      out << '\n';
       string L2 = label(T, 'S');
       out << '\t' << ".long	" << L2 << '\n';
+      if (bases) {
+	for (auto b : *bases) {
+	  tag* bptr = b->m_tag;
+	  const type* bT = bptr->m_types.second;
+	  assert(bT);
+	  string bL = label(bT, 'I');
+	  out << '\t' << ".long	" << bL << '\n';
+	}
+      }
+
       out << '\t' << ".weak	" << L2 << '\n';
       out << '\t' << ".section	.rodata." << L2 << ",\"aG\",@progbits,";
       out << L2 << ",comdat" << '\n';
