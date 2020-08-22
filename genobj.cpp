@@ -16,8 +16,14 @@ namespace intel {
     using namespace std;
     using namespace COMPILER;
     const type* T = x.first;
-    if (!T)
-      return false;
+    if (!T) {
+      var* v = x.second;
+      if (v->addrof_cast())
+	return false;
+      assert(v->usr_cast());
+      usr* u = static_cast<usr*>(v);
+      return u->m_flag2 & usr::TEMPL_PARAM;
+    }
     T = T->unqualified();
     if (T->m_id == type::TEMPLATE_PARAM)
       return true;

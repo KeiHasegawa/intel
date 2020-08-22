@@ -4793,35 +4793,11 @@ std::string intel::scope_name(COMPILER::scope* p)
   using namespace COMPILER;
   if (p->m_id == scope::TAG) {
     tag* ptr = static_cast<tag*>(p);
-    string name = ptr->m_name;
+    const type* T = ptr->m_types.second;
+    if (!T)
+      T = ptr->m_types.first;
     ostringstream os;
-    if (ptr->m_flag & tag::INSTANTIATE) {
-      instantiated_tag* it = static_cast<instantiated_tag*>(ptr);
-      tag* src = reinterpret_cast<tag*>(it->m_src);
-      name = src->m_name;
-      tag::flag_t flag = src->m_flag;
-      if (flag & tag::PARTIAL_SPECIAL) {
-	string::size_type p = name.find_first_of('<');
-	name.erase(p);
-      }
-      os << name.length() << name;
-      os << 'I';
-      const instantiated_tag::SEED& seed = it->m_seed;
-      for (auto p : seed) {
-	if (const type* T = p.first)
-	  T->encode(os);
-	else {
-	  var* v = p.second;
-	  if (addrof* a = v->addrof_cast())
-	    v = a->m_ref;
-	  usr* u = v->usr_cast();
-	  os << u->m_name;
-	}
-      }
-      os << 'E';
-    }
-    else
-      os << name.length() << name;
+    T->encode(os);
     return scope_name(ptr->m_parent) + os.str();
   }
   if (p->m_id == scope::NAMESPACE) {
