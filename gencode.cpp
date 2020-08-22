@@ -4802,10 +4802,14 @@ std::string intel::scope_name(COMPILER::scope* p)
   }
   if (p->m_id == scope::NAMESPACE) {
     name_space* ptr = static_cast<name_space*>(p);
+    scope* parent = ptr->m_parent;
+    assert(parent);
     string name = ptr->m_name;
+    if (name == "std" && !parent->m_parent)
+      return "";
     ostringstream os;
     os << name.length() << name;
-    return scope_name(ptr->m_parent) + os.str();
+    return scope_name(parent) + os.str();
   }
   return "";
 }
@@ -4898,8 +4902,17 @@ std::string intel::func_name(COMPILER::usr* u)
     assert(p != op_tbl.end());
     os << '.' << p->second << '.';
   }
-  else
+  else {
+    scope* p = u->m_scope;
+    if (p->m_id == scope::NAMESPACE) {
+      name_space* ptr = static_cast<name_space*>(p);
+      scope* parent = ptr->m_parent;
+      string name = ptr->m_name;
+      if (name == "std" && !parent->m_parent)
+	os << "St";
+    }
     os << s.length() << s;
+  }
   if (flag2 & usr::EXPLICIT_INSTANTIATE) {
     typedef instantiated_usr IU;
     IU* iu = static_cast<IU*>(u);
