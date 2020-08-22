@@ -17,6 +17,15 @@ namespace intel {
     vector<const type*> throw_types;
     set<const type*> types_to_output;
     vector<frame_desc_t> fds;
+    int conv(int x)
+    {
+      if (!x)
+	return 0;
+      assert(x == 1);
+      const vector<const type*>& v = call_site_t::types;
+      int n = v.size();
+      return (n << 1) - 1; 
+    }
     void out_call_site(const call_site_t& info)
     {
       string start = info.m_start;
@@ -35,7 +44,7 @@ namespace intel {
       else
 	out << '\t' << ".uleb128 " << landing << '-' << func_label << '\n';
 
-      out << '\t' << ".uleb128 " << info.m_action << '\n'; // action
+      out << '\t' << ".uleb128 " << conv(info.m_action) << '\n'; // action
     }
     void out_call_sites()
     {
@@ -53,8 +62,19 @@ namespace intel {
     }
     void out_action_records()
     {
-      out << '\t' << ".byte " << 1 << '\n';
+      const vector<const type*>& v = call_site_t::types;
+      int n = v.size();
+      if (n <= 1) {
+	out << '\t' << ".byte " << 1 << '\n';
+	out << '\t' << ".byte " << 0 << '\n';
+	return;
+      }
+      out << '\t' << ".byte " << n << '\n';
       out << '\t' << ".byte " << 0 << '\n';
+      while (--n) {
+	out << '\t' << ".byte	" << n << '\n';
+	out << '\t' << ".byte	0x7d" << '\n';
+      }
     }
     string label(const type* T, char c)
     {
@@ -89,13 +109,14 @@ namespace intel {
       out_call_sites();
       out_action_records();
       out << '\t' << ".align 4" << '\n';
-      for (auto T : call_site_t::types)
-	out_type(T);
+      const vector<const type*>& v = call_site_t::types;
+      for_each(rbegin(v), rend(v), out_type);
       out << end << ':' << '\n';
     }
     bool table_outputed;
     void out_type_info(const type* T)
     {
+      debug_break();
       if (!T)
 	return;
       if (!T->get_tag())
@@ -157,8 +178,14 @@ namespace intel {
       out_lsda(for_dest);
       call_sites.clear();
       end_section(EXCEPT_TABLE);
-      for (auto T : call_site_t::types)
-	out_type_info(T), types_to_output.erase(T);
+      for (auto T : call_site_t::types) {
+	if (T) {
+	  if (T->tmp())
+	    out_type_info(T);
+	  else
+	    types_to_output.insert(T);
+	}
+      }
       call_site_t::types.clear();
       table_outputed = true;
     }
