@@ -134,19 +134,8 @@ void generator_generate(const COMPILER::generator::interface_t* ptr)
   using namespace std;
   using namespace intel;
   genobj(ptr->m_root);
-  if (ptr->m_func) {
+  if (ptr->m_func)
     genfunc(ptr->m_func, *ptr->m_code);
-#ifdef CXX_GENERATOR
-    except::out_table();
-    for (auto T : except::throw_types) {
-      if (T->tmp())
-	except::out_type_info(T);
-      else
-	except::types_to_output.insert(T);
-    }
-    except::throw_types.clear();
-#endif
-  }
   uint64_float_t::obj.output();
   uint64_double_t::obj.output();
   uint64_ld_t::obj.output();
@@ -241,9 +230,15 @@ extern "C" DLL_EXPORT int generator_close_file()
 
 #ifdef CXX_GENERATOR
   init_term_fun();
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+  for (auto T : except::types_to_output)
+    except::out_type_info(T);
+  except::out_labeled_types();
+#else // defined(_MSC_VER) || defined(__CYGWIN__)
   except::out_frame();
   for (auto T : except::types_to_output)
     except::out_type_info(T);
+#endif // defined(_MSC_VER) || defined(__CYGWIN__)
 #endif // CXX_GENERATOR
 
   transform(mem::refed.begin(), mem::refed.end(), ostream_iterator<string>(out), mem::refgen);
@@ -1534,12 +1529,22 @@ void intel::output_section(section kind)
         out << '"' << 'w' << '"' << '\n';
 	break;
       case EXCEPT_TABLE:
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+	out << '\t' << ".seh_handler	__gxx_personality_seh0,";
+	out << "@unwind, @except" << '\n';
+	out << '\t' << ".seh_handlerdata" << '\n';
+#else  // defined(_MSC_VER) || defined(__CYGWIN__)
 	out << '\t' << ".section" << '\t' << ".gcc_except_table,";
 	out << '"' << 'a' << '"' << ",@progbits" << '\n';
+#endif  // defined(_MSC_VER) || defined(__CYGWIN__)
         break;
       case EXCEPT_FRAME:
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+	// nothing to be done
+#else  // defined(_MSC_VER) || defined(__CYGWIN__)
 	out << '\t' << ".section" << '\t' << ".eh_frame,";
 	out << '"' << 'a' << '"' << ",@progbits" << '\n';
+#endif  // defined(_MSC_VER) || defined(__CYGWIN__)
         break;
       }
     }

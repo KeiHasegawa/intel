@@ -314,6 +314,9 @@ namespace intel {
     extern std::string label(const COMPILER::type*, char);
     extern std::vector<call_site_t> call_sites;
     extern void out_table();
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+    extern void out_labeled_types();
+#else // defined(_MSC_VER) || defined(__CYGWIN__)
     struct call_frame_t {
       std::string m_begin;
       std::string m_end;
@@ -346,10 +349,9 @@ namespace intel {
     extern std::vector<frame_desc_t> fds;
     extern void out_frame();
     extern std::string LCFI_label();
+#endif // defined(_MSC_VER) || defined(__CYGWIN__)
   } // end of nmaespace except
-
 #endif // CXX_GENERATOR
-
 }  // end of namespace intel
 
 #endif // _INTEL_H_

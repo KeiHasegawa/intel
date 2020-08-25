@@ -16,7 +16,11 @@ namespace intel {
     vector<const type*> call_site_t::types;
     vector<const type*> throw_types;
     set<const type*> types_to_output;
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+    // nothing to be defined
+#else // defined(_MSC_VER) || defined(__CYGWIN__)
     vector<frame_desc_t> fds;
+#endif  // defined(_MSC_VER) || defined(__CYGWIN__)
     int conv(int x)
     {
       if (!x)
@@ -85,13 +89,42 @@ namespace intel {
     }
     void out_type(const type* T)
     {
-      out << '\t' << ".long	";
+      if (x64)
+	out << '\t' << ".quad	";
+      else
+	out << '\t' << ".long	";
       if (T)
 	out << label(T, 'I');
       else
 	out << 0;
       out << '\n';
     }
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+    vector<pair<string, const type*> > labeled_types;
+    void out_type_label(const type* T)
+    {
+      string L = new_label((mode == GNU) ? ".LDFCM" : "LDFCM$");
+      out << '\t' << ".long	" << L << "-." << '\n';
+      labeled_types.push_back(make_pair(L, T));
+    }
+    void out_labeled_type(const pair<string, const type*>& p)
+    {
+      string L = p.first;
+      out << L << ':' << '\n';
+      const type* T = p.second;
+      out_type(T);
+    }
+    void out_labeled_types()
+    {
+      vector<pair<string, const type*> >& v = labeled_types;
+      if (v.empty())
+	return;
+      sec_hlp sentry(RAM);
+      out << '\t' << ".align 8" << '\n';
+      for_each(begin(v), end(v), out_labeled_type);
+      v.clear();
+    }
+#endif  // defined(_MSC_VER) || defined(__CYGWIN__)    
     void out_lsda(bool for_dest)
     {
       if (for_dest) {
@@ -110,7 +143,11 @@ namespace intel {
       out_action_records();
       out << '\t' << ".align 4" << '\n';
       const vector<const type*>& v = call_site_t::types;
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+      for_each(rbegin(v), rend(v), out_type_label);
+#else // defined(_MSC_VER) || defined(__CYGWIN__)
       for_each(rbegin(v), rend(v), out_type);
+#endif // defined(_MSC_VER) || defined(__CYGWIN__)
       out << end << ':' << '\n';
     }
     bool table_outputed;
@@ -119,45 +156,74 @@ namespace intel {
       debug_break();
       if (!T)
 	return;
-      tag* ptr = T->get_tag();
-      if (!ptr)
-	return;
       string L1 = label(T, 'I');
+      tag* ptr = T->get_tag();
+      if (!ptr) {
+	if (x64) {
+	  mem::refgen_t obj(L1, usr::NONE, 8);
+	  out << mem::refgen(obj) << '\n';
+	}
+	return;
+      }
+#if defined(_MSC_VER) || defined(__CYGWIN__)      
+      out << '\t' << ".globl	" << L1 << '\n';
+      out << '\t' << ".section	.rdata$" << L1 << ",\"dr\"" << '\n';
+      out << '\t' << ".linkonce same_size" << '\n';
+      out << '\t' << ".align 8" << '\n';
+#else  // defined(_MSC_VER) || defined(__CYGWIN__)
       out << '\t' << ".weak	" << L1 << '\n';
       out << '\t' << ".section	.rodata." << L1 << ",\"aG\",@progbits,";
       out << L1 << ",comdat" << '\n';
       out << '\t' << ".align 4" << '\n';
       out << '\t' << ".type	" << L1 << ", @object" << '\n';
       out << '\t' << ".size	" << L1 << ", 8" << '\n';
-      out << L1 << ':' << '\n';
-      out << '\t' << ".long	";
+#endif  // defined(_MSC_VER) || defined(__CYGWIN__)
+      out << L1 << ':' << '\n';      
+      if (x64)
+	out << '\t' << ".quad	";
+      else
+	out << '\t' << ".long	";
       vector<base*>* bases = ptr->m_bases;
       if (!bases)
-	out << "_ZTVN10__cxxabiv117__class_type_infoE+8";
+	out << "_ZTVN10__cxxabiv117__class_type_infoE+";
       else
-	out << "_ZTVN10__cxxabiv120__si_class_type_infoE+8";
-      out << '\n';
+	out << "_ZTVN10__cxxabiv120__si_class_type_infoE+";
+      out << (x64 ? 16 : 8) << '\n';
       string L2 = label(T, 'S');
-      out << '\t' << ".long	" << L2 << '\n';
+      if (x64)
+	out << '\t' << ".quad	";
+      else
+	out << '\t' << ".long	";
+      out << L2 << '\n';
       if (bases) {
 	for (auto b : *bases) {
 	  tag* bptr = b->m_tag;
 	  const type* bT = bptr->m_types.second;
 	  assert(bT);
 	  string bL = label(bT, 'I');
-	  out << '\t' << ".long	" << bL << '\n';
+	  if (x64)
+	    out << '\t' << ".quad	";
+	  else
+	    out << '\t' << ".long	";
+	  out << bL << '\n';
 	}
       }
 
+      ostringstream os;
+      T->encode(os);
+      string s = os.str();
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+      out << '\t' << ".globl	" << L2 << '\n';
+      out << '\t' << ".section	.rdata$" << L2 << ",\"dr\"" << '\n';
+      out << '\t' << ".linkonce same_size" << '\n';
+#else  // defined(_MSC_VER) || defined(__CYGWIN__)
       out << '\t' << ".weak	" << L2 << '\n';
       out << '\t' << ".section	.rodata." << L2 << ",\"aG\",@progbits,";
       out << L2 << ",comdat" << '\n';
       out << '\t' << ".align 4" << '\n';
       out << '\t' << ".type	" << L2 << ", @object" << '\n';
-      ostringstream os;
-      T->encode(os);
-      string s = os.str();
       out << '\t' << ".size	" << L2 << ", " << s.length()+1 << '\n';
+#endif  // defined(_MSC_VER) || defined(__CYGWIN__)
       out << L2 << ':' << '\n';
       out << '\t' << ".string	" << '"' << s << '"' << '\n';
     }
@@ -178,17 +244,26 @@ namespace intel {
 	os << '$';
       string label = os.str();
       out << label << ':' << '\n';
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+      // nothing to be done
+#else // defined(_MSC_VER) || defined(__CYGWIN__)
       assert(!except::fds.empty());
       except::frame_desc_t& fd = except::fds.back();
       fd.m_lsda = label;
+#endif // defined(_MSC_VER) || defined(__CYGWIN__)
       typedef vector<call_site_t>::const_iterator IT;
       IT p = find_if(begin(call_sites), end(call_sites),
 		     [](const call_site_t& info){ return info.m_for_dest; });
       bool for_dest = (p != end(call_sites));
       out << '\t' << ".byte	0xff" << '\n'; // LDSA header
       out << '\t' << ".byte	";
-      if (!for_dest)
+      if (!for_dest) {
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+	out << "0x9b";
+#else // defined(_MSC_VER) || defined(__CYGWIN__)
 	out << 0;
+#endif	// defined(_MSC_VER) || defined(__CYGWIN__)
+      }
       else
 	out << "0xff";
       out << '\n'; // Type Format
@@ -206,6 +281,9 @@ namespace intel {
       call_site_t::types.clear();
       table_outputed = true;
     }
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+    // nothing to be defined
+#else // defined(_MSC_VER) || defined(__CYGWIN__)
     void call_frame_t::out_cf()
     {
       out << '\t' << ".byte	0x4" << '\n'; // DW_CFA_advance_loc4
@@ -366,9 +444,9 @@ namespace intel {
 	os << '$';
       return os.str();
     }
+#endif // defined(_MSC_VER) || defined(__CYGWIN__)
   } // end of nmaespace except
 } // end of namespace intel
-
 
 #endif  // CXX_GENERATOR
 
