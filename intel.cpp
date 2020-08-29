@@ -710,10 +710,10 @@ namespace intel {
       char sf = suffix(size);
       string ptr;
       if (mode == MS)
-	ptr = ms_pseudo(size) + " PTR ";
+        ptr = ms_pseudo(size) + " PTR ";
       if (mode == GNU) {
         out << '\t' << "mov" << ps << '\t' << ".refptr." << label << "(%rip)," << '\t' << preg << '\n';
-	mem::refed.insert(mem::refgen_t(label,f,size));
+        mem::refed.insert(mem::refgen_t(label,f,size));
       }
       else {
         out << '\t' << "lea" << ps << '\t' << preg << ", "<< '\t' << label << '\n';
@@ -756,9 +756,9 @@ void intel::mem::load(reg::gpr r) const
       mem_impl::load_label_x64(r, m_label, f, size);
       string preg = reg::name(r, psize());
       if (mode == GNU)
-	out << '\t' << "mov" << sf << '\t' << '(' << preg << "), " << dst << '\n';
+        out << '\t' << "mov" << sf << '\t' << '(' << preg << "), " << dst << '\n';
       else
-	out << '\t' << "mov" << sf << '\t' << dst << ", " << ptr << '[' << preg << ']' << '\n';
+        out << '\t' << "mov" << sf << '\t' << dst << ", " << ptr << '[' << preg << ']' << '\n';
     }
     else {
       if (size <= 4) {
@@ -1062,7 +1062,7 @@ bool intel::mem::is(COMPILER::usr* u)
       typedef IU::SEED::const_iterator IT;
       IT p = find_if(begin(seed), end(seed), incomplete);
       if (p != end(seed))
-	return false;
+        return false;
     }
   }
 #endif // CXX_GENERATOR
@@ -1527,23 +1527,23 @@ void intel::output_section(section kind)
         out << '\t' << ".section" << '\t';
         out << (kind == CTOR ? ".ctors," : ".dtors,");
         out << '"' << 'w' << '"' << '\n';
-	break;
+        break;
       case EXCEPT_TABLE:
 #if defined(_MSC_VER) || defined(__CYGWIN__)
-	out << '\t' << ".seh_handler	__gxx_personality_seh0,";
-	out << "@unwind, @except" << '\n';
-	out << '\t' << ".seh_handlerdata" << '\n';
+        out << '\t' << ".seh_handler	__gxx_personality_seh0,";
+        out << "@unwind, @except" << '\n';
+        out << '\t' << ".seh_handlerdata" << '\n';
 #else  // defined(_MSC_VER) || defined(__CYGWIN__)
-	out << '\t' << ".section" << '\t' << ".gcc_except_table,";
-	out << '"' << 'a' << '"' << ",@progbits" << '\n';
+        out << '\t' << ".section" << '\t' << ".gcc_except_table,";
+        out << '"' << 'a' << '"' << ",@progbits" << '\n';
 #endif  // defined(_MSC_VER) || defined(__CYGWIN__)
         break;
       case EXCEPT_FRAME:
 #if defined(_MSC_VER) || defined(__CYGWIN__)
-	// nothing to be done
+        // nothing to be done
 #else  // defined(_MSC_VER) || defined(__CYGWIN__)
-	out << '\t' << ".section" << '\t' << ".eh_frame,";
-	out << '"' << 'a' << '"' << ",@progbits" << '\n';
+        out << '\t' << ".section" << '\t' << ".eh_frame,";
+        out << '"' << 'a' << '"' << ",@progbits" << '\n';
 #endif  // defined(_MSC_VER) || defined(__CYGWIN__)
         break;
       }

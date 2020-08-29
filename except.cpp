@@ -24,7 +24,7 @@ namespace intel {
     int conv(int x)
     {
       if (!x)
-	return 0;
+        return 0;
       assert(x == 1);
       const vector<const type*>& v = call_site_t::types;
       int n = v.size();
@@ -44,9 +44,9 @@ namespace intel {
 
        // landing pad
       if (landing.empty())
-	out << '\t' << ".uleb128 0" << '\n';
+        out << '\t' << ".uleb128 0" << '\n';
       else
-	out << '\t' << ".uleb128 " << landing << '-' << func_label << '\n';
+        out << '\t' << ".uleb128 " << landing << '-' << func_label << '\n';
 
       out << '\t' << ".uleb128 " << conv(info.m_action) << '\n'; // action
     }
@@ -61,7 +61,7 @@ namespace intel {
 
       out << start << ':' << '\n';
       for (const auto& info : call_sites)
-	out_call_site(info);
+        out_call_site(info);
       out << end << ':' << '\n';
     }
     void out_action_records()
@@ -69,15 +69,15 @@ namespace intel {
       const vector<const type*>& v = call_site_t::types;
       int n = v.size();
       if (n <= 1) {
-	out << '\t' << ".byte " << 1 << '\n';
-	out << '\t' << ".byte " << 0 << '\n';
-	return;
+        out << '\t' << ".byte " << 1 << '\n';
+        out << '\t' << ".byte " << 0 << '\n';
+        return;
       }
       out << '\t' << ".byte " << n << '\n';
       out << '\t' << ".byte " << 0 << '\n';
       while (--n) {
-	out << '\t' << ".byte	" << n << '\n';
-	out << '\t' << ".byte	0x7d" << '\n';
+        out << '\t' << ".byte	" << n << '\n';
+        out << '\t' << ".byte	0x7d" << '\n';
       }
     }
     string label(const type* T, char c)
@@ -90,13 +90,13 @@ namespace intel {
     void out_type(const type* T)
     {
       if (x64)
-	out << '\t' << ".quad	";
+        out << '\t' << ".quad	";
       else
-	out << '\t' << ".long	";
+        out << '\t' << ".long	";
       if (T)
-	out << label(T, 'I');
+        out << label(T, 'I');
       else
-	out << 0;
+        out << 0;
       out << '\n';
     }
 #if defined(_MSC_VER) || defined(__CYGWIN__)
@@ -118,7 +118,7 @@ namespace intel {
     {
       vector<pair<string, const type*> >& v = labeled_types;
       if (v.empty())
-	return;
+        return;
       sec_hlp sentry(RAM);
       out << '\t' << ".align 8" << '\n';
       for_each(begin(v), end(v), out_labeled_type);
@@ -128,9 +128,9 @@ namespace intel {
     void out_lsda(bool for_dest)
     {
       if (for_dest) {
-	out_call_sites();
-	assert(call_site_t::types.empty());
-	return;
+        out_call_sites();
+        assert(call_site_t::types.empty());
+        return;
       }
 
       string start = ".LLSDATTD." + func_label;
@@ -155,15 +155,15 @@ namespace intel {
     {
       debug_break();
       if (!T)
-	return;
+        return;
       string L1 = label(T, 'I');
       tag* ptr = T->get_tag();
       if (!ptr) {
-	if (x64) {
-	  mem::refgen_t obj(L1, usr::NONE, 8);
-	  out << mem::refgen(obj) << '\n';
-	}
-	return;
+        if (x64) {
+          mem::refgen_t obj(L1, usr::NONE, 8);
+          out << mem::refgen(obj) << '\n';
+        }
+        return;
       }
 #if defined(_MSC_VER) || defined(__CYGWIN__)      
       out << '\t' << ".globl	" << L1 << '\n';
@@ -180,33 +180,33 @@ namespace intel {
 #endif  // defined(_MSC_VER) || defined(__CYGWIN__)
       out << L1 << ':' << '\n';      
       if (x64)
-	out << '\t' << ".quad	";
+        out << '\t' << ".quad	";
       else
-	out << '\t' << ".long	";
+        out << '\t' << ".long	";
       vector<base*>* bases = ptr->m_bases;
       if (!bases)
-	out << "_ZTVN10__cxxabiv117__class_type_infoE+";
+        out << "_ZTVN10__cxxabiv117__class_type_infoE+";
       else
-	out << "_ZTVN10__cxxabiv120__si_class_type_infoE+";
+        out << "_ZTVN10__cxxabiv120__si_class_type_infoE+";
       out << (x64 ? 16 : 8) << '\n';
       string L2 = label(T, 'S');
       if (x64)
-	out << '\t' << ".quad	";
+        out << '\t' << ".quad	";
       else
-	out << '\t' << ".long	";
+        out << '\t' << ".long	";
       out << L2 << '\n';
       if (bases) {
-	for (auto b : *bases) {
-	  tag* bptr = b->m_tag;
-	  const type* bT = bptr->m_types.second;
-	  assert(bT);
-	  string bL = label(bT, 'I');
-	  if (x64)
-	    out << '\t' << ".quad	";
-	  else
-	    out << '\t' << ".long	";
-	  out << bL << '\n';
-	}
+        for (auto b : *bases) {
+          tag* bptr = b->m_tag;
+          const type* bT = bptr->m_types.second;
+          assert(bT);
+          string bL = label(bT, 'I');
+          if (x64)
+            out << '\t' << ".quad	";
+          else
+            out << '\t' << ".long	";
+          out << bL << '\n';
+        }
       }
 
       ostringstream os;
@@ -231,17 +231,17 @@ namespace intel {
     {
       debug_break();
       if (call_sites.empty()) {
-	assert(call_site_t::types.empty());
-	return;
+        assert(call_site_t::types.empty());
+        return;
       }
       output_section(EXCEPT_TABLE);
       out << '\t' << ".align 4" << '\n';
       ostringstream os;
       if (mode == GNU)
-	os << '.';
+        os << '.';
       os << "LLSDA" << '.' << func_label;
       if (mode == MS)
-	os << '$';
+        os << '$';
       string label = os.str();
       out << label << ':' << '\n';
 #if defined(_MSC_VER) || defined(__CYGWIN__)
@@ -253,30 +253,30 @@ namespace intel {
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
       typedef vector<call_site_t>::const_iterator IT;
       IT p = find_if(begin(call_sites), end(call_sites),
-		     [](const call_site_t& info){ return info.m_for_dest; });
+        	     [](const call_site_t& info){ return info.m_for_dest; });
       bool for_dest = (p != end(call_sites));
       out << '\t' << ".byte	0xff" << '\n'; // LDSA header
       out << '\t' << ".byte	";
       if (!for_dest) {
 #if defined(_MSC_VER) || defined(__CYGWIN__)
-	out << "0x9b";
+        out << "0x9b";
 #else // defined(_MSC_VER) || defined(__CYGWIN__)
-	out << 0;
+        out << 0;
 #endif	// defined(_MSC_VER) || defined(__CYGWIN__)
       }
       else
-	out << "0xff";
+        out << "0xff";
       out << '\n'; // Type Format
       out_lsda(for_dest);
       call_sites.clear();
       end_section(EXCEPT_TABLE);
       for (auto T : call_site_t::types) {
-	if (T) {
-	  if (T->tmp())
-	    out_type_info(T);
-	  else
-	    types_to_output.insert(T);
-	}
+        if (T) {
+          if (T->tmp())
+            out_type_info(T);
+          else
+            types_to_output.insert(T);
+        }
       }
       call_site_t::types.clear();
       table_outputed = true;
@@ -345,17 +345,17 @@ namespace intel {
       out << '\t' << ".long	";
       string lsda = info.m_lsda;
       if (lsda.empty())
-	out << 0;
+        out << 0;
       else
-	out << lsda;
+        out << lsda;
       out << '\n';
 
       for (auto p : info.m_cfs)
-	p->out_cf();
+        p->out_cf();
 
 #ifdef _DEBUG
       for (auto p : info.m_cfs)
-	delete p;
+        delete p;
 #endif // _DEBUG
 
       out << '\t' << ".align 4" << '\n';
@@ -381,7 +381,7 @@ namespace intel {
       out << '\t' << ".string	";
       out << '"';
       if (table_outputed)
-	out << "zPL";
+        out << "zPL";
       out << '"' << '\n';
 
       // CIE Code Alignment Factor
@@ -394,14 +394,14 @@ namespace intel {
       out << '\t' << ".uleb128 0x8" << '\n';
 
       if (table_outputed) {
-	// Augmentation size
-	out << '\t' << ".uleb128 0x6" << '\n';
+        // Augmentation size
+        out << '\t' << ".uleb128 0x6" << '\n';
 
-	// Personality
-	out << '\t' << ".byte	0" << '\n';
-	out << '\t' << ".long	__gxx_personality_v0" << '\n';
-	// LSDA Encoding
-	out << '\t' << ".byte	0" << '\n';
+        // Personality
+        out << '\t' << ".byte	0" << '\n';
+        out << '\t' << ".long	__gxx_personality_v0" << '\n';
+        // LSDA Encoding
+        out << '\t' << ".byte	0" << '\n';
       }
 
       // vvvvv output 2 default CFI
@@ -421,12 +421,12 @@ namespace intel {
       out << end << ':' << '\n';
       
       for (const auto& info : fds)
-	out_fd(info, frame_start);
+        out_fd(info, frame_start);
     }
     void out_frame()
     {
       if (fds.empty())
-	return;
+        return;
       output_section(EXCEPT_FRAME);
       string start = ".Lframe";
       out << start << ':' << '\n';
@@ -438,10 +438,10 @@ namespace intel {
       static int counter;
       ostringstream os;
       if (mode == GNU)
-	os << '.';
+        os << '.';
       os << "LCFI" << counter++;
       if (mode == MS)
-	os << '$';
+        os << '$';
       return os.str();
     }
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)

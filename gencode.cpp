@@ -43,7 +43,8 @@ void intel::genfunc(const COMPILER::fundef* func,
 
 #ifdef CXX_GENERATOR
 #if defined(_MSC_VER) || defined(__CYGWIN__)
-  out << '\t' << ".seh_proc	" << func_label << '\n';
+  if (mode == GNU)
+    out << '\t' << ".seh_proc	" << func_label << '\n';
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
 #endif // CXX_GENERATOR
   
@@ -74,8 +75,10 @@ void intel::genfunc(const COMPILER::fundef* func,
   }
   except::throw_types.clear();
 #if defined(_MSC_VER) || defined(__CYGWIN__)
-  out << '\t' << ".text" << '\n';
-  out << '\t' << ".seh_endproc" << '\n';
+  if (mode == GNU) {
+    out << '\t' << ".text" << '\n';
+    out << '\t' << ".seh_endproc" << '\n';
+  }
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
 #endif // CXX_GENERATOR
 }
@@ -191,7 +194,8 @@ void intel::enter(const COMPILER::fundef* func,
   out << '\t' << "push" << ps << '\t' << FP << '\n';
 #ifdef CXX_GENERATOR
 #if defined(_MSC_VER) || defined(__CYGWIN__)
-  out << '\t' << ".seh_pushreg	%rbp" << '\n';
+  if (mode == GNU)
+    out << '\t' << ".seh_pushreg	%rbp" << '\n';
 #else // defined(_MSC_VER) || defined(__CYGWIN__)  
   if (!(f2 & mask)) {
     string label = except::LCFI_label();
@@ -212,7 +216,8 @@ void intel::enter(const COMPILER::fundef* func,
     out << FP << ", " << SP << '\n';
 #ifdef CXX_GENERATOR
 #if defined(_MSC_VER) || defined(__CYGWIN__)
-  out << '\t' << ".seh_setframe	%rbp, 0" << '\n';
+  if (mode == GNU)
+    out << '\t' << ".seh_setframe	%rbp, 0" << '\n';
 #else  // defined(_MSC_VER) || defined(__CYGWIN__)
   if (!(f2 & mask)) {
     string label = except::LCFI_label();
@@ -264,8 +269,10 @@ void intel::enter(const COMPILER::fundef* func,
 
 #ifdef CXX_GENERATOR
 #if defined(_MSC_VER) || defined(__CYGWIN__)
-  out << '\t' << ".seh_stackalloc	" << n << '\n';
-  out << '\t' << ".seh_endprologue" << '\n';
+  if (mode == GNU) {
+    out << '\t' << ".seh_stackalloc	" << n << '\n';
+    out << '\t' << ".seh_endprologue" << '\n';
+  }
 #else // defined(_MSC_VER) || defined(__CYGWIN__)
   if (!(f2 & mask)) {
     string label = except::LCFI_label();
@@ -578,7 +585,7 @@ int intel::func_local(const COMPILER::fundef* func)
     vector<usr*>::const_iterator end = order.end();
     if (order.size() > (big ? 3 : 4))
       end = order.begin() + (big ? 3 : 4);
-    accumulate(order.begin(), end, big ? 1 : 0, param_save);
+    (void)accumulate(order.begin(), end, big ? 1 : 0, param_save);
     const vector<const type*>& param = X->param();
     if (param.size() > order.size()) {
       T = param[order.size()];
@@ -4830,8 +4837,12 @@ std::string intel::cxx_label(COMPILER::usr* u)
     return u->m_name;
   string a = scope_name(u->m_scope);
   string ret;
-  if ( !a.empty() || (flag & usr::FUNCTION) )
-    ret = "_Z";
+  if ( !a.empty() || (flag & usr::FUNCTION) ) {
+      if (mode == GNU)
+          ret = "_Z";
+      else
+          ret = "?";
+  }
   if ( !a.empty() ){
     ostringstream os;
     os << "N" << a;
@@ -4976,9 +4987,12 @@ std::string intel::func_name(COMPILER::usr* u)
       scope* parent = ptr->m_parent;
       string name = ptr->m_name;
       if (name == "std" && !parent->m_parent)
-	os << "St";
+        os << "St";
     }
-    os << s.length() << s;
+    if (mode == GNU)
+        os << s.length() << s;
+    else
+        os << s << "@@YA";
   }
   if (flag2 & usr::EXPLICIT_INSTANTIATE) {
     typedef instantiated_usr IU;
@@ -4987,12 +5001,12 @@ std::string intel::func_name(COMPILER::usr* u)
     const IU::SEED& seed = iu->m_seed;
     for (auto p : seed) {
       if (const type* T = p.first)
-	T->encode(os);
+        T->encode(os);
       else {
-	var* v = p.second;
-	assert(v->usr_cast());
-	usr* u = static_cast<usr*>(v);
-	os << u->m_name;
+        var* v = p.second;
+        assert(v->usr_cast());
+        usr* u = static_cast<usr*>(v);
+        os << u->m_name;
       }
     }
     os << "EPT_";
@@ -5004,10 +5018,198 @@ std::string intel::func_name(COMPILER::usr* u)
   return os.str();
 }
 
+namespace intel {
+  namespace ms_signature {
+    using namespace std;
+    using namespace COMPILER;
+    string encode_void(const type*) { return "X"; }
+    string encode_char(const type*) { return "D"; }
+    string encode_schar(const type*) { return "C"; }
+    string encode_uchar(const type*) { return "E"; }
+    string encode_bool(const type*) { return "_N"; }
+    string encode_short(const type*) { return "F"; }
+    string encode_ushort(const type*) { return "G"; }
+    string encode_wchar(const type*) { return "_W"; }
+    string encode_int(const type*) { return "H"; }
+    string encode_uint(const type*) { return "AI"; }
+    string encode_long(const type*) { return "J"; }
+    string encode_ulong(const type*) { return "K"; }
+    string encode_longlong(const type*) { return "_J"; }
+    string encode_ulonglong(const type*) { return "_K"; }
+    string encode_float(const type*) { return "M"; }
+    string encode_double(const type*) { return "N"; }
+    string encode_longdouble(const type*) { return "OX"; }
+    string encode_tag(const tag* ptr)
+    {
+      ostringstream os;
+      os << '?' << 'A';
+      tag::kind_t kind = ptr->m_kind;
+      switch (kind) {
+      case tag::ENUM:   os << "W4"; break;
+      case tag::STRUCT: os << 'U'; break;
+      case tag::UNION: os << 'T'; break;
+      default: assert(kind == tag::CLASS);  os << 'V'; break;
+      }
+      string name = ptr->m_name;
+      os << name << "@@";
+      return os.str();
+    }
+    string encode_enum(const type* T)
+    {
+      return encode_tag(T->get_tag());
+    }
+    string encode_record(const type* T)
+    {
+      return encode_tag(T->get_tag());
+    }
+    string encode_incomplete(const type* T)
+    {
+      return encode_tag(T->get_tag());
+    }
+    string encode_func(const type* T)
+    {
+      ostringstream os;
+      assert(T->m_id == type::FUNC);
+      typedef const func_type FT;
+      FT* ft = static_cast<FT*>(T);
+      const type* R = ft->return_type();
+      os << signature(R);
+      const vector<const type*>& param = ft->param();
+      for (auto T : param)
+        os << signature(T);
+      assert(!param.empty());
+      const type* B = param.back();
+      type::id_t id = B->m_id;
+      switch (id) {
+      case type::VOID: break;
+      case type::ELLIPSIS: os << 'Z'; break;
+      default: os << '@'; break;
+      }
+      os << 'Z';
+      return os.str();
+    }
+    string encode_ptr_ref(const type* R)
+    {
+      ostringstream os;
+      if (R->m_id == type::FUNC)
+        os << '6';
+      else
+        os << 'E';
+      int cvr = 0;
+      R = R->unqualified(&cvr);
+      switch (cvr) {
+      case 0: os << 'A'; break;
+      case 1: os << 'B'; break;
+      case 2: os << 'C'; break;
+      default: os << 'D'; break;
+      }
+      os << signature(R);
+      return os.str();
+    }
+    string encode_pointer(const type* T)
+    {
+      assert(T->m_id == type::POINTER);
+      typedef const pointer_type PT;
+      PT* pt = static_cast<PT*>(T);
+      const type* R = pt->referenced_type();
+      return 'P' + encode_ptr_ref(R);
+    }
+    string encode_reference(const type* T)
+    {
+      assert(T->m_id == type::REFERENCE);
+      typedef const reference_type RT;
+      RT* rt = static_cast<RT*>(T);
+      const type* R = rt->referenced_type();
+      return 'A' + encode_ptr_ref(R);
+    }
+    string encode_array(const type* T)
+    {
+      assert(T->m_id == type::ARRAY);
+      typedef const array_type AT;
+      AT* at = static_cast<AT*>(T);
+      int dim = at->dim();
+      ostringstream os;
+      os << "Y0";
+      if (dim)
+        os << dim - 1;
+      else
+        os << "A@";
+      const type* E = at->element_type();
+      int cvr = 0;
+      E = E->unqualified(&cvr);
+      switch (cvr) {
+      case 0: os << 'A'; break;
+      case 1: os << 'B'; break;
+      case 2: os << 'C'; break;
+      default: os << 'D'; break;
+      }
+      os << signature(E);
+      return os.str();
+    }
+    string encode_elllipsis(const type*)
+    {
+      return "";
+    }
+    string encode_pm(const type* T)
+    {
+      assert(T->m_id == type::POINTER_MEMBER);
+      typedef const pointer_member_type PM;
+      PM* pm = static_cast<PM*>(T);
+      const tag* ptr = pm->ctag();
+      string name = ptr->m_name;
+      ostringstream os;
+      os << "PEQ";
+      os << name;
+      os << "@@";
+      const type* R = pm->referenced_type();
+      os << signature(R);
+      return os.str();
+    }
+    struct table_t : map<type::id_t, string(*)(const type*)> {
+      table_t();
+    } table;
+    table_t::table_t()
+    {
+      (*this)[type::VOID] = encode_void;
+      (*this)[type::CHAR] = encode_char;
+      (*this)[type::SCHAR] = encode_schar;
+      (*this)[type::UCHAR] = encode_uchar;
+      (*this)[type::BOOL] = encode_bool;
+      (*this)[type::SHORT] = encode_short;
+      (*this)[type::USHORT] = encode_ushort;
+      (*this)[type::WCHAR] = encode_wchar;
+      (*this)[type::INT] = encode_int;
+      (*this)[type::UINT] = encode_uint;
+      (*this)[type::LONG] = encode_long;
+      (*this)[type::ULONG] = encode_ulong;
+      (*this)[type::LONGLONG] = encode_longlong;
+      (*this)[type::ULONGLONG] = encode_ulonglong;
+      (*this)[type::FLOAT] = encode_float;
+      (*this)[type::DOUBLE] = encode_double;
+      (*this)[type::LONG_DOUBLE] = encode_longdouble;
+      (*this)[type::ENUM] = encode_enum;
+      (*this)[type::RECORD] = encode_record;
+      (*this)[type::INCOMPLETE_TAGGED] = encode_incomplete;
+      (*this)[type::FUNC] = encode_func;
+      (*this)[type::POINTER] = encode_pointer;
+      (*this)[type::REFERENCE] = encode_reference;
+      (*this)[type::ARRAY] = encode_array;
+      (*this)[type::ELLIPSIS] = encode_elllipsis;
+      (*this)[type::POINTER_MEMBER] = encode_pm;
+    }
+  } // end of namespace ms_signature
+} // end of namespace intel
+
 std::string intel::signature(const COMPILER::type* T)
 {
   using namespace std;
   using namespace COMPILER;
+  if (mode == MS) {
+      using namespace ms_signature;
+      table_t::const_iterator p = table.find(T->m_id);
+      assert(p != table.end());
+      return (p->second)(T);
+  }
   ostringstream os;
   assert(T->m_id == type::FUNC);
   typedef const func_type FT;

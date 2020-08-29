@@ -156,7 +156,7 @@ namespace intel {
   };
   namespace mem_impl {
     void load_label_x64(reg::gpr r, std::string label,
-			COMPILER::usr::flag_t f, int size);
+                        COMPILER::usr::flag_t f, int size);
   } // end of namespace mem_impl
   struct stack : address {
     COMPILER::var* m_var;
@@ -214,7 +214,7 @@ namespace intel {
   extern char fsuffix(int);
 
   enum section { NONE, CODE, ROMDATA, RAM, BSS, CTOR, DTOR,
-		 EXCEPT_TABLE, EXCEPT_FRAME };
+                 EXCEPT_TABLE, EXCEPT_FRAME };
   extern void output_section(section);
   extern void end_section(section);
   struct sec_hlp {
