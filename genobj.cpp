@@ -19,7 +19,7 @@ namespace intel {
     if (!T) {
       var* v = x.second;
       if (v->addrof_cast())
-	return false;
+        return false;
       assert(v->usr_cast());
       usr* u = static_cast<usr*>(v);
       return u->m_flag2 & usr::TEMPL_PARAM;
@@ -29,15 +29,15 @@ namespace intel {
       return true;
     if (tag* ptr = T->get_tag()) {
       if (ptr->m_flag & tag::TYPENAMED) {
-	if (T->m_id == type::INCOMPLETE_TAGGED)
-	  return true;
+        if (T->m_id == type::INCOMPLETE_TAGGED)
+          return true;
       }
       if (ptr->m_flag & tag::INSTANTIATE) {
-	instantiated_tag* it = static_cast<instantiated_tag*>(ptr);
-	const instantiated_tag::SEED& seed = it->m_seed;
-	typedef instantiated_tag::SEED::const_iterator IT;
-	IT p = find_if(begin(seed), end(seed), incomplete);
-	return p != end(seed);
+        instantiated_tag* it = static_cast<instantiated_tag*>(ptr);
+        const instantiated_tag::SEED& seed = it->m_seed;
+        typedef instantiated_tag::SEED::const_iterator IT;
+        IT p = find_if(begin(seed), end(seed), incomplete);
+        return p != end(seed);
       }
     }
     return false;
@@ -60,7 +60,7 @@ void intel::genobj(const COMPILER::scope* p)
       typedef instantiated_tag::SEED::const_iterator IT;
       IT p = find_if(begin(seed), end(seed), incomplete);
       if (p != end(seed))
-	return;
+        return;
     }
   }
 #endif // CXX_GENERATOR
@@ -77,7 +77,7 @@ void intel::usrs1(const std::pair<std::string, std::vector<COMPILER::usr*> >& en
   using namespace std;
   using namespace COMPILER;
   const vector<usr*>& vec = entry.second;
-  accumulate(vec.begin(),vec.end(),false,usrs2);
+  (void)accumulate(vec.begin(),vec.end(),false,usrs2);
 }
 
 bool intel::usrs2(bool done, COMPILER::usr* u)
