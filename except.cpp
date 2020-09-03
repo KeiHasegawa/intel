@@ -3,10 +3,6 @@
 #include "cxx_core.h"
 #include "intel.h"
 
-void debug_break()
-{
-}
-
 namespace intel {
   namespace except {
     using namespace std;
@@ -153,7 +149,6 @@ namespace intel {
     bool table_outputed;
     void out_type_info(const type* T)
     {
-      debug_break();
       if (!T)
         return;
       string L1 = label(T, 'I');
@@ -229,7 +224,6 @@ namespace intel {
     }
     void out_table()
     {
-      debug_break();
       if (call_sites.empty()) {
         assert(call_site_t::types.empty());
         return;
