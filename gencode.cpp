@@ -4616,14 +4616,22 @@ void intel::va_arg_impl::multi_x64(COMPILER::tac* tac)
   int psz = psize();
   string ax = reg::name(reg::ax, psz);
   string cx = reg::name(reg::cx, psz);
-  assert(mode == GNU);  
-  out << '\t' << "mov" << ps << '\t' << ax << ", " << cx << '\n';
-  out << '\t' << "mov" << ps << '\t' << '(' << ax << "), " << ax << '\n';
+  if (mode == GNU) {
+      out << '\t' << "mov" << ps << '\t' << ax << ", " << cx << '\n';
+      out << '\t' << "mov" << ps << '\t' << '(' << ax << "), " << ax << '\n';
+  }
+  else {
+      out << '\t' << "mov" << ps << '\t' << cx << ", " << ax << '\n';
+      out << '\t' << "mov" << ps << '\t' << ax << ", " << '[' << ax << ']' << '\n';
+  }
   address* x = getaddr(tac->x);
   const type* T = tac->x->m_type;
   int size = T->size();
   copy(x, 0, size);
-  out << '\t' << "add" << ps << '\t' << '$' << psz << ", " << cx << '\n';
+  if (mode == GNU)
+      out << '\t' << "add" << ps << '\t' << '$' << psz << ", " << cx << '\n';
+  else
+      out << '\t' << "add" << ps << '\t' << cx << ", " << psz << '\n';
   y->store(reg::cx);
 }
 
@@ -5073,10 +5081,10 @@ namespace intel {
       typedef const func_type FT;
       FT* ft = static_cast<FT*>(T);
       const type* R = ft->return_type();
-      os << signature(R);
+      os << signature(R->unqualified());
       const vector<const type*>& param = ft->param();
       for (auto T : param)
-        os << signature(T);
+        os << signature(T->unqualified());
       assert(!param.empty());
       const type* B = param.back();
       type::id_t id = B->m_id;
