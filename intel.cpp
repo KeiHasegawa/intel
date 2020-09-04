@@ -1090,11 +1090,15 @@ intel::mem::mem(COMPILER::usr* u) : address(MEM), m_usr(u)
   using namespace std;
   using namespace COMPILER;
   string name = u->m_name;
-  if (mode == MS && name[0] == '.')
-    name = name.substr(1);
 #ifdef CXX_GENERATOR
   m_label = external_header + cxx_label(u);
+  if (mode == MS && name[0] == '.') {
+      name = name.substr(1);
+      m_label = external_header + name;
+  }
 #else // CXX_GENERATOR
+  if (mode == MS && name[0] == '.')
+      name = name.substr(1);
   m_label = external_header + name;
 #endif // CXX_GENERATOR
   usr::flag_t f = u->m_flag;

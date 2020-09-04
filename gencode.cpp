@@ -5059,6 +5059,8 @@ namespace intel {
       default: assert(kind == tag::CLASS);  os << 'V'; break;
       }
       string name = ptr->m_name;
+      if (name[0] == '.')
+          name = name.substr(1) + '$';
       os << name << "@@";
       return os.str();
     }
