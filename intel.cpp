@@ -1570,7 +1570,7 @@ void intel::output_section(section kind)
       out << "_BSS SEGMENT" << '\n';
       break;
     default:
-      assert(0);
+      out << "_CTOR SEGMENT" << '\n';
       break;
     }
   }
