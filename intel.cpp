@@ -1569,9 +1569,15 @@ void intel::output_section(section kind)
     case BSS:
       out << "_BSS SEGMENT" << '\n';
       break;
+    case CTOR:
+        out << "text$di SEGMENT" << '\n';
+        break;
+    case DTOR:
+        out << "text$yd SEGMENT" << '\n';
+        break;
     default:
-      out << "_CTOR SEGMENT" << '\n';
-      break;
+        assert(0);
+        break;
     }
   }
 }
@@ -1593,9 +1599,14 @@ void intel::end_section(section kind)
   case BSS:
     out << "_BSS ENDS" << '\n';
     break;
-  case EXCEPT_TABLE:
-  case EXCEPT_FRAME:
-    assert(0 && "not implemented");
+  case CTOR:
+      out << "text$di ENDS" << '\n';
+      break;
+  case DTOR:
+      out << "text$yd ENDS" << '\n';
+      break;
+  default:
+    assert(0);
     break;
   }
 }
