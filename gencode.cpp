@@ -5156,6 +5156,26 @@ namespace intel {
       os << signature(E);
       return os.str();
     }
+    string encode_varray(const type* T)
+    {
+        assert(T->m_id == type::VARRAY);
+        typedef const varray_type VT;
+        VT* vt = static_cast<VT*>(T);
+        ostringstream os;
+        os << "Y0";
+        os << "A@";
+        const type* E = vt->element_type();
+        int cvr = 0;
+        E = E->unqualified(&cvr);
+        switch (cvr) {
+        case 0: os << 'A'; break;
+        case 1: os << 'B'; break;
+        case 2: os << 'C'; break;
+        default: os << 'D'; break;
+        }
+        os << signature(E);
+        return os.str();
+    }
     string encode_elllipsis(const type*)
     {
       return "";
@@ -5204,6 +5224,7 @@ namespace intel {
       (*this)[type::POINTER] = encode_pointer;
       (*this)[type::REFERENCE] = encode_reference;
       (*this)[type::ARRAY] = encode_array;
+      (*this)[type::VARRAY] = encode_varray;
       (*this)[type::ELLIPSIS] = encode_elllipsis;
       (*this)[type::POINTER_MEMBER] = encode_pm;
     }
