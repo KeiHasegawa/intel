@@ -1198,7 +1198,11 @@ bool intel::mem::genobj()
     else
       out << m_label << " DB " << dec << size << " DUP (?)" << '\n';
   }
+#if 0 // fix 2020.09.06 14:24
   defined.insert(name);
+#else
+  defined.insert(m_label);
+#endif
   return true;
 }
 

@@ -4852,9 +4852,11 @@ std::string intel::cxx_label(COMPILER::usr* u)
           ret = "?";
   }
   if ( !a.empty() ){
-    ostringstream os;
-    os << "N" << a;
-    ret += os.str();
+    if (mode == GNU) {
+        ostringstream os;
+        os << "N" << a;
+        ret += os.str();
+    }
   }
   string b;
   if (flag & usr::FUNCTION)
@@ -4862,11 +4864,17 @@ std::string intel::cxx_label(COMPILER::usr* u)
   else {
     ostringstream os;
     b = u->m_name;
-    if ( !a.empty() )
-      os << b.length();
+    if ( !a.empty() ) {
+      if (mode == GNU)
+          os << b.length();
+    }
     os << b;
-    if (!a.empty())
-      os << 'E';
+    if (!a.empty()) {
+        if (mode == GNU)
+            os << 'E';
+        else
+            os << a << "@@3HA";
+    }
     b = os.str();
   }
   ret += b;
@@ -4883,8 +4891,15 @@ std::string intel::scope_name(COMPILER::scope* p)
     if (!T)
       T = ptr->m_types.first;
     ostringstream os;
-    T->encode(os);
-    return scope_name(ptr->m_parent) + os.str();
+    if (mode == GNU) {
+        T->encode(os);
+        return scope_name(ptr->m_parent) + os.str();
+    }
+    else {
+        string name = ptr->m_name;
+        os << "?0" << name;
+        return os.str() + scope_name(ptr->m_parent);
+    }
   }
   if (p->m_id == scope::NAMESPACE) {
     name_space* ptr = static_cast<name_space*>(p);
@@ -4894,8 +4909,14 @@ std::string intel::scope_name(COMPILER::scope* p)
     if (name == "std" && !parent->m_parent)
       return "";
     ostringstream os;
-    os << name.length() << name;
-    return scope_name(parent) + os.str();
+    if (mode == GNU) {
+        os << name.length() << name;
+        return scope_name(parent) + os.str();
+    }
+    else {
+        os << '@' << name;
+        return os.str() + scope_name(parent);
+    }
   }
   return "";
 }
@@ -4957,23 +4978,43 @@ std::string intel::func_name(COMPILER::usr* u)
   using namespace std;
   using namespace COMPILER;
   usr::flag_t flag = u->m_flag;
-  if (flag & usr::NEW_SCALAR)
-    return x64 ? "nwm" : "nwj";
-  if (flag & usr::NEW_ARRAY)
-    return x64 ? "nam" : "naj";
-  if (flag & usr::DELETE_SCALAR)
-    return "dlPv";
-  if (flag & usr::DELETE_ARRAY)
-    return "daPv";
+  if (flag & usr::NEW_SCALAR) {
+    if (mode == GNU)
+      return x64 ? "nwm" : "nwj";
+    else
+      return x64 ? "??2@YAPEAX_K@Z" : "??2@YAPAXI@Z";
+  }
+  if (flag & usr::NEW_ARRAY) {
+    if (mode == GNU)
+      return x64 ? "nam" : "naj";
+    else
+      return x64 ? "??_U@YAPEAX_K@Z" : "??_U@YAPAXI@Z";
+  }
+  if (flag & usr::DELETE_SCALAR) {
+    if (mode == GNU)
+      return "dlPv";
+    else
+      return x64 ? "??3@YAXPEAX_K@Z" : "??3@YAXPAXI@Z";
+  }
+  if (flag & usr::DELETE_ARRAY) {
+    if (mode == GNU)
+      return "daPv";
+    else
+      return x64 ? "??_V@YAXPEAX@Z" : "??_V@YAXPAX@Z";
+  }
 
   usr::flag2_t flag2 = u->m_flag2;
   usr::flag2_t mask2 = usr::flag2_t(usr::TOR_BODY | usr::EXCLUDE_TOR);
   string s = u->m_name;
   ostringstream os;
-  if ((flag & usr::CTOR) && !(flag2 & mask2))
-    os << "C1";
-  else if ((flag & usr::DTOR) && !(flag2 &mask2))
-    os << "D1";
+  if ((flag & usr::CTOR) && !(flag2 & mask2)) {
+      if (mode == GNU)
+          os << "C1";
+  }
+  else if ((flag & usr::DTOR) && !(flag2 & mask2)) {
+      if (mode == GNU)
+          os << "D1";
+  }
   else if (flag2 & usr::CONV_OPE) {
     const type* T = u->m_type;
     assert(T->m_id == type::FUNC);
@@ -5020,8 +5061,12 @@ std::string intel::func_name(COMPILER::usr* u)
     os << "EPT_";
   }
   string tmp = scope_name(u->m_scope);
-  if (!tmp.empty())
-    os << 'E';
+  if (!tmp.empty()) {
+      if (mode == GNU)
+          os << 'E';
+      else
+          os << tmp << "@@";
+  }
   os << signature(u->m_type);
   return os.str();
 }
@@ -5083,7 +5128,8 @@ namespace intel {
       typedef const func_type FT;
       FT* ft = static_cast<FT*>(T);
       const type* R = ft->return_type();
-      os << signature(R->unqualified());
+      if (R)
+        os << signature(R->unqualified());
       const vector<const type*>& param = ft->param();
       for (auto T : param)
         os << signature(T->unqualified());
