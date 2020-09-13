@@ -36,10 +36,10 @@ void intel::genfunc(const COMPILER::fundef* func,
 #else // CXX_GENERATOR
   string name = u->m_name;
 #endif // CXX_GENERATOR
-  defined.insert(name);
   if (doll_need(name))
     name += '$';
   func_label = external_header + name;
+  defined.insert(func_label);
 
 #ifdef CXX_GENERATOR
 #if defined(_MSC_VER) || defined(__CYGWIN__)
@@ -89,6 +89,18 @@ namespace intel {
   {
     out << '\t' << "call" << '\t' << f << '\n';
   }
+  inline std::string atexit_label()
+  {
+    if (mode == GNU)
+      return "__cxa_atexit";
+
+    using namespace std;
+    using namespace COMPILER;
+    string label = external_header + "atexit";
+    mem::refgen_t ref(label, usr::FUNCTION, 0);
+    mem::refed.insert(ref);
+    return label;
+  }
   inline void term_call(std::string f)
   {
     using namespace std;
@@ -98,7 +110,8 @@ namespace intel {
       mem_impl::load_label_x64(reg::cx, f, COMPILER::usr::NONE, 8);
     else
       out << '\t' << "push" << ps << '\t' << '$' << f << '\n';
-    out << '\t' << "call" << '\t' << "__cxa_atexit" << '\n';
+    string name = atexit_label();
+    out << '\t' << "call" << '\t' << name << '\n';
   }
 } // end of namespace intel
 
@@ -109,53 +122,59 @@ void intel::init_term_fun()
   if (init_fun.empty() && term_fun.empty())
     return;
 
-  output_section(CODE);
   string name = "init_term";
-  out << name << ':' << '\n';
-  char ps = psuffix();
-  string SP = sp();
-  string FP = fp();
-  int psz = psize();
-  out << '\t' << "push" << ps << '\t' << FP << '\n';
-  if (mode == MS && !x64)
-    out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
-  out << '\t' << "mov" << ps << '\t';
-  if (mode == GNU)
-    out << SP << ", " << FP << '\n';
-  else
-    out << FP << ", " << SP << '\n';
-  if (mode != MS || x64)
-    out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
-  int stack_size = 16;
-  out << '\t' << "sub" << ps << '\t';
-  if (mode == GNU)
-    out << '$' << dec << stack_size << ", " << SP << '\n';
-  else
-    out << SP << ", " << dec << stack_size << '\n';
-
-  for_each(begin(init_fun), end(init_fun), init_call);
-  for_each(rbegin(term_fun), rend(term_fun), term_call);
-
-  out << '\t' << "mov" << ps << '\t';
-  if (mode == GNU)
-    out << FP << ", " << SP << '\n';
-  else
-    out << SP << ", " << FP << '\n';
-  if (mode != MS || x64) {
-    int m = x64 ? 8 : 4;
+  {
+    sec_hlp helper(CODE);
+    out << name << ':' << '\n';
+    char ps = psuffix();
+    string SP = sp();
+    string FP = fp();
+    int psz = psize();
+    out << '\t' << "push" << ps << '\t' << FP << '\n';
+    if (mode == MS && !x64)
+      out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+    out << '\t' << "mov" << ps << '\t';
+    if (mode == GNU)
+      out << SP << ", " << FP << '\n';
+    else
+      out << FP << ", " << SP << '\n';
+    if (mode != MS || x64)
+      out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+    int stack_size = 16;
     out << '\t' << "sub" << ps << '\t';
     if (mode == GNU)
-      out << '$' << m << " , " << SP << '\n';
+      out << '$' << dec << stack_size << ", " << SP << '\n';
     else
-      out << SP << " , " << m << '\n';
+      out << SP << ", " << dec << stack_size << '\n';
+
+    for_each(begin(init_fun), end(init_fun), init_call);
+    for_each(rbegin(term_fun), rend(term_fun), term_call);
+
+    out << '\t' << "mov" << ps << '\t';
+    if (mode == GNU)
+      out << FP << ", " << SP << '\n';
+    else
+      out << SP << ", " << FP << '\n';
+    if (mode != MS || x64) {
+      int m = x64 ? 8 : 4;
+      out << '\t' << "sub" << ps << '\t';
+      if (mode == GNU)
+	out << '$' << m << " , " << SP << '\n';
+      else
+	out << SP << " , " << m << '\n';
+    }
+    out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
+    out << '\t' << "pop" << ps << '\t' << FP << '\n';
+    out << '\t' << "ret" << '\n';
   }
-  out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
-  out << '\t' << "pop" << ps << '\t' << FP << '\n';
-  out << '\t' << "ret" << '\n';
-  output_section(CTOR);
-  int n = x64 ? 8 : 4;
-  out << '\t' << ".align" << '\t' << n << '\n';
-  out << '\t' << gnu_pseudo(n) << '\t' << name << '\n';
+
+  {
+    sec_hlp helper(CTOR);
+    int n = x64 ? 8 : 4;
+    if (mode == GNU)
+      out << '\t' << ".align" << '\t' << n << '\n';
+    out << '\t' << pseudo(n) << '\t' << name << '\n';
+  }
 }
 #endif // CXX_GENERATOR
 
@@ -4643,7 +4662,8 @@ void intel::_va_end(COMPILER::tac*)
 #ifdef CXX_GENERATOR
 void intel::alloce(COMPILER::tac* tac)
 {
-  assert(mode == GNU);
+  if (mode == MS)
+    return;
   address* y = getaddr(tac->y);
   assert(y->m_id == address::IMM);
   if (x64) {
@@ -4662,7 +4682,8 @@ void intel::alloce(COMPILER::tac* tac)
 
 void intel::throwe(COMPILER::tac* tac)
 {
-  assert(mode == GNU);
+  if (mode == MS)
+    return;
   address* y = getaddr(tac->y);
   throw3ac* p = static_cast<throw3ac*>(tac);
   const type* T = p->m_type;
@@ -4690,7 +4711,8 @@ void intel::throwe(COMPILER::tac* tac)
 
 void intel::rethrow(COMPILER::tac* tac)
 {
-  assert(mode == GNU);
+  if (mode == MS)
+    return;
   string start = new_label((mode == GNU) ? ".label" : "label$");
   out << start << ":\n";
   out << '\t' << "call" << '\t' << "__cxa_rethrow" << '\n';
@@ -4705,6 +4727,8 @@ void intel::rethrow(COMPILER::tac* tac)
 
 void intel::try_begin(COMPILER::tac* tac)
 {
+  if (mode == MS)
+    return;
   string label = to_impl::label(tac);
   out << label << ":\n";
   except::call_site_t info;
@@ -4714,6 +4738,8 @@ void intel::try_begin(COMPILER::tac* tac)
 
 void intel::try_end(COMPILER::tac* tac)
 {
+  if (mode == MS)
+    return;
   string label = to_impl::label(tac);
   out << label << ":\n";
   assert(!except::call_sites.empty());
@@ -4726,6 +4752,8 @@ void intel::try_end(COMPILER::tac* tac)
 
 void intel::here(COMPILER::tac* tac)
 {
+  if (mode == MS)
+    return;
   string label = to_impl::label(tac);
   out << label << ":\n";
   assert(!except::call_sites.empty());
@@ -4745,19 +4773,25 @@ void intel::here(COMPILER::tac* tac)
 
 void intel::here_reason(COMPILER::tac* tac)
 {
+  if (mode == MS)
+    return;
   address* x = getaddr(tac->x);
   x->store(reg::dx);
 }
 
 void intel::here_info(COMPILER::tac* tac)
 {
+  if (mode == MS)
+    return;
   address* x = getaddr(tac->x);
   x->store(reg::ax);
 }
 
 void intel::there(COMPILER::tac* tac)
 {
-  assert(mode == GNU);
+    if (mode == MS)
+        return;
+
   string label = to_impl::label(tac);
   out << label << ":\n";
   assert(!except::call_sites.empty());
@@ -4771,6 +4805,8 @@ void intel::there(COMPILER::tac* tac)
 
 void intel::unwind_resume(COMPILER::tac* tac)
 {
+  if (mode == MS)
+    return;
   address* y = getaddr(tac->y);
   if (x64)
     y->load(reg::cx);
@@ -4793,7 +4829,8 @@ void intel::unwind_resume(COMPILER::tac* tac)
 
 void intel::catch_begin(COMPILER::tac* tac)
 {
-  assert(mode == GNU);
+  if (mode == MS)
+    return;
   address* y = getaddr(tac->y);
   if (x64) {
     y->load(reg::cx);
@@ -4824,7 +4861,8 @@ void intel::catch_begin(COMPILER::tac* tac)
 
 void intel::catch_end(COMPILER::tac* tac)
 {
-  assert(mode == GNU);
+  if (mode == MS)
+    return;
   out << '\t' << "call" << '\t' << "__cxa_end_catch" << '\n';
 }
 #endif // CXX_GENERATOR
@@ -4841,21 +4879,25 @@ std::string intel::cxx_label(COMPILER::usr* u)
   using namespace std;
   using namespace COMPILER;
   usr::flag_t flag = u->m_flag;
-  if (flag & usr::C_SYMBOL)
-    return u->m_name;
+  if (flag & usr::C_SYMBOL) {
+    string name = u->m_name;
+    if (name[0] == '.')
+      name = name.substr(1);
+    return name;
+  }
   string a = scope_name(u->m_scope);
   string ret;
   if ( !a.empty() || (flag & usr::FUNCTION) ) {
-      if (mode == GNU)
-          ret = "_Z";
-      else
-          ret = "?";
+    if (mode == GNU)
+      ret = "_Z";
+    else
+      ret = "?";
   }
   if ( !a.empty() ){
     if (mode == GNU) {
-        ostringstream os;
-        os << "N" << a;
-        ret += os.str();
+      ostringstream os;
+      os << "N" << a;
+      ret += os.str();
     }
   }
   string b;
@@ -4864,16 +4906,18 @@ std::string intel::cxx_label(COMPILER::usr* u)
   else {
     ostringstream os;
     b = u->m_name;
+    if (b[0] == '.')
+        b = b.substr(1);
     if ( !a.empty() ) {
       if (mode == GNU)
-          os << b.length();
+	os << b.length();
     }
     os << b;
     if (!a.empty()) {
-        if (mode == GNU)
-            os << 'E';
-        else
-            os << a << "@@3HA";
+      if (mode == GNU)
+	os << 'E';
+      else
+	os << a << "@@3HA";
     }
     b = os.str();
   }
@@ -4892,13 +4936,12 @@ std::string intel::scope_name(COMPILER::scope* p)
       T = ptr->m_types.first;
     ostringstream os;
     if (mode == GNU) {
-        T->encode(os);
-        return scope_name(ptr->m_parent) + os.str();
+      T->encode(os);
+      return scope_name(ptr->m_parent) + os.str();
     }
     else {
-        string name = ptr->m_name;
-        os << "?0" << name;
-        return os.str() + scope_name(ptr->m_parent);
+      os << '@' << signature(T);
+      return os.str() + scope_name(ptr->m_parent);
     }
   }
   if (p->m_id == scope::NAMESPACE) {
@@ -4910,12 +4953,12 @@ std::string intel::scope_name(COMPILER::scope* p)
       return "";
     ostringstream os;
     if (mode == GNU) {
-        os << name.length() << name;
-        return scope_name(parent) + os.str();
+      os << name.length() << name;
+      return scope_name(parent) + os.str();
     }
     else {
-        os << '@' << name;
-        return os.str() + scope_name(parent);
+      os << '@' << name;
+      return os.str() + scope_name(parent);
     }
   }
   return "";
@@ -4982,25 +5025,25 @@ std::string intel::func_name(COMPILER::usr* u)
     if (mode == GNU)
       return x64 ? "nwm" : "nwj";
     else
-      return x64 ? "??2@YAPEAX_K@Z" : "??2@YAPAXI@Z";
+      return x64 ? "?2@YAPEAX_K@Z" : "?2@YAPAXI@Z";
   }
   if (flag & usr::NEW_ARRAY) {
     if (mode == GNU)
       return x64 ? "nam" : "naj";
     else
-      return x64 ? "??_U@YAPEAX_K@Z" : "??_U@YAPAXI@Z";
+      return x64 ? "?_U@YAPEAX_K@Z" : "?_U@YAPAXI@Z";
   }
   if (flag & usr::DELETE_SCALAR) {
     if (mode == GNU)
       return "dlPv";
     else
-      return x64 ? "??3@YAXPEAX_K@Z" : "??3@YAXPAXI@Z";
+      return x64 ? "?3@YAXPEAX_K@Z" : "?3@YAXPAXI@Z";
   }
   if (flag & usr::DELETE_ARRAY) {
     if (mode == GNU)
       return "daPv";
     else
-      return x64 ? "??_V@YAXPEAX@Z" : "??_V@YAXPAX@Z";
+      return x64 ? "?_V@YAXPEAX@Z" : "?_V@YAXPAX@Z";
   }
 
   usr::flag2_t flag2 = u->m_flag2;
@@ -5008,12 +5051,18 @@ std::string intel::func_name(COMPILER::usr* u)
   string s = u->m_name;
   ostringstream os;
   if ((flag & usr::CTOR) && !(flag2 & mask2)) {
-      if (mode == GNU)
-          os << "C1";
+    if (mode == GNU)
+      os << "C1";
+    else
+      os << "?0" << s;
   }
   else if ((flag & usr::DTOR) && !(flag2 & mask2)) {
-      if (mode == GNU)
-          os << "D1";
+    if (mode == GNU)
+      os << "D1";
+    else {
+      assert(s[0] == '~');
+      os << "?1" << s.substr(1);
+    }
   }
   else if (flag2 & usr::CONV_OPE) {
     const type* T = u->m_type;
@@ -5027,7 +5076,10 @@ std::string intel::func_name(COMPILER::usr* u)
   else if (flag2 & usr::OPERATOR) {
     op_tbl_t::const_iterator p = op_tbl.find(s);
     assert(p != op_tbl.end());
-    os << '.' << p->second << '.';
+    if (mode == GNU)
+      os << '.' << p->second << '.';
+    else
+      os << '?' << p->second << '?';
   }
   else {
     scope* p = u->m_scope;
@@ -5039,9 +5091,27 @@ std::string intel::func_name(COMPILER::usr* u)
         os << "St";
     }
     if (mode == GNU)
-        os << s.length() << s;
-    else
-        os << s << "@@YA";
+      os << s.length() << s;
+    else {
+      if (flag2 & usr::INITIALIZE_FUNCTION) {
+	string t = "initialize.";
+	assert(s.substr(0, t.length()) == t);
+	s = "?__E" + s.substr(t.length());
+      }
+      if (flag2 & usr::TERMINATE_FUNCTION) {
+	string t = "terminate.";
+	assert(s.substr(0, t.length()) == t);
+	s = "?__D" + s.substr(t.length());
+      }
+      if ((flag & usr::VDEL) || (flag2 & usr::TOR_BODY) || (flag2 & usr::EXCLUDE_TOR)) {
+	string::size_type p = s.find_first_of('.');
+	while (p != string::npos) {
+	  s[p] = '?';
+	  p = s.find_first_of('.', p);
+	}
+      }
+      os << s << "@@YA";
+    }
   }
   if (flag2 & usr::EXPLICIT_INSTANTIATE) {
     typedef instantiated_usr IU;
@@ -5062,10 +5132,10 @@ std::string intel::func_name(COMPILER::usr* u)
   }
   string tmp = scope_name(u->m_scope);
   if (!tmp.empty()) {
-      if (mode == GNU)
-          os << 'E';
-      else
-          os << tmp << "@@";
+    if (mode == GNU)
+      os << 'E';
+    else
+      os << tmp << "@@";
   }
   os << signature(u->m_type);
   return os.str();
@@ -5092,6 +5162,19 @@ namespace intel {
     string encode_float(const type*) { return "M"; }
     string encode_double(const type*) { return "N"; }
     string encode_longdouble(const type*) { return "OX"; }
+    string helper(const scope::tps_t::val2_t& x)
+    {
+      if (const type* T = x.first) {
+	T = T->unqualified();
+	return '@' + signature(T);
+      }
+      var* v = x.second;
+      if (addrof* a = v->addrof_cast())
+	v = a->m_ref;
+      assert(v->usr_cast());
+      usr* u = static_cast<usr*>(v);
+      return u->m_name;
+    }
     string encode_tag(const tag* ptr)
     {
       ostringstream os;
@@ -5105,8 +5188,19 @@ namespace intel {
       }
       string name = ptr->m_name;
       if (name[0] == '.')
-          name = name.substr(1) + '$';
-      os << name << "@@";
+	name = name.substr(1) + '$';
+      tag::flag_t flag = ptr->m_flag;
+      if (flag & tag::INSTANTIATE) {
+	const instantiated_tag* it = static_cast<const instantiated_tag*>(ptr);
+	tag* src = reinterpret_cast<tag*>(it->m_src);
+	os << "?$" << src->m_name;
+	const instantiated_tag::SEED& seed = it->m_seed;
+	typedef instantiated_tag::SEED::const_iterator IT;
+	transform(begin(seed), end(seed), ostream_iterator<string>(os), helper);
+      }
+      else
+	os << name;
+      os << "@@";
       return os.str();
     }
     string encode_enum(const type* T)
@@ -5282,10 +5376,10 @@ std::string intel::signature(const COMPILER::type* T)
   using namespace std;
   using namespace COMPILER;
   if (mode == MS) {
-      using namespace ms_signature;
-      table_t::const_iterator p = table.find(T->m_id);
-      assert(p != table.end());
-      return (p->second)(T);
+    using namespace ms_signature;
+    table_t::const_iterator p = table.find(T->m_id);
+    assert(p != table.end());
+    return (p->second)(T);
   }
   ostringstream os;
   assert(T->m_id == type::FUNC);

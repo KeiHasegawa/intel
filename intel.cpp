@@ -843,12 +843,6 @@ std::string intel::mem::ms_refgen(const refgen_t& x)
   if (label.substr(0, 3) == "LC$")
     return "";
   string tmp = label;
-  if (tmp.back() == '$')
-    tmp.erase(tmp.size() - 1);
-  if (mode == MS && !x64)
-    tmp = tmp.substr(1, tmp.size()-1);  // eliminate '_'
-  if (tmp[0] == '$')
-    tmp = tmp.substr(1, tmp.size()-1);  // eliminate '$'
   if (defined.find(tmp) != defined.end())
     return "";
   ostringstream os;
@@ -1092,10 +1086,6 @@ intel::mem::mem(COMPILER::usr* u) : address(MEM), m_usr(u)
   string name = u->m_name;
 #ifdef CXX_GENERATOR
   m_label = external_header + cxx_label(u);
-  if (mode == MS && name[0] == '.') {
-      name = name.substr(1);
-      m_label = external_header + name;
-  }
 #else // CXX_GENERATOR
   if (mode == MS && name[0] == '.')
       name = name.substr(1);
@@ -1179,7 +1169,7 @@ bool intel::mem::genobj()
       }
     }
     if (!str)
-      defined.insert(name);
+      defined.insert(m_label);
     return true;
   }
   int size = T->size();
@@ -1198,11 +1188,7 @@ bool intel::mem::genobj()
     else
       out << m_label << " DB " << dec << size << " DUP (?)" << '\n';
   }
-#if 0 // fix 2020.09.06 14:24
-  defined.insert(name);
-#else
   defined.insert(m_label);
-#endif
   return true;
 }
 
@@ -1574,14 +1560,15 @@ void intel::output_section(section kind)
       out << "_BSS SEGMENT" << '\n';
       break;
     case CTOR:
-        out << "text$di SEGMENT" << '\n';
-        break;
-    case DTOR:
-        out << "text$yd SEGMENT" << '\n';
-        break;
+      {
+        out << "_CRT$XCU SEGMENT READONLY";
+        int n = x64 ? 8 : 4;
+        out << " ALIGN(" << n << ')';
+        out << " ALIAS(\".CRT$XCU\")" << '\n';
+      }
+      break;
     default:
-        assert(0);
-        break;
+      break;
     }
   }
 }
@@ -1604,13 +1591,12 @@ void intel::end_section(section kind)
     out << "_BSS ENDS" << '\n';
     break;
   case CTOR:
-      out << "text$di ENDS" << '\n';
-      break;
+    out << "_CRT$XCU ENDS" << '\n';
+    break;
   case DTOR:
-      out << "text$yd ENDS" << '\n';
-      break;
+    out << "text$yd ENDS" << '\n';
+    break;
   default:
-    assert(0);
     break;
   }
 }

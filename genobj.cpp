@@ -52,9 +52,10 @@ void intel::genobj(const COMPILER::scope* p)
 #ifdef CXX_GENERATOR
   if (p->m_id == scope::TAG) {
     const tag* ptr = static_cast<const tag*>(p);
-    if (ptr->m_flag & tag::TEMPLATE)
+    tag::flag_t flag = ptr->m_flag;
+    if (flag & tag::TEMPLATE)
       return;
-    if (ptr->m_flag & tag::INSTANTIATE) {
+    if (flag & tag::INSTANTIATE) {
       const instantiated_tag* it = static_cast<const instantiated_tag*>(ptr);
       const instantiated_tag::SEED& seed = it->m_seed;
       typedef instantiated_tag::SEED::const_iterator IT;
