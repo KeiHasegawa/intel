@@ -11,6 +11,40 @@ namespace intel {
   void usrs1(const std::pair<std::string, std::vector<COMPILER::usr*> >&);
   bool usrs2(bool done, COMPILER::usr*);
 #ifdef CXX_GENERATOR
+  const COMPILER::instantiated_tag::SEED* get_seed(const COMPILER::tag* ptr)
+  {
+    using namespace COMPILER;
+    tag::flag_t flag = ptr->m_flag;
+    if (flag & tag::INSTANTIATE) {
+      typedef const instantiated_tag IT;
+      IT* it = static_cast<IT*>(ptr);
+      return &it->m_seed;
+    }
+    if (flag & tag::SPECIAL_VER) {
+      typedef const special_ver_tag SV;
+      SV* sv = static_cast<SV*>(ptr);
+      return &sv->m_key;
+    }
+    return 0;
+  }
+  const COMPILER::type* reduce(const COMPILER::type* T)
+  {
+    using namespace COMPILER;
+    T = T->unqualified();
+    if (T->m_id == type::POINTER) {
+      typedef const pointer_type PT;
+      PT* pt = static_cast<PT*>(T);
+      T = pt->referenced_type();
+      return reduce(T);
+    }
+    if (T->m_id == type::REFERENCE) {
+      typedef const reference_type RT;
+      RT* rt = static_cast<RT*>(T);
+      T = rt->referenced_type();
+      return reduce(T);
+    }
+    return T;
+  }
   bool incomplete(const std::pair<const COMPILER::type*, COMPILER::var*>& x)
   {
     using namespace std;
@@ -24,7 +58,7 @@ namespace intel {
       usr* u = static_cast<usr*>(v);
       return u->m_flag2 & usr::TEMPL_PARAM;
     }
-    T = T->unqualified();
+    T = reduce(T);
     if (T->m_id == type::TEMPLATE_PARAM)
       return true;
     if (tag* ptr = T->get_tag()) {
@@ -32,12 +66,10 @@ namespace intel {
         if (T->m_id == type::INCOMPLETE_TAGGED)
           return true;
       }
-      if (ptr->m_flag & tag::INSTANTIATE) {
-        instantiated_tag* it = static_cast<instantiated_tag*>(ptr);
-        const instantiated_tag::SEED& seed = it->m_seed;
+      if (const instantiated_tag::SEED* seed = get_seed(ptr)) {
         typedef instantiated_tag::SEED::const_iterator IT;
-        IT p = find_if(begin(seed), end(seed), incomplete);
-        return p != end(seed);
+        IT p = find_if(begin(*seed), end(*seed), incomplete);
+        return p != end(*seed);
       }
     }
     return false;
@@ -55,12 +87,10 @@ void intel::genobj(const COMPILER::scope* p)
     tag::flag_t flag = ptr->m_flag;
     if (flag & tag::TEMPLATE)
       return;
-    if (flag & tag::INSTANTIATE) {
-      const instantiated_tag* it = static_cast<const instantiated_tag*>(ptr);
-      const instantiated_tag::SEED& seed = it->m_seed;
+    if (const instantiated_tag::SEED* seed = get_seed(ptr)) {
       typedef instantiated_tag::SEED::const_iterator IT;
-      IT p = find_if(begin(seed), end(seed), incomplete);
-      if (p != end(seed))
+      IT p = find_if(begin(*seed), end(*seed), incomplete);
+      if (p != end(*seed))
         return;
     }
   }
