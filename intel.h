@@ -297,6 +297,7 @@ namespace intel {
   extern void init_term_fun();
   extern bool
   incomplete(const std::pair<const COMPILER::type*, COMPILER::var*>&);
+  const COMPILER::instantiated_tag::SEED* get_seed(const COMPILER::tag* ptr);
 
   namespace except {
     struct call_site_t {

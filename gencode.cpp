@@ -167,9 +167,9 @@ void intel::init_term_fun()
       int m = x64 ? 8 : 4;
       out << '\t' << "sub" << ps << '\t';
       if (mode == GNU)
-	out << '$' << m << " , " << SP << '\n';
+        out << '$' << m << " , " << SP << '\n';
       else
-	out << SP << " , " << m << '\n';
+        out << SP << " , " << m << '\n';
     }
     out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
     out << '\t' << "pop" << ps << '\t' << FP << '\n';
@@ -4918,14 +4918,14 @@ std::string intel::cxx_label(COMPILER::usr* u)
         b = b.substr(1);
     if ( !a.empty() ) {
       if (mode == GNU)
-	os << b.length();
+        os << b.length();
     }
     os << b;
     if (!a.empty()) {
       if (mode == GNU)
-	os << 'E';
+        os << 'E';
       else
-	os << a << "@@3HA";
+        os << a << "@@3HA";
     }
     b = os.str();
   }
@@ -5102,21 +5102,21 @@ std::string intel::func_name(COMPILER::usr* u)
       os << s.length() << s;
     else {
       if (flag2 & usr::INITIALIZE_FUNCTION) {
-	string t = "initialize.";
-	assert(s.substr(0, t.length()) == t);
-	s = "?__E" + s.substr(t.length());
+        string t = "initialize.";
+        assert(s.substr(0, t.length()) == t);
+        s = "?__E" + s.substr(t.length());
       }
       if (flag2 & usr::TERMINATE_FUNCTION) {
-	string t = "terminate.";
-	assert(s.substr(0, t.length()) == t);
-	s = "?__D" + s.substr(t.length());
+        string t = "terminate.";
+        assert(s.substr(0, t.length()) == t);
+        s = "?__D" + s.substr(t.length());
       }
       if ((flag & usr::VDEL) || (flag2 & usr::TOR_BODY) || (flag2 & usr::EXCLUDE_TOR)) {
-	string::size_type p = s.find_first_of('.');
-	while (p != string::npos) {
-	  s[p] = '?';
-	  p = s.find_first_of('.', p);
-	}
+        string::size_type p = s.find_first_of('.');
+        while (p != string::npos) {
+          s[p] = '?';
+          p = s.find_first_of('.', p);
+        }
       }
       os << s << "@@YA";
     }
@@ -5173,15 +5173,30 @@ namespace intel {
     string helper(const scope::tps_t::val2_t& x)
     {
       if (const type* T = x.first) {
-	T = T->unqualified();
-	return '@' + signature(T);
+        T = T->unqualified();
+        return '@' + signature(T);
       }
       var* v = x.second;
       if (addrof* a = v->addrof_cast())
-	v = a->m_ref;
+        v = a->m_ref;
       assert(v->usr_cast());
       usr* u = static_cast<usr*>(v);
       return u->m_name;
+    }
+    tag* get_src(const tag* ptr)
+    {
+      tag::flag_t flag = ptr->m_flag;
+      if (flag & tag::INSTANTIATE) {
+        typedef const instantiated_tag IT;
+        IT* it = static_cast<IT*>(ptr);
+        return reinterpret_cast<tag*>(it->m_src);
+      }
+      if (flag & tag::SPECIAL_VER) {
+        typedef const special_ver_tag SV;
+        SV* sv = static_cast<SV*>(ptr);
+        return reinterpret_cast<tag*>(sv->m_src);
+      }
+      return 0;
     }
     string encode_tag(const tag* ptr)
     {
@@ -5196,18 +5211,20 @@ namespace intel {
       }
       string name = ptr->m_name;
       if (name[0] == '.')
-	name = name.substr(1) + '$';
-      tag::flag_t flag = ptr->m_flag;
-      if (flag & tag::INSTANTIATE) {
-	const instantiated_tag* it = static_cast<const instantiated_tag*>(ptr);
-	tag* src = reinterpret_cast<tag*>(it->m_src);
-	os << "?$" << src->m_name;
-	const instantiated_tag::SEED& seed = it->m_seed;
-	typedef instantiated_tag::SEED::const_iterator IT;
-	transform(begin(seed), end(seed), ostream_iterator<string>(os), helper);
+        name = name.substr(1) + '$';
+      if (tag* src = get_src(ptr)) {
+        name = src->m_name;
+        if (src->m_flag & tag::PARTIAL_SPECIAL) {
+          string::size_type p = name.find_first_of('<');
+          name.erase(p);
+        }
+        os << "?$" << name;
+        const instantiated_tag::SEED* seed = get_seed(ptr);
+        typedef instantiated_tag::SEED::const_iterator IT;
+        transform(begin(*seed), end(*seed), ostream_iterator<string>(os), helper);
       }
       else
-	os << name;
+        os << name;
       os << "@@";
       return os.str();
     }
