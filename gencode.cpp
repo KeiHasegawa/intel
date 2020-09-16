@@ -52,7 +52,15 @@ void intel::genfunc(const COMPILER::fundef* func,
   usr::flag_t m = usr::flag_t(usr::STATIC | usr::INLINE);
   if (!(f & m) || (f & usr::EXTERN))
     out << '\t' << pseudo_global << '\t' << func_label << '\n';
-  out << func_label << ((mode == GNU) ? ":" : "\tPROC") << '\n';
+  out << func_label;
+  if (mode == GNU)
+    out << ':';
+  else {
+    out << '\t' << "PROC";
+    if ((f & m) && !(f & usr::EXTERN))
+      out << '\t' << "PRIVATE";
+  }
+  out << '\n';
   enter(func,code);
   if (!code.empty())
     return_impl::last3ac = *code.rbegin();
