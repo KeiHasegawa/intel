@@ -47,7 +47,7 @@ void intel::genfunc(const COMPILER::fundef* func,
     out << '\t' << ".seh_proc	" << func_label << '\n';
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
 #endif // CXX_GENERATOR
-  
+
   usr::flag_t f = u->m_flag;
   usr::flag_t m = usr::flag_t(usr::STATIC | usr::INLINE);
   if (!(f & m) || (f & usr::EXTERN))

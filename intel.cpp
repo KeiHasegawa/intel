@@ -1098,8 +1098,8 @@ intel::mem::mem(COMPILER::usr* u) : address(MEM), m_usr(u)
     else if (!is_external_declaration(u))
       m_label = new_label(m_label + ((mode == GNU) ? "." : "$"));
   }
-  else if (doll_need(name))
-    m_label += '$';
+  else if (doll_need(m_label))
+      m_label += '$';
 }
 
 namespace intel {
