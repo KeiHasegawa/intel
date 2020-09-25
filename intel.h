@@ -298,6 +298,7 @@ namespace intel {
   extern bool
   incomplete(const std::pair<const COMPILER::type*, COMPILER::var*>&);
   const COMPILER::instantiated_tag::SEED* get_seed(const COMPILER::tag* ptr);
+  std::string signature(const COMPILER::type*);
 
   namespace except {
     struct call_site_t {
@@ -312,7 +313,17 @@ namespace intel {
     extern void out_type_info(const COMPILER::type* T);
     extern std::vector<const COMPILER::type*> throw_types;
     extern std::set<const COMPILER::type*> types_to_output;
-    extern std::string label(const COMPILER::type*, char);
+    extern std::string gnu_label(const COMPILER::type*, char);
+    namespace ms {
+        extern std::string label(std::string, const COMPILER::type*);
+        extern bool label_flag;
+        extern std::string pre1;
+        extern std::string pre2;
+        extern std::string pre3;
+        extern std::string pre4;
+        extern std::string pre5;
+        extern std::string vpsig;
+    } // end of namespace ms
     extern std::vector<call_site_t> call_sites;
     extern void out_table();
 #if defined(_MSC_VER) || defined(__CYGWIN__)

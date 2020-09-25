@@ -84,6 +84,12 @@ int intel::option_handler(const char* option)
     if (!x64) {
       intel::first_param_offset = 12;
       external_header = "_";
+#ifdef CXX_GENERATOR
+      except::ms::pre1 = "_" + except::ms::pre1;
+      except::ms::pre2 = "_" + except::ms::pre2;
+      except::ms::pre3 = "_" + except::ms::pre3;
+      except::ms::vpsig = "PAX";
+#endif // CXX_GENERATOR
     }
     return 0;
   }
@@ -1084,14 +1090,17 @@ intel::mem::mem(COMPILER::usr* u) : address(MEM), m_usr(u)
   using namespace std;
   using namespace COMPILER;
   string name = u->m_name;
+  usr::flag_t f = u->m_flag;
 #ifdef CXX_GENERATOR
-  m_label = external_header + cxx_label(u);
+  if ((f & usr::C_SYMBOL) || !(f & usr::FUNCTION))
+      m_label = external_header + cxx_label(u);
+  else
+      m_label = cxx_label(u);
 #else // CXX_GENERATOR
   if (mode == MS && name[0] == '.')
       name = name.substr(1);
   m_label = external_header + name;
 #endif // CXX_GENERATOR
-  usr::flag_t f = u->m_flag;
   if (f & usr::STATIC) {
     if (is_string(name))
       m_label = new_label((mode == GNU) ? ".LC" : "LC$");

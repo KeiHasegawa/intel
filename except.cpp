@@ -76,12 +76,28 @@ namespace intel {
         out << '\t' << ".byte	0x7d" << '\n';
       }
     }
-    string label(const type* T, char c)
+    string gnu_label(const type* T, char c)
     {
+      assert(mode == GNU);
       ostringstream os;
       os << "_ZT" << c;
       T->encode(os);
       return os.str();
+    }
+    bool ms::label_flag;
+    std::string ms::pre1 = "_TI2C";
+    std::string ms::pre2 = "_CTA2";
+    std::string ms::pre3 = "_CT??_R0";
+    std::string ms::pre4 = "??_R0";
+    std::string ms::pre5 = ".";
+    std::string ms::vpsig = "PEAX";
+    string ms::label(string pre, const type* T)
+    {
+      assert(mode == MS);
+      ms::label_flag = true;
+      string r = pre + signature(T);
+      ms::label_flag = false;
+      return r;
     }
     void out_type(const type* T)
     {
@@ -90,7 +106,7 @@ namespace intel {
       else
         out << '\t' << ".long	";
       if (T)
-        out << label(T, 'I');
+        out << gnu_label(T, 'I');
       else
         out << 0;
       out << '\n';
@@ -146,20 +162,107 @@ namespace intel {
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
       out << end << ':' << '\n';
     }
-    bool table_outputed;
+    namespace out_type_impl {
+      void gnu_none_tag(const type* T)
+      {
+        if (x64) {
+          string L1 = gnu_label(T, 'I');
+          mem::refgen_t obj(L1, usr::NONE, 8);
+          out << mem::refgen(obj) << '\n';
+        }
+      }
+      void ms_none_tag(const type* T)
+      {
+        string La = ms::label(ms::pre1, T);
+        string Lb = ms::label(ms::pre2, T);
+        string pre = x64 ? "imagerel\t" : "";
+
+        out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+        out << La;
+        out << '\t' << "DD" << '\t' << "01H" << '\n';
+        out << '\t' << "DD" << '\t' << "00H" << '\n';
+        out << '\t' << "DD" << '\t' << "00H" << '\n';
+        out << '\t' << "DD" << '\t' << pre << Lb << '\n';
+        out << "xdata$x" << '\t' << "ENDS" << '\n';
+
+        out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+        out << Lb;
+        string Lc = ms::label(ms::pre3, T);
+        string Ld;
+        if (T->m_id == type::POINTER) {
+          Ld = ms::pre3 + ms::vpsig;
+          out << '\t' << "DD" << '\t' << "02H" << '\n';
+          out << '\t' << "DD" << '\t' << pre << Lc << '\n';
+          out << '\t' << "DD" << '\t' << pre << Ld << '\n';
+        }
+        else {
+          out << '\t' << "DD" << '\t' << "01H" << '\n';
+          out << '\t' << "DD" << '\t' << pre << Lc << '\n';
+        }
+        out << "xdata$x" << '\t' << "ENDS" << '\n';
+
+        string Le = ms::label(ms::pre4, T);
+        out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+        out << Lc;
+        out << '\t' << "DD" << '\t' << "01H" << '\n';
+        out << '\t' << "DD" << '\t' << pre << Le << '\n';
+        out << '\t' << "DD" << '\t' << "00H" << '\n';
+        out << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
+        out << '\t' << "ORG $ + 4" << '\n';
+        int psz = psize();
+        out << '\t' << "DD" << '\t' << '0' << psz << 'H' << '\n';
+        out << '\t' << "DD" << '\t' << "00H" << '\n';
+        out << "xdata$x" << '\t' << "ENDS" << '\n';
+
+        string Lf;
+        if (!Ld.empty()) {
+          Lf = ms::pre4 + ms::vpsig;
+          out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+          out << Ld;
+          out << '\t' << "DD" << '\t' << "01H" << '\n';
+          out << '\t' << "DD" << '\t' << pre << Lf << '\n';
+          out << '\t' << "DD" << '\t' << "00H" << '\n';
+          out << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
+          out << '\t' << "ORG $ + 4" << '\n';
+          out << '\t' << "DD" << '\t' << '0' << psz << 'H' << '\n';
+          out << '\t' << "DD" << '\t' << "00H" << '\n';
+          out << "xdata$x" << '\t' << "ENDS" << '\n';
+        }
+
+        string ti_label = "??_7type_info@@6B@";
+        mem::refed.insert(mem::refgen_t(ti_label, usr::NONE, 8));
+        out << "data$r" << '\t' << "SEGMENT" << '\n';
+        out << Le;
+        string d = ms_pseudo(psize());
+        out << '\t' << d << '\t' << ti_label << '\n';
+        out << '\t' << d << '\t' << "00H" << '\n';
+        out << '\t' << "DB" << '\t';
+        out << "'" << ms::label(ms::pre5, T) << "', 00H" << '\n';
+        out << "data$r" << '\t' << "ENDS" << '\n';
+
+        if (!Lf.empty()) {
+          out << "data$r" << '\t' << "SEGMENT" << '\n';
+          out << Lf;
+          out << '\t' << d << '\t' << ti_label << '\n';
+          out << '\t' << d << '\t' << "00H" << '\n';
+          out << '\t' << "DB" << '\t';
+          out << "'" << ms::pre5 << ms::vpsig << "', 00H" << '\n';
+          out << "data$r" << '\t' << "ENDS" << '\n';
+        }
+      }
+      void none_tag(const type* T)
+      {
+        mode == GNU ? gnu_none_tag(T) : ms_none_tag(T);
+      }
+    } // end of namespace out_type_impl
     void out_type_info(const type* T)
     {
       if (!T)
         return;
-      string L1 = label(T, 'I');
       tag* ptr = T->get_tag();
-      if (!ptr) {
-        if (x64) {
-          mem::refgen_t obj(L1, usr::NONE, 8);
-          out << mem::refgen(obj) << '\n';
-        }
-        return;
-      }
+      if (!ptr)
+        return out_type_impl::none_tag(T);
+      string L1 = gnu_label(T, 'I');
 #if defined(_MSC_VER) || defined(__CYGWIN__)      
       out << '\t' << ".globl	" << L1 << '\n';
       out << '\t' << ".section	.rdata$" << L1 << ",\"dr\"" << '\n';
@@ -184,7 +287,7 @@ namespace intel {
       else
         out << "_ZTVN10__cxxabiv120__si_class_type_infoE+";
       out << (x64 ? 16 : 8) << '\n';
-      string L2 = label(T, 'S');
+      string L2 = gnu_label(T, 'S');
       if (x64)
         out << '\t' << ".quad	";
       else
@@ -195,7 +298,7 @@ namespace intel {
           tag* bptr = b->m_tag;
           const type* bT = bptr->m_types.second;
           assert(bT);
-          string bL = label(bT, 'I');
+          string bL = gnu_label(bT, 'I');
           if (x64)
             out << '\t' << ".quad	";
           else
@@ -222,6 +325,7 @@ namespace intel {
       out << L2 << ':' << '\n';
       out << '\t' << ".string	" << '"' << s << '"' << '\n';
     }
+    bool table_outputed;
     void out_table()
     {
       if (call_sites.empty()) {

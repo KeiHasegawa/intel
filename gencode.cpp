@@ -36,9 +36,23 @@ void intel::genfunc(const COMPILER::fundef* func,
 #else // CXX_GENERATOR
   string name = u->m_name;
 #endif // CXX_GENERATOR
+#if 0 // comment out 2020.09.25 7:00
   if (doll_need(name))
     name += '$';
+#endif
+  usr::flag_t f = u->m_flag;
+#ifdef CXX_GENERATOR
+  if (f & usr::C_SYMBOL)
+    func_label = external_header + name;
+  else
+    func_label = name;
+#else // CXX_GENERATOR
   func_label = external_header + name;
+#endif // CXX_GENERATOR
+#if 1 // add 2020.09.25 7:00
+  if (doll_need(func_label))
+    func_label += '$';
+#endif
   defined.insert(func_label);
 
 #ifdef CXX_GENERATOR
@@ -48,7 +62,9 @@ void intel::genfunc(const COMPILER::fundef* func,
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
 #endif // CXX_GENERATOR
 
+#if 0  
   usr::flag_t f = u->m_flag;
+#endif
   usr::flag_t m = usr::flag_t(usr::STATIC | usr::INLINE);
   if (!(f & m) || (f & usr::EXTERN))
     out << '\t' << pseudo_global << '\t' << func_label << '\n';
@@ -59,6 +75,10 @@ void intel::genfunc(const COMPILER::fundef* func,
     out << '\t' << "PROC";
     if ((f & m) && !(f & usr::EXTERN))
       out << '\t' << "PRIVATE";
+#ifdef CXX_GENERATOR
+    if (x64)
+      out << '\t' << "FRAME";
+#endif // CXX_GENERATOR
   }
   out << '\n';
   enter(func,code);
@@ -116,8 +136,12 @@ namespace intel {
     int psz = psize();
     if (x64)
       mem_impl::load_label_x64(reg::cx, f, COMPILER::usr::NONE, 8);
-    else
-      out << '\t' << "push" << ps << '\t' << '$' << f << '\n';
+    else {
+      out << '\t' << "push" << ps << '\t';
+      if (mode == GNU)
+        out << '$';
+      out << f << '\n';
+    }
     string name = atexit_label();
     out << '\t' << "call" << '\t' << name << '\n';
   }
@@ -223,6 +247,10 @@ void intel::enter(const COMPILER::fundef* func,
 #if defined(_MSC_VER) || defined(__CYGWIN__)
   if (mode == GNU)
     out << '\t' << ".seh_pushreg	%rbp" << '\n';
+  else {
+    if (x64)
+      out << '\t' << ".pushreg  rbp" << '\n';
+  }
 #else // defined(_MSC_VER) || defined(__CYGWIN__)  
   if (!(f2 & mask)) {
     string label = except::LCFI_label();
@@ -245,6 +273,10 @@ void intel::enter(const COMPILER::fundef* func,
 #if defined(_MSC_VER) || defined(__CYGWIN__)
   if (mode == GNU)
     out << '\t' << ".seh_setframe	%rbp, 0" << '\n';
+  else {
+    if (x64)
+      out << '\t' << ".setframe rbp, 0" << '\n';
+  }
 #else  // defined(_MSC_VER) || defined(__CYGWIN__)
   if (!(f2 & mask)) {
     string label = except::LCFI_label();
@@ -273,8 +305,15 @@ void intel::enter(const COMPILER::fundef* func,
     out << '\t' << "sub" << ps << '\t';
     if (mode == GNU)
       out << '$' << dec << n << ", " << SP << '\n';
-    else
+    else {
       out << SP << ", " << dec << n << '\n';
+#ifdef CXX_GENERATOR
+      if (x64) {
+        out << '\t' << ".allocstack" << '\t' << n + 8 << '\n';
+        out << '\t' << ".endprolog" << '\n';
+      }
+#endif // CXX_GENERATOR
+    }
   }
   else {
     if (mode == GNU) {
@@ -4621,14 +4660,18 @@ void intel::va_arg_impl::common(COMPILER::tac* tac)
   invraddr(tac);
   address* y = getaddr(tac->y);
   y->load();
-  assert(mode == GNU);
-  if (x64)
+  if (x64) {
+    assert(mode == GNU);
     out << '\t' << "addq" << '\t' << "$8, %rax" << '\n';
+  }
   else {
     const type* T = tac->x->m_type;
     T = T->promotion();
     int size = T->size();
-    out << '\t' << "addl" << '\t' << '$' << size << ", %eax" << '\n';
+    if (mode == GNU)
+      out << '\t' << "addl" << '\t' << '$' << size << ", %eax" << '\n';
+    else
+      out << '\t' << "add" << '\t' << "eax, " << size << '\n';
   }
   y->store();
 }
@@ -4668,53 +4711,104 @@ void intel::_va_end(COMPILER::tac*)
 }
 
 #ifdef CXX_GENERATOR
+namespace intel {
+    using namespace COMPILER;
+    void gnu_alloce(tac* tac)
+    {
+      address* y = getaddr(tac->y);
+      assert(y->m_id == address::IMM);
+      if (x64) {
+        y->load(reg::cx);
+        out << '\t' << "call" << '\t' << "__cxa_allocate_exception" << '\n';
+      }
+      else {
+        out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
+        out << '\t' << "pushl" << '\t' << y->expr() << '\n';
+        out << '\t' << "call" << '\t' << "__cxa_allocate_exception" << '\n';
+        out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
+      }
+      address* x = getaddr(tac->x);
+      x->store();
+    }
+    void ms_alloce(tac* tac)
+    {
+      var* v = tac->y;
+      int n = v->value();
+      n = align(n, 16);
+      out << '\t' << "sub" << '\t' << sp() << ", " << n << '\n';
+      int m = stack::local_area + n;
+      int psz = psize();
+      out << '\t' << "lea" << '\t' << name(reg::ax, psz) << ", ";
+      string ptr = ms_pseudo(psz) + " PTR ";
+      out << ptr << '[' << fp() << " - " << m << "]" << '\n';
+      address* x = getaddr(tac->x);
+      x->store();
+    }
+} // end of namespace intel
+
 void intel::alloce(COMPILER::tac* tac)
 {
-  if (mode == MS)
-    return;
-  address* y = getaddr(tac->y);
-  assert(y->m_id == address::IMM);
-  if (x64) {
-    y->load(reg::cx);
-    out << '\t' << "call" << '\t' << "__cxa_allocate_exception" << '\n';
-  }
-  else {
-    out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
-    out << '\t' << "pushl" << '\t' << y->expr() << '\n';
-    out << '\t' << "call" << '\t' << "__cxa_allocate_exception" << '\n';
-    out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
-  }
-  address* x = getaddr(tac->x);
-  x->store();
+  return mode == GNU ? gnu_alloce(tac) : ms_alloce(tac);
 }
+
+namespace intel {
+    using namespace COMPILER;
+    void gnu_throwe(tac* tac)
+    {
+      address* y = getaddr(tac->y);
+      throw3ac* p = static_cast<throw3ac*>(tac);
+      const type* T = p->m_type;
+      if (x64) {
+        y->load(reg::cx);
+        if (T->get_tag())
+          out << '\t' << "leaq" << '\t';
+        else
+          out << '\t' << "movq" << '\t' << ".refptr.";
+        out << except::gnu_label(T, 'I') << "(%rip)" << ", %rdx" << '\n';
+        out << '\t' << "movl" << '\t' << "$0, %r8d" << '\n';
+        out << '\t' << "call" << '\t' << "__cxa_throw" << '\n';
+      }
+      else {
+        y->load();
+        out << '\t' << "subl" << '\t' << "$4, %esp" << '\n';
+        out << '\t' << "pushl" << '\t' << "$0" << '\n';
+        out << '\t' << "pushl" << '\t' << '$' << except::gnu_label(T, 'I');
+        out << '\n';
+        out << '\t' << "pushl" << '\t' << "%eax" << '\n';
+        out << '\t' << "call" << '\t' << "__cxa_throw" << '\n';
+      }
+      except::throw_types.push_back(T);
+    }
+    void ms_throwe(tac* tac)
+    {
+      throw3ac* p = static_cast<throw3ac*>(tac);
+      const type* T = p->m_type;
+      if (x64) {
+        out << '\t' << "lea" << '\t' << "rdx, ";
+        out << except::ms::label(except::ms::pre1, T) << '\n';
+        address* y = getaddr(tac->y);
+        y->load(reg::cx);
+        string label = "_CxxThrowException";
+        out << '\t' << "call" << '\t' << label << '\n';
+        mem::refed.insert(mem::refgen_t(label, usr::FUNCTION, 0));
+      }
+      else {
+        out << '\t' << "push" << '\t';
+        out << "OFFSET " << except::ms::label(except::ms::pre1, T) << '\n';
+        address* y = getaddr(tac->y);
+        y->load();
+        out << '\t' << "push" << '\t' << "eax" << '\n';
+        string label = "__CxxThrowException@8";
+        out << '\t' << "call" << '\t' << label << '\n';
+        mem::refed.insert(mem::refgen_t(label, usr::FUNCTION, 0));
+      }
+      except::throw_types.push_back(T);
+    }
+} // end of namespace intel
 
 void intel::throwe(COMPILER::tac* tac)
 {
-  if (mode == MS)
-    return;
-  address* y = getaddr(tac->y);
-  throw3ac* p = static_cast<throw3ac*>(tac);
-  const type* T = p->m_type;
-  if (x64) {
-   y->load(reg::cx);
-   if (T->get_tag())
-     out << '\t' << "leaq" << '\t';
-   else
-     out << '\t' << "movq" << '\t' << ".refptr.";
-   out << except::label(T, 'I') << "(%rip)" << ", %rdx" << '\n';   
-   out << '\t' << "movl" << '\t' << "$0, %r8d" << '\n';
-   out << '\t' << "call" << '\t' << "__cxa_throw" << '\n';    
-  }
-  else {
-    y->load();    
-    out << '\t' << "subl" << '\t' << "$4, %esp" << '\n';
-    out << '\t' << "pushl" << '\t' << "$0" << '\n';
-    out << '\t' << "pushl" << '\t' << '$' << except::label(T, 'I');
-    out << '\n';
-    out << '\t' << "pushl" << '\t' << "%eax" << '\n';
-    out << '\t' << "call" << '\t' << "__cxa_throw" << '\n';
-  }
-  except::throw_types.push_back(T);
+  return mode == GNU ? gnu_throwe(tac) : ms_throwe(tac);
 }
 
 void intel::rethrow(COMPILER::tac* tac)
@@ -4879,7 +4973,6 @@ void intel::catch_end(COMPILER::tac* tac)
 namespace intel {
   std::string scope_name(COMPILER::scope*);
   std::string func_name(COMPILER::usr*);
-  std::string signature(const COMPILER::type*);
 } // end of namespace intel
 
 std::string intel::cxx_label(COMPILER::usr* u)
@@ -5221,7 +5314,8 @@ namespace intel {
         os << "?$" << name;
         const instantiated_tag::SEED* seed = get_seed(ptr);
         typedef instantiated_tag::SEED::const_iterator IT;
-        transform(begin(*seed), end(*seed), ostream_iterator<string>(os), helper);
+        transform(begin(*seed), end(*seed),
+        	  ostream_iterator<string>(os), helper);
       }
       else
         os << name;
@@ -5268,15 +5362,22 @@ namespace intel {
       ostringstream os;
       if (R->m_id == type::FUNC)
         os << '6';
-      else
-        os << 'E';
+      else {
+        if (x64)
+          os << 'E';
+      }
       int cvr = 0;
       R = R->unqualified(&cvr);
-      switch (cvr) {
-      case 0: os << 'A'; break;
-      case 1: os << 'B'; break;
-      case 2: os << 'C'; break;
-      default: os << 'D'; break;
+      if (except::ms::label_flag) {
+        os << 'A';
+      }
+      else {
+        switch (cvr) {
+        case 0: os << 'A'; break;
+        case 1: os << 'B'; break;
+        case 2: os << 'C'; break;
+        default: os << 'D'; break;
+        }
       }
       os << signature(R);
       return os.str();
@@ -5312,34 +5413,44 @@ namespace intel {
       const type* E = at->element_type();
       int cvr = 0;
       E = E->unqualified(&cvr);
-      switch (cvr) {
-      case 0: os << 'A'; break;
-      case 1: os << 'B'; break;
-      case 2: os << 'C'; break;
-      default: os << 'D'; break;
+      if (except::ms::label_flag) {
+        os << 'A';
       }
-      os << signature(E);
-      return os.str();
-    }
-    string encode_varray(const type* T)
-    {
-        assert(T->m_id == type::VARRAY);
-        typedef const varray_type VT;
-        VT* vt = static_cast<VT*>(T);
-        ostringstream os;
-        os << "Y0";
-        os << "A@";
-        const type* E = vt->element_type();
-        int cvr = 0;
-        E = E->unqualified(&cvr);
+      else {
         switch (cvr) {
         case 0: os << 'A'; break;
         case 1: os << 'B'; break;
         case 2: os << 'C'; break;
         default: os << 'D'; break;
         }
-        os << signature(E);
-        return os.str();
+      }
+      os << signature(E);
+      return os.str();
+    }
+    string encode_varray(const type* T)
+    {
+      assert(T->m_id == type::VARRAY);
+      typedef const varray_type VT;
+      VT* vt = static_cast<VT*>(T);
+      ostringstream os;
+      os << "Y0";
+      os << "A@";
+      const type* E = vt->element_type();
+      int cvr = 0;
+      E = E->unqualified(&cvr);
+      if (except::ms::label_flag) {
+        os << 'A';
+      }
+      else {
+        switch (cvr) {
+        case 0: os << 'A'; break;
+        case 1: os << 'B'; break;
+        case 2: os << 'C'; break;
+        default: os << 'D'; break;
+        }
+      }
+      os << signature(E);
+      return os.str();
     }
     string encode_elllipsis(const type*)
     {
