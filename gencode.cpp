@@ -1094,8 +1094,7 @@ int intel::decide_local(int offset, COMPILER::var* v)
   assert(!(f & usr::flag_t(usr::FUNCTION | usr::TYPEDEF)));
   map<var*, address*>& tbl = address_descriptor.second;
   if (f & usr::CONST_PTR) {
-      assert(tbl.find(v) == tbl.end());
-      tbl[v] = new imm(u);
+    assert(tbl.find(v) != tbl.end());
     return offset;
   }
   const type* T = v->m_type;
@@ -1104,16 +1103,16 @@ int intel::decide_local(int offset, COMPILER::var* v)
   int al = (f & usr::VL) ? psize() : T->align();
   offset = align(offset, al);
   if (f & usr::VL){
-      assert(tbl.find(v) == tbl.end());
-      tbl[v] = new allocated(-offset);
+    assert(tbl.find(v) == tbl.end());
+    tbl[v] = new allocated(-offset);
     if ( !allocated::base ){
       offset += psize();
       allocated::base = offset;
     }
   }
   else {
-      if (tbl.find(v) == tbl.end())
-          tbl[v] = new stack(v, -offset);
+    if (tbl.find(v) == tbl.end())
+      tbl[v] = new stack(v, -offset);
   }
   return offset;
 }
