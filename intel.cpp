@@ -113,8 +113,11 @@ extern "C" DLL_EXPORT int generator_open_file(const char* fn)
   using namespace intel;
   ptr_out = new ofstream(fn);
   intel::out.rdbuf(ptr_out->rdbuf());
-  if (mode == MS && !x64)
-    intel::out << '\t' << ".model" << '\t' << "flat" << '\n';
+  if (mode == MS) {
+    intel::out << "include listing.inc" << '\n';
+    if (!x64)
+      intel::out << '\t' << ".model" << '\t' << "flat" << '\n';
+  }
   return 0;
 }
 
@@ -240,6 +243,8 @@ extern "C" DLL_EXPORT int generator_close_file()
   for (auto T : except::types_to_output)
     except::out_type_info(T);
   except::out_labeled_types();
+  for (auto T : except::ms::call_sites_types_to_output)
+      except::ms::out_call_site_type_info(T);
 #else // defined(_MSC_VER) || defined(__CYGWIN__)
   except::out_frame();
   for (auto T : except::types_to_output)

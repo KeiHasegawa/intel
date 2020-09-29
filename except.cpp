@@ -12,6 +12,7 @@ namespace intel {
     vector<const type*> call_site_t::types;
     vector<const type*> throw_types;
     set<const type*> types_to_output;
+    set<const type*> ms::call_sites_types_to_output;
 #if defined(_MSC_VER) || defined(__CYGWIN__)
     // nothing to be defined
 #else // defined(_MSC_VER) || defined(__CYGWIN__)
@@ -229,26 +230,20 @@ namespace intel {
           out << "xdata$x" << '\t' << "ENDS" << '\n';
         }
 
-        string ti_label = "??_7type_info@@6B@";
-        mem::refed.insert(mem::refgen_t(ti_label, usr::NONE, 8));
-        out << "data$r" << '\t' << "SEGMENT" << '\n';
-        out << Le;
-        string d = ms_pseudo(psize());
-        out << '\t' << d << '\t' << ti_label << '\n';
-        out << '\t' << d << '\t' << "00H" << '\n';
-        out << '\t' << "DB" << '\t';
-        out << "'" << ms::label(ms::pre5, T) << "', 00H" << '\n';
-        out << "data$r" << '\t' << "ENDS" << '\n';
+        ms::out_call_site_type_info(T);
 
         if (!Lf.empty()) {
           out << "data$r" << '\t' << "SEGMENT" << '\n';
           out << Lf;
-          out << '\t' << d << '\t' << ti_label << '\n';
+          string d = ms_pseudo(psize());
+          out << '\t' << d << '\t' << ms::ti_label << '\n';
           out << '\t' << d << '\t' << "00H" << '\n';
           out << '\t' << "DB" << '\t';
           out << "'" << ms::pre5 << ms::vpsig << "', 00H" << '\n';
           out << "data$r" << '\t' << "ENDS" << '\n';
         }
+
+        ms::call_sites_types_to_output.erase(T);
       }
       void none_tag(const type* T)
       {
@@ -325,22 +320,43 @@ namespace intel {
       out << L2 << ':' << '\n';
       out << '\t' << ".string	" << '"' << s << '"' << '\n';
     }
+    namespace ms {
+      namespace out_call_site_type_impl {
+        void none_tag(const type* T)
+        {
+          mem::refed.insert(mem::refgen_t(ms::ti_label, usr::NONE, 8));
+          out << "data$r" << '\t' << "SEGMENT" << '\n';
+          string Le = ms::label(ms::pre4, T);
+          out << Le;
+          string d = ms_pseudo(psize());
+          out << '\t' << d << '\t' << ms::ti_label << '\n';
+          out << '\t' << d << '\t' << "00H" << '\n';
+          out << '\t' << "DB" << '\t';
+          out << "'" << ms::label(ms::pre5, T) << "', 00H" << '\n';
+          out << "data$r" << '\t' << "ENDS" << '\n';
+        }
+      } // end of namespace out_call_site_type_impl
+      void out_call_site_type_info(const type* T)
+      {
+        assert(mode == MS);
+        if (!T)
+          return;
+        tag* ptr = T->get_tag();
+        if (!ptr)
+          return out_call_site_type_impl::none_tag(T);
+      }
+    } // end of namespace ms
     bool table_outputed;
-    void out_table()
+    void gnu_out_table()
     {
       if (call_sites.empty()) {
         assert(call_site_t::types.empty());
         return;
       }
       output_section(EXCEPT_TABLE);
+      assert(mode == GNU);
       out << '\t' << ".align 4" << '\n';
-      ostringstream os;
-      if (mode == GNU)
-        os << '.';
-      os << "LLSDA" << '.' << func_label;
-      if (mode == MS)
-        os << '$';
-      string label = os.str();
+      string label = ".LLSDA." + func_label;
       out << label << ':' << '\n';
 #if defined(_MSC_VER) || defined(__CYGWIN__)
       // nothing to be done
@@ -376,7 +392,70 @@ namespace intel {
             types_to_output.insert(T);
         }
       }
-      call_site_t::types.clear();
+    }
+    namespace ms {
+      namespace out_table {
+        using namespace std;
+        const string pre1 = "__catchsym$";
+        const string pre2 = "__unwindtable$";
+        const string pre3 = "__tryblocktable$";
+        void gen()
+        {
+          if (call_sites.empty()) {
+            assert(call_site_t::types.empty());
+            return;
+          }
+          out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+          string label = out_table::pre1 + func_label;
+          out << label << '\t' << "DD" << '\t' << "01H" << '\n';
+          if (call_site_t::types.size() != 1)
+            return;  // not implemented
+          const type* T = call_site_t::types.back();
+          string Le = ms::label(ms::pre4, T);
+          out << '\t' << "DD" << '\t' << Le << '\n';
+          out << '\t' << "DD" << '\t' << "0ffffffe8H" << '\n';
+          if (call_sites.size() != 1)
+            return;  // not implemented
+          const call_site_t& info = call_sites.back();
+          string landing = info.m_landing;
+          assert(!landing.empty());
+          out << '\t' << "DD" << '\t' << landing << '\n';
+          string label2 = out_table::pre2 + func_label;
+          out << label2 << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
+          out << '\t' << "DD" << '\t' << "00H" << '\n';
+          out << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
+          out << '\t' << "DD" << '\t' << "00H" << '\n';
+          string label3 = out_table::pre3 + func_label;
+          out << label3 << '\t' << "DD" << '\t' << "00H" << '\n';
+          out << '\t' << "DD" << '\t' << "00H" << '\n';
+          out << '\t' << "DD" << '\t' << "01H" << '\n';
+          out << '\t' << "DD" << '\t' << "01H" << '\n';
+          out << '\t' << "DD" << '\t' << label << '\n';
+          string label4 = out_table::pre4 + func_label;
+          out << label4 << '\t' << "DD" << '\t' << "019930522H" << '\n';
+          out << '\t' << "DD" << '\t' << "02H" << '\n';
+          out << '\t' << "DD" << '\t' << label2 << '\n';
+          out << '\t' << "DD" << '\t' << "01H" << '\n';
+          out << '\t' << "DD" << '\t' << label3 << '\n';
+          out << '\t' << "DD" << '\t' << "2 DUP(00H)" << '\n';
+          out << '\t' << "DD" << '\t' << "00H" << '\n';
+          out << '\t' << "DD" << '\t' << "01H" << '\n';
+          out << "xdata$x" << '\t' << "ENDS" << '\n';
+          call_sites.clear();
+          for (auto T : call_site_t::types) {
+            if (T) {
+              if (T->tmp())
+        	out_type_info(T);
+              else
+        	ms::call_sites_types_to_output.insert(T);
+            }
+          }
+        }
+      } // end of namespace out_table
+    } // end of namespace ms
+    void out_table()
+    {
+      mode == GNU ? gnu_out_table() : ms::out_table::gen();
       table_outputed = true;
     }
 #if defined(_MSC_VER) || defined(__CYGWIN__)

@@ -313,6 +313,14 @@ namespace intel {
     extern void out_type_info(const COMPILER::type* T);
     extern std::vector<const COMPILER::type*> throw_types;
     extern std::set<const COMPILER::type*> types_to_output;
+    namespace ms {
+      const std::string ti_label = "??_7type_info@@6B@";
+      extern std::set<const COMPILER::type*> call_sites_types_to_output;
+      extern void out_call_site_type_info(const COMPILER::type* T);
+      namespace out_table {
+        const std::string pre4 = "__ehfuncinfo$";	  
+      } // end of namespace out_table
+    } // end of namespace ms
     extern std::string gnu_label(const COMPILER::type*, char);
     namespace ms {
         extern std::string label(std::string, const COMPILER::type*);
