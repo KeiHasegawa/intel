@@ -346,7 +346,7 @@ namespace intel {
           return out_call_site_type_impl::none_tag(T);
       }
     } // end of namespace ms
-    bool table_outputed;
+    bool gnu_table_outputed;
     void gnu_out_table()
     {
       if (call_sites.empty()) {
@@ -392,6 +392,8 @@ namespace intel {
             types_to_output.insert(T);
         }
       }
+      call_site_t::types.clear();
+      gnu_table_outputed = true;
     }
     namespace ms {
       namespace out_table {
@@ -450,13 +452,13 @@ namespace intel {
         	ms::call_sites_types_to_output.insert(T);
             }
           }
+	  call_site_t::types.clear();
         }
       } // end of namespace out_table
     } // end of namespace ms
     void out_table()
     {
       mode == GNU ? gnu_out_table() : ms::out_table::gen();
-      table_outputed = true;
     }
 #if defined(_MSC_VER) || defined(__CYGWIN__)
     // nothing to be defined
@@ -557,7 +559,7 @@ namespace intel {
       // CIE Augmentation
       out << '\t' << ".string	";
       out << '"';
-      if (table_outputed)
+      if (gnu_table_outputed)
         out << "zPL";
       out << '"' << '\n';
 
@@ -570,7 +572,7 @@ namespace intel {
       // CIE RA Column
       out << '\t' << ".uleb128 0x8" << '\n';
 
-      if (table_outputed) {
+      if (gnu_table_outputed) {
         // Augmentation size
         out << '\t' << ".uleb128 0x6" << '\n';
 
