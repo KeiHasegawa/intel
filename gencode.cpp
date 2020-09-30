@@ -50,6 +50,8 @@ namespace intel {
         using namespace std;
         sec_hlp sentry(CODE);
         out << prefix << func_label << ':' << '\n';
+        if (except::call_sites.empty())
+          return; // work around
         out << '\t' << "npad	1" << '\n';
         out << '\t' << "npad	1" << '\n';
         out << '\t' << "mov	edx, DWORD PTR[esp + 8]" << '\n';
@@ -636,7 +638,11 @@ void intel::leave(const COMPILER::fundef* func
 }
 
 namespace intel {
-  int func_local(const COMPILER::fundef* func);
+  int func_local(const COMPILER::fundef* func
+#ifdef CXX_GENERATOR
+                 , bool ms_x86_handler
+#endif // CXX_GENERATOR
+  );
   namespace call_arg {
     int calculate(const std::vector<COMPILER::tac*>& code);
   }  // end of namespace call_arg
@@ -711,7 +717,11 @@ void intel::sched_stack(const COMPILER::fundef* func,
                  aggregate_func::param::calc);
   }
   allocated::base = 0;
+#ifdef CXX_GENERATOR
+  stack::local_area += func_local(func, ms_x86_handler);
+#else // CXX_GENERATOR
   stack::local_area += func_local(func);
+#endif // CXX_GENERATOR
   if (allocated::base) {
     if (debug_flag)
       out << '\t' << comment_start << " The top of local area of stack is saved\n";
@@ -812,7 +822,11 @@ namespace intel {
   mode_t mode = GNU;
 }
 
-int intel::func_local(const COMPILER::fundef* func)
+int intel::func_local(const COMPILER::fundef* func
+#ifdef CXX_GENERATOR
+                      , bool ms_x86_handler
+#endif // CXX_GENERATOR
+)
 {
   using namespace std;
   using namespace COMPILER;
@@ -823,6 +837,10 @@ int intel::func_local(const COMPILER::fundef* func)
   T = X->return_type();
   bool big = big_ret(T);
   int offset = first_param_offset;
+#ifdef CXX_GENERATOR
+  if (ms_x86_handler)
+    offset -= 4;
+#endif // CXX_GENERATOR
   int psz = psize();
   if (big)
     offset += psz;
