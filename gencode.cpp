@@ -129,10 +129,6 @@ void intel::genfunc(const COMPILER::fundef* func,
     out << '\t' << "PROC";
     if ((f & m) && !(f & usr::EXTERN))
       out << '\t' << "PRIVATE";
-#ifdef CXX_GENERATOR
-    if (x64)
-      out << '\t' << "FRAME";
-#endif // CXX_GENERATOR
   }
   out << '\n';
 #ifdef CXX_GENERATOR
@@ -354,10 +350,6 @@ void intel::enter(const COMPILER::fundef* func,
 #if defined(_MSC_VER) || defined(__CYGWIN__)
   if (mode == GNU)
     out << '\t' << ".seh_pushreg	%rbp" << '\n';
-  else {
-    if (x64)
-      out << '\t' << ".pushreg  rbp" << '\n';
-  }
 #else // defined(_MSC_VER) || defined(__CYGWIN__)  
   if (!(f2 & mask)) {
     string label = except::LCFI_label();
@@ -386,10 +378,6 @@ void intel::enter(const COMPILER::fundef* func,
 #if defined(_MSC_VER) || defined(__CYGWIN__)
   if (mode == GNU)
     out << '\t' << ".seh_setframe	%rbp, 0" << '\n';
-  else {
-    if (x64)
-      out << '\t' << ".setframe rbp, 0" << '\n';
-  }
 #else  // defined(_MSC_VER) || defined(__CYGWIN__)
   if (!(f2 & mask)) {
     string label = except::LCFI_label();
@@ -458,8 +446,8 @@ void intel::enter(const COMPILER::fundef* func,
 #ifdef CXX_GENERATOR
   if (mode == MS) {
     if (x64) {
-      out << '\t' << ".allocstack" << '\t' << n + 8 << '\n';
-      out << '\t' << ".endprolog" << '\n';
+      out << func_label << "$prolog_size" << ' ';
+      out << "EQU" << ' ' << "$ - " << func_label << '\n';
     }
   }
 #endif // CXX_GENERATOR
@@ -619,8 +607,10 @@ void intel::leave(const COMPILER::fundef* func
 #endif  // defined(_MSC_VER) || defined(__CYGWIN__)    
 #endif // CXX_GENERATOR
 
-  if (mode == MS)
-    out << func_label << '\t' << "ENDP" << '\n';
+  if (mode == MS) {
+      out << func_label << "$end" << '\t' << "EQU $" << '\n';
+      out << func_label << '\t' << "ENDP" << '\n';
+  }
 
   {
     map<var*, address*>& table = address_descriptor.second;
@@ -5175,35 +5165,35 @@ namespace intel {
     {
       address* y = getaddr(tac->y);
       if (x64) {
-	y->load(reg::cx);
-	out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
+        y->load(reg::cx);
+        out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
       }
       else {
-	y->load();
-	out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
-	out << '\t' << "pushl" << '\t' << "%eax" << '\n';
-	out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
-	out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
+        y->load();
+        out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
+        out << '\t' << "pushl" << '\t' << "%eax" << '\n';
+        out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
+        out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
       }
       if (!tac->x) {
-	except::call_site_t::types.push_back(0);
-	return;
+        except::call_site_t::types.push_back(0);
+        return;
       }
       address* x = getaddr(tac->x);
       const type* T = tac->x->m_type;
       T->scalar() ? x->store() : copy(x, 0, T->size());
       T = T->unqualified();
       if (T->m_id == type::REFERENCE) {
-	typedef const reference_type RT;
-	RT* rt = static_cast<RT*>(T);
-	T = rt->referenced_type();
+        typedef const reference_type RT;
+        RT* rt = static_cast<RT*>(T);
+        T = rt->referenced_type();
       }
       except::call_site_t::types.push_back(T);
     }
     void ms_catch_begin(tac* tac)
     {
       if (x64)
-	return; // not implemented
+        return; // not implemented
       string label = ms::x86_handler::prefix2 + func_label;
       except::call_site_t info;
       info.m_landing = label;
@@ -5213,9 +5203,9 @@ namespace intel {
       const type* T = tac->x->m_type;
       T = T->unqualified();
       if (T->m_id == type::REFERENCE) {
-	typedef const reference_type RT;
-	RT* rt = static_cast<RT*>(T);
-	T = rt->referenced_type();
+        typedef const reference_type RT;
+        RT* rt = static_cast<RT*>(T);
+        T = rt->referenced_type();
       }
       except::call_site_t::types.push_back(T);
     }

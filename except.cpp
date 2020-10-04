@@ -398,11 +398,40 @@ namespace intel {
     namespace ms {
       namespace out_table {
         using namespace std;
+        void unwind_data()
+        {
+          string unwind = "$unwind$" + func_label;
+          out << "xdata	SEGMENT	READONLY ALIGN(8) ALIAS(\".xdata\")" << '\n';
+          out << unwind << '\t' << "DB 01H" << '\n'; // version : 0, flag : 0
+
+          // 0000000000000000: 55                 push        rbp
+          //                                      .pushreg rbp
+          // 0000000000000001: 48 8B EC           mov         rbp, rsp
+          //                                      .setframe rbp, 0
+          // 0000000000000004: 53                 push        rbx
+          // 0000000000000005: 48 83 EC xx        sub         rsp, xx
+          //                                      .allocstack xx+8
+          //                                      .endprolog
+          // 0000000000000009:
+          out << '\t' << "DB " << func_label << "$prolog_size" << '\n'; // prolog size
+          out << '\t' << "DB 03H" << '\n'; // Count of unwind codes
+          out << '\t' << "DB 05H" << '\n'; // frame register : rbp
+          out << '\t' << "WORD" << ' ' << "05209H" << '\n'; // .allocstack
+          out << '\t' << "WORD" << ' ' << "05304H" << '\n'; // .setframe rbp, 0
+          out << '\t' << "WORD" << ' ' << "05001H" << '\n'; // .pushreg rbp
+          out << "xdata	ENDS" << '\n';
+          out << "pdata	SEGMENT	READONLY ALIGN(4) ALIAS(\".pdata\")" << '\n';
+          out << '\t' << "DD imagerel " << func_label << '\n';
+          out << '\t' << "DD imagerel " << func_label << "$end" << '\n';
+          out << '\t' << "DD imagerel " << unwind << '\n';
+          out << "pdata	ENDS" << '\n';
+        }
         const string pre1 = "__catchsym$";
         const string pre2 = "__unwindtable$";
         const string pre3 = "__tryblocktable$";
         void gen()
         {
+            unwind_data();
           if (call_sites.empty()) {
             assert(call_site_t::types.empty());
             return;
@@ -452,7 +481,7 @@ namespace intel {
         	ms::call_sites_types_to_output.insert(T);
             }
           }
-	  call_site_t::types.clear();
+          call_site_t::types.clear();
         }
       } // end of namespace out_table
     } // end of namespace ms
