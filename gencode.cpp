@@ -29,46 +29,52 @@ namespace intel {
 #ifdef CXX_GENERATOR
   std::vector<std::string> init_fun;
   std::vector<std::string> term_fun;
-  namespace ms {
-    namespace x86_handler {
-      inline bool is(const std::vector<tac*>& code)
-      {
-        using namespace std;
-        if (mode != MS)
-          return false;
-        if (x64)
-          return false;
-        typedef vector<tac*>::const_iterator IT;
-        IT p = find_if(begin(code), end(code),
-        	       [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
-        return p != end(code);
-      }
-      const std::string prefix = "__ehhandler$";
-      const std::string prefix2 = "__catch$";
-      void extra()
-      {
-        using namespace std;
-        sec_hlp sentry(CODE);
-        out << prefix << func_label << ':' << '\n';
-        if (except::call_sites.empty())
-          return; // work around
-        out << '\t' << "npad	1" << '\n';
-        out << '\t' << "npad	1" << '\n';
-        out << '\t' << "mov	edx, DWORD PTR[esp + 8]" << '\n';
-        out << '\t' << "lea	eax, DWORD PTR[edx + 12]" << '\n';
-        out << '\t' << "mov	ecx, DWORD PTR[edx - 224]" << '\n';
-        out << '\t' << "xor ecx, eax" << '\n';
-        string label1 = "@__security_check_cookie@4";
-        out << '\t' << "call	" << label1 << '\n';
-        mem::refed.insert(mem::refgen_t(label1, usr::FUNCTION, 0));
-        out << '\t' << "mov	eax, OFFSET ";
-        out << except::ms::out_table::pre4 << func_label << '\n';
-        string label2 = "___CxxFrameHandler3";
-        out << '\t' << "jmp	" << label2 << '\n';
-        mem::refed.insert(mem::refgen_t(label2, usr::FUNCTION, 0));
-      }
-    } // end of namespace x86_handler
-  } // end of namespace ms
+  namespace except {
+      namespace ms {
+          inline bool handler(const std::vector<tac*>& code)
+          {
+              using namespace std;
+              if (mode != MS)
+                  return false;
+              typedef vector<tac*>::const_iterator IT;
+              IT p = find_if(begin(code), end(code),
+                  [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
+              return p != end(code);
+          }
+          namespace x86_handler {
+              const std::string prefix = "__ehhandler$";
+              const std::string prefix2 = "__catch$";
+              void extra()
+              {
+                  using namespace std;
+                  sec_hlp sentry(CODE);
+                  out << prefix << func_label << ':' << '\n';
+                  if (except::call_sites.empty())
+                      return; // work around
+                  out << '\t' << "npad	1" << '\n';
+                  out << '\t' << "npad	1" << '\n';
+                  out << '\t' << "mov	edx, DWORD PTR[esp + 8]" << '\n';
+                  out << '\t' << "lea	eax, DWORD PTR[edx + 12]" << '\n';
+                  out << '\t' << "mov	ecx, DWORD PTR[edx - 224]" << '\n';
+                  out << '\t' << "xor ecx, eax" << '\n';
+                  string label1 = "@__security_check_cookie@4";
+                  out << '\t' << "call	" << label1 << '\n';
+                  mem::refed.insert(mem::refgen_t(label1, usr::FUNCTION, 0));
+                  out << '\t' << "mov	eax, OFFSET ";
+                  out << except::ms::out_table::x86_gen::pre4 << func_label << '\n';
+                  string label2 = "___CxxFrameHandler3";
+                  out << '\t' << "jmp	" << label2 << '\n';
+                  mem::refed.insert(mem::refgen_t(label2, usr::FUNCTION, 0));
+              }
+          } // end of namespace x86_handler
+          namespace x64_handler {
+              void magic_code2();
+              namespace catch_code {
+                  void gen();
+              } // end of namespace catch_code
+          } // end of namespace x64_handler
+      } // end of namespace ms
+  } // end of namespace except
 #endif // CXX_GENERATOR
 } // end of namespace intel
 
@@ -79,8 +85,8 @@ void intel::genfunc(const COMPILER::fundef* func,
   using namespace COMPILER;
 
 #ifdef CXX_GENERATOR
-  bool ms_x86_handler = ms::x86_handler::is(code);
-  if (ms_x86_handler)
+  bool ms_handler = except::ms::handler(code);
+  if (ms_handler && !x64)
     out << "ASSUME NOTHING" << '\n';
 #endif // CXX_GENERATOR
   output_section(CODE);
@@ -90,10 +96,6 @@ void intel::genfunc(const COMPILER::fundef* func,
 #else // CXX_GENERATOR
   string name = u->m_name;
 #endif // CXX_GENERATOR
-#if 0 // comment out 2020.09.25 7:00
-  if (doll_need(name))
-    name += '$';
-#endif
   usr::flag_t f = u->m_flag;
 #ifdef CXX_GENERATOR
   if (f & usr::C_SYMBOL)
@@ -103,10 +105,8 @@ void intel::genfunc(const COMPILER::fundef* func,
 #else // CXX_GENERATOR
   func_label = external_header + name;
 #endif // CXX_GENERATOR
-#if 1 // add 2020.09.25 7:00
   if (doll_need(func_label))
     func_label += '$';
-#endif
   defined.insert(func_label);
 
 #ifdef CXX_GENERATOR
@@ -116,9 +116,6 @@ void intel::genfunc(const COMPILER::fundef* func,
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
 #endif // CXX_GENERATOR
 
-#if 0  
-  usr::flag_t f = u->m_flag;
-#endif
   usr::flag_t m = usr::flag_t(usr::STATIC | usr::INLINE);
   if (!(f & m) || (f & usr::EXTERN))
     out << '\t' << pseudo_global << '\t' << func_label << '\n';
@@ -132,7 +129,7 @@ void intel::genfunc(const COMPILER::fundef* func,
   }
   out << '\n';
 #ifdef CXX_GENERATOR
-  enter(func, code, ms_x86_handler);
+  enter(func, code, ms_handler);
 #else // CXX_GENERATOR
   enter(func, code);
 #endif // CXX_GENERATOR
@@ -141,7 +138,7 @@ void intel::genfunc(const COMPILER::fundef* func,
   return_impl::leave_label.erase();
   for_each(code.begin(),code.end(),gencode);
 #ifdef CXX_GENERATOR
-  leave(func, ms_x86_handler);
+  leave(func, ms_handler);
   end_section(CODE);
   usr::flag2_t f2 = u->m_flag2;
   if (f2 & usr::INITIALIZE_FUNCTION)
@@ -149,9 +146,22 @@ void intel::genfunc(const COMPILER::fundef* func,
   if (f2 & usr::TERMINATE_FUNCTION)
     term_fun.push_back(func_label);
 
-  if (ms_x86_handler)
-    ms::x86_handler::extra();
-  except::out_table();
+  if (ms_handler) {
+    if (x64)
+      except::ms::x64_handler::catch_code::gen();
+    else
+      except::ms::x86_handler::extra();
+  }
+
+  {
+    map<var*, address*>& table = address_descriptor.second;
+    for_each(table.begin(), table.end(), destroy_address<var*>());
+    table.clear();
+  }
+
+  if (ms_handler && x64)
+      except::ms::x64_handler::magic_code2();
+  except::out_table(ms_handler);
   for (auto T : except::throw_types) {
     if (T->tmp())
       except::out_type_info(T);
@@ -274,49 +284,75 @@ namespace intel {
   using namespace COMPILER;
   void sched_stack(const fundef* func, const std::vector<tac*>& code
 #ifdef CXX_GENERATOR
-                   , bool ms_x86_handler
+                   , bool ms_handler
 #endif // CXX_GENERATOR
   );
 #ifdef CXX_GENERATOR
-  namespace ms {
-    namespace x86_handler {
-      void partof_prolog()
-      {
-        assert(mode == MS && !x64);
-        out << '\t' << "push  -1" << '\n';
-        out << '\t' << "push	" << prefix << func_label << '\n';
-        out << '\t' << "mov	eax, DWORD PTR fs:0" << '\n';
-        out << '\t' << "push	eax" << '\n';
-        out << '\t' << "push	ecx" << '\n';
-      }
-      const int ehrec_off = 16;
-      void partof_prolog2()
-      {
-        using namespace std;
-        assert(mode == MS && !x64);
-        out << '\t' << "push	ebx" << '\n';
-        out << '\t' << "push	esi" << '\n';
-        out << '\t' << "push	edi" << '\n';
-        string label = "___security_cookie";
-        out << '\t' << "mov	eax, DWORD PTR " << label << '\n';
-        mem::refed.insert(mem::refgen_t(label, usr::NONE, 4));
-        out << '\t' << "xor eax, ebp" << '\n';
-        out << '\t' << "push	eax" << '\n';
-        int n = ms::x86_handler::ehrec_off - 4;
-        out << '\t' << "lea	eax, DWORD PTR [ebp-" << n << ']' << '\n';
-        out << '\t' << "mov	DWORD PTR fs:0, eax" << '\n';
-        int m = ms::x86_handler::ehrec_off;
-        out << '\t' << "mov	DWORD PTR [ebp-" << m << "], esp" << '\n';
-      }
-    } // end of namespace x86_handler
-  } // end of namespace ms
+  namespace except {
+      namespace ms {
+          namespace x86_handler {
+              void partof_prolog()
+              {
+                  assert(mode == MS && !x64);
+                  out << '\t' << "push  -1" << '\n';
+                  out << '\t' << "push	" << prefix << func_label << '\n';
+                  out << '\t' << "mov	eax, DWORD PTR fs:0" << '\n';
+                  out << '\t' << "push	eax" << '\n';
+                  out << '\t' << "push	ecx" << '\n';
+              }
+              const int ehrec_off = 16;
+              void partof_prolog2()
+              {
+                  using namespace std;
+                  assert(mode == MS && !x64);
+                  out << '\t' << "push	ebx" << '\n';
+                  out << '\t' << "push	esi" << '\n';
+                  out << '\t' << "push	edi" << '\n';
+                  string label = "___security_cookie";
+                  out << '\t' << "mov	eax, DWORD PTR " << label << '\n';
+                  mem::refed.insert(mem::refgen_t(label, usr::NONE, 4));
+                  out << '\t' << "xor eax, ebp" << '\n';
+                  out << '\t' << "push	eax" << '\n';
+                  int n = ms::x86_handler::ehrec_off - 4;
+                  out << '\t' << "lea	eax, DWORD PTR [ebp-" << n << ']' << '\n';
+                  out << '\t' << "mov	DWORD PTR fs:0, eax" << '\n';
+                  int m = ms::x86_handler::ehrec_off;
+                  out << '\t' << "mov	DWORD PTR [ebp-" << m << "], esp" << '\n';
+              }
+          } // end of namespace x86_handler
+          namespace x64_handler {
+              const int magic = 16 * 14;
+              const std::string magic_label = "__97ABDBD4_bbb@cpp";
+              void magic_code()
+              {
+                  using namespace std;
+                  out << '\t' << "mov	rdi, rsp" << '\n';
+                  int n = stack::delta_sp >> 2;
+                  out << '\t' << "mov	ecx, " << n << '\n';
+                  out << '\t' << "mov	eax, -858993460" << '\n';
+                  out << '\t' << "rep stosd" << '\n';
+                  out << '\t' << "lea	rcx, OFFSET " << magic_label << '\n';
+                  string label = "__CheckForDebuggerJustMyCode";
+                  out << '\t' << "call	" << label << '\n';
+                  mem::refed.insert(mem::refgen_t(label, usr::FUNCTION, 0));
+                  out << '\t' << "npad	1" << '\n';
+              }
+              void magic_code2()
+              {
+                  out << "msvcjmc	SEGMENT" << '\n';
+                  out << magic_label << " DB 01H" << '\n';
+                  out << "msvcjmc	ENDS" << '\n';
+              }
+          } // end of namespace x64_handler
+      } // end of namespace ms
+  } // end of namespace except
 #endif // CXX_GENERATOR
 }
 
 void intel::enter(const COMPILER::fundef* func,
                   const std::vector<COMPILER::tac*>& code
 #ifdef CXX_GENERATOR
-                  , bool ms_x86_handler
+                  , bool ms_handler
 #endif // CXX_GENERATOR
 )
 {
@@ -363,17 +399,26 @@ void intel::enter(const COMPILER::fundef* func,
 #endif // CXX_GENERATOR
   if (mode == MS && !x64) {
 #ifdef CXX_GENERATOR
-    if (!ms_x86_handler)
+    if (!ms_handler)
       out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
 #else // CXX_GENERATOR
     out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
 #endif // CXX_GENERATOR
   }
-  out << '\t' << "mov" << ps << '\t';
   if (mode == GNU)
-    out << SP << ", " << FP << '\n';
-  else
-    out << FP << ", " << SP << '\n';
+    out << '\t' << "mov" << ps << '\t' << SP << ", " << FP << '\n';
+  else {
+#ifdef CXX_GENERATOR
+    if (ms_handler && x64) {
+      out << '\t' << "push" << '\t' << "rdi" << '\n';
+      out << '\t' << "mov" << ps << '\t' << FP << ", " << SP << '\n';
+    }
+    else
+      out << '\t' << "mov" << ps << '\t' << FP << ", " << SP << '\n';
+#else // CXX_GENERATOR
+    out << '\t' << "mov" << ps << '\t' << FP << ", " << SP << '\n';
+#endif // CXX_GENERATOR
+  }
 #ifdef CXX_GENERATOR
 #if defined(_MSC_VER) || defined(__CYGWIN__)
   if (mode == GNU)
@@ -393,25 +438,40 @@ void intel::enter(const COMPILER::fundef* func,
 #endif  // defined(_MSC_VER) || defined(__CYGWIN__)
 #endif // CXX_GENERATOR
 
-  if (mode != MS || x64)
+  if (mode != MS)
     out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
   else {
+    if (x64) {
 #ifdef CXX_GENERATOR
-    if (ms_x86_handler)
-      ms::x86_handler::partof_prolog();
+      if (!ms_handler)
+        out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
+#else // CXX_GENERATOR
+      out << '\t' << "push" << ps << '\t' << reg::name(reg::bx, psz) << '\n';
 #endif // CXX_GENERATOR
+    }
+    else {
+#ifdef CXX_GENERATOR
+      if (ms_handler)
+        except::ms::x86_handler::partof_prolog();
+#endif // CXX_GENERATOR
+    }
   }
 
 #ifdef CXX_GENERATOR
-  sched_stack(func, code, ms_x86_handler);
+  sched_stack(func, code, ms_handler);
 #else // CXX_GENERATOR
   sched_stack(func, code);
 #endif // CXX_GENERATOR
-  if (x64)
+  if (x64) {
     stack::delta_sp += 8;
+#ifdef CXX_GENERATOR
+    if (ms_handler)
+      stack::delta_sp += except::ms::x64_handler::magic;
+#endif // CXX_GENERATOR
+  }
   else {
 #ifdef CXX_GENERATOR
-    if (ms_x86_handler) {
+    if (ms_handler) {
       int n = 16 * 8 - 4;
       stack::delta_sp += n;
       stack::local_area += n;
@@ -444,11 +504,11 @@ void intel::enter(const COMPILER::fundef* func,
     }
   }
 #ifdef CXX_GENERATOR
-  if (mode == MS) {
-    if (x64) {
-      out << func_label << "$prolog_size" << ' ';
-      out << "EQU" << ' ' << "$ - " << func_label << '\n';
-    }
+  if (x64) {
+    out << func_label << except::ms::prolog_size << ' ';
+    out << "EQU" << ' ' << "$ - " << func_label << '\n';
+    if (ms_handler)
+      except::ms::x64_handler::magic_code();
   }
 #endif // CXX_GENERATOR
 #else // defined(_MSC_VER) || defined(__CYGWIN__)
@@ -483,8 +543,8 @@ void intel::enter(const COMPILER::fundef* func,
   }
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
 #ifdef CXX_GENERATOR
-  if (ms_x86_handler)
-    ms::x86_handler::partof_prolog2();
+  if (ms_handler && !x64)
+    except::ms::x86_handler::partof_prolog2();
 #endif // CXX_GENERATOR
 }
 
@@ -511,26 +571,28 @@ namespace intel { namespace aggregate_func {
 
 #ifdef CXX_GENERATOR
 namespace intel {
-  namespace ms {
-    namespace x86_handler {
-      void partof_epilog()
-      {
-        int n = ms::x86_handler::ehrec_off - 4;
-        out << '\t' << "mov	ecx, DWORD PTR [ebp-" << n << ']' << '\n';
-        out << '\t' << "mov	DWORD PTR fs:0, ecx" << '\n';
-        out << '\t' << "pop	ecx" << '\n';
-        out << '\t' << "pop	edi" << '\n';
-        out << '\t' << "pop	esi" << '\n';
-        out << '\t' << "pop	ebx" << '\n';
-      }
-    } // end of namespace x86_handler
-  } // end of namespace ms
+    namespace except {
+        namespace ms {
+            namespace x86_handler {
+                void partof_epilog()
+                {
+                    int n = ms::x86_handler::ehrec_off - 4;
+                    out << '\t' << "mov	ecx, DWORD PTR [ebp-" << n << ']' << '\n';
+                    out << '\t' << "mov	DWORD PTR fs:0, ecx" << '\n';
+                    out << '\t' << "pop	ecx" << '\n';
+                    out << '\t' << "pop	edi" << '\n';
+                    out << '\t' << "pop	esi" << '\n';
+                    out << '\t' << "pop	ebx" << '\n';
+                }
+            } // end of namespace x86_handler
+        } // end of namespace ms
+    } // end of namespace except
 } // end of namespace intel
 #endif // CXX_GENERATOR
 
 void intel::leave(const COMPILER::fundef* func
 #ifdef CXX_GENERATOR
-                  , bool ms_x86_handler
+                  , bool ms_handler
 #endif // CXX_GENERATOR
 )
 {
@@ -542,26 +604,45 @@ void intel::leave(const COMPILER::fundef* func
     out << return_impl::leave_label << ":\n";
 
 #ifdef CXX_GENERATOR
-  if (ms_x86_handler)
-    ms::x86_handler::partof_epilog();
+  if (ms_handler && !x64)
+    except::ms::x86_handler::partof_epilog();
 #endif // CXX_GENERATOR
 
   char ps = psuffix();
-  out << '\t' << "mov" << ps << '\t';
-  if (mode == GNU)
-    out << fp() << ", " << sp() << '\n';
-  else
-    out << sp() << ", " << fp() << '\n';
-  if (mode != MS || x64) {
-    int m = x64 ? 8 : 4;
-    out << '\t' << "sub" << ps << '\t';
-    if (mode == GNU)
-      out << '$' << m << " , " << sp() << '\n';
+  if (mode == GNU) {
+    out << '\t' << "mov" << ps << '\t' << fp() << ", " << sp() << '\n';
+  }
+  else {
+#ifdef CXX_GENERATOR
+    if (ms_handler && x64)
+      out << '\t' << "mov" << ps << '\t' << sp() << ", " << fp() << '\n';
     else
-      out << sp() << " , " << m << '\n';
+      out << '\t' << "mov" << ps << '\t' << sp() << ", " << fp() << '\n';
+#else // CXX_GENERATOR
+    out << '\t' << "mov" << ps << '\t' << sp() << ", " << fp() << '\n';
+#endif // CXX_GENERATOR
+  }
+
+  int m = x64 ? 8 : 4;
+  if (mode == GNU) {
+    out << '\t' << "sub" << ps << '\t' << '$' << m << " , " << sp() << '\n';
+  }
+  else {
+    if (x64) {
+#ifdef CXX_GENERATOR
+      if (!ms_handler)
+        out << '\t' << "sub" << ps << '\t' << sp() << " , " << m << '\n';
+#else // CXX_GENERATOR
+      out << '\t' << "sub" << ps << '\t' << sp() << " , " << m << '\n';
+#endif // CXX_GENERATOR
+    }
   }
 #ifdef CXX_GENERATOR
-  if (!ms_x86_handler)
+  if (ms_handler) {
+    if (x64)
+      out << '\t' << "pop	rdi" << '\n';
+  }
+  else
     out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
 #else // CXX_GENERATOR
   out << '\t' << "pop" << ps << '\t' << reg::name(reg::bx, psize()) << '\n';
@@ -611,12 +692,6 @@ void intel::leave(const COMPILER::fundef* func
       out << func_label << "$end" << '\t' << "EQU $" << '\n';
       out << func_label << '\t' << "ENDP" << '\n';
   }
-
-  {
-    map<var*, address*>& table = address_descriptor.second;
-    for_each(table.begin(), table.end(), destroy_address<var*>());
-    table.clear();
-  }
   delete aggregate_func::ret::area;
   aggregate_func::ret::area = 0;
   {
@@ -630,7 +705,7 @@ void intel::leave(const COMPILER::fundef* func
 namespace intel {
   int func_local(const COMPILER::fundef* func
 #ifdef CXX_GENERATOR
-                 , bool ms_x86_handler
+                 , bool ms_handler
 #endif // CXX_GENERATOR
   );
   namespace call_arg {
@@ -651,7 +726,7 @@ namespace intel {
 void intel::sched_stack(const COMPILER::fundef* func,
                         const std::vector<COMPILER::tac*>& code
 #ifdef CXX_GENERATOR
-                        , bool ms_x86_handler
+                        , bool ms_handler
 #endif // CXX_GENERATOR
 )
 {
@@ -660,8 +735,8 @@ void intel::sched_stack(const COMPILER::fundef* func,
   int psz = psize();
   stack::local_area = psz;  // for return address save area
 #ifdef CXX_GENERATOR
-  if (ms_x86_handler) {
-    stack::local_area += ms::x86_handler::ehrec_off;
+  if (ms_handler && !x64) {
+    stack::local_area += except::ms::x86_handler::ehrec_off;
     typedef vector<tac*>::const_iterator IT;
     IT p = find_if(begin(code), end(code),
         	   [](const tac* ptr) { return ptr->m_id == tac::CATCH_BEGIN; });
@@ -708,7 +783,7 @@ void intel::sched_stack(const COMPILER::fundef* func,
   }
   allocated::base = 0;
 #ifdef CXX_GENERATOR
-  stack::local_area += func_local(func, ms_x86_handler);
+  stack::local_area += func_local(func, ms_handler);
 #else // CXX_GENERATOR
   stack::local_area += func_local(func);
 #endif // CXX_GENERATOR
@@ -814,7 +889,7 @@ namespace intel {
 
 int intel::func_local(const COMPILER::fundef* func
 #ifdef CXX_GENERATOR
-                      , bool ms_x86_handler
+                      , bool ms_handler
 #endif // CXX_GENERATOR
 )
 {
@@ -828,7 +903,7 @@ int intel::func_local(const COMPILER::fundef* func
   bool big = big_ret(T);
   int offset = first_param_offset;
 #ifdef CXX_GENERATOR
-  if (ms_x86_handler)
+  if (ms_handler && !x64)
     offset -= 4;
 #endif // CXX_GENERATOR
   int psz = psize();
@@ -1131,6 +1206,50 @@ namespace intel {
   struct gencode_table : map<tac::id_t, void (*)(tac*)> {
     gencode_table();
   } gencode_table;
+#ifdef CXX_GENERATOR
+  namespace except {
+      namespace ms {
+          namespace x64_handler {
+              const string postfix = "$catch_end";
+              namespace catch_code {
+                  vector<tac*>* ptr;
+                  bool flag;
+                  void gen()
+                  {
+                      if (!ptr)
+                          return;
+                      auto_ptr<vector<tac*> > sweeper1(ptr);
+                      sec_hlp sweeper2(CODE);
+                      string label = catch_code::pre + func_label + catch_code::post;
+                      out << label;
+                      out << ' ' << "PROC	FRAME" << '\n';
+                      out << '\t' << "mov	QWORD PTR [rsp+8], rcx" << '\n';
+                      out << '\t' << ".savereg rcx, 8" << '\n';
+                      out << '\t' << "mov	QWORD PTR [rsp+16], rdx" << '\n';
+                      out << '\t' << ".savereg rdx, 16" << '\n';
+                      out << '\t' << "push	rbp" << '\n';
+                      out << '\t' << ".pushreg rbp" << '\n';
+                      out << '\t' << "push	rdi" << '\n';
+                      out << '\t' << ".pushreg rdi" << '\n';
+                      out << '\t' << "sub	rsp, 40" << '\n';
+                      out << '\t' << ".allocstack 40" << '\n';
+                      out << '\t' << ".endprolog" << '\n';
+                      out << '\t' << "lea	rbp, QWORD PTR [rdx+72]" << '\n';
+                      for_each(begin(*ptr), end(*ptr), gencode);
+                      out << '\t' << "npad	1" << '\n';
+                      out << '\t' << "lea	rax, " << func_label << postfix << '\n';
+                      out << '\t' << "add	rsp, 40" << '\n';
+                      out << '\t' << "pop	rdi" << '\n';
+                      out << '\t' << "pop	rbp" << '\n';
+                      out << '\t' << "ret	0" << '\n';
+                      out << '\t' << "int	3" << '\n';
+                      out << label << ' ' << "ENDP" << '\n';
+                  }
+              } // end of namespace catch_code;
+          } // end of namespace x64_handler
+      } // end of namespace ms
+  } // end of namespace except
+#endif // CXX_GENERATOR
 } // end of namespace intel
 
 void intel::gencode(COMPILER::tac* ptr)
@@ -1141,7 +1260,20 @@ void intel::gencode(COMPILER::tac* ptr)
     output3ac(out,ptr);
     out << '\n';
   }
+#ifdef CXX_GENERATOR
+  if (except::ms::x64_handler::catch_code::flag) {
+      if (ptr->m_id == tac::CATCH_END) {
+          except::ms::x64_handler::catch_code::flag = false;
+          gencode_table[ptr->m_id](ptr);
+      }
+      else
+          except::ms::x64_handler::catch_code::ptr->push_back(ptr);
+  }
+  else
+    gencode_table[ptr->m_id](ptr);
+#else // CXX_GENERATOR
   gencode_table[ptr->m_id](ptr);
+#endif // CXX_GENERATOR
 }
 
 namespace intel {
@@ -5032,75 +5164,77 @@ void intel::rethrow(COMPILER::tac* tac)
 }
 
 namespace intel {
-    using namespace COMPILER;
-    void gnu_try_begin(tac* tac)
-    {
-        string label = to_impl::label(tac);
-        out << label << ":\n";
-        except::call_site_t info;
-        info.m_start = label;
-        except::call_sites.push_back(info);
-    }
-    void ms_try_begin(tac* tac)
-    {
-        if (x64)
-            return; // not implemented
-        int n = ms::x86_handler::ehrec_off - 12;
-        out << '\t' << "mov	DWORD PTR [ebp-" << n << "], 0" << '\n';
-    }
+  using namespace COMPILER;
+  void gnu_try_begin(tac* tac)
+  {
+    string label = to_impl::label(tac);
+    out << label << ":\n";
+    except::call_site_t info;
+    info.m_start = label;
+    except::call_sites.push_back(info);
+  }
+  void ms_try_begin(tac* tac)
+  {
+    if (x64)
+      return; // not implemented
+    int n = except::ms::x86_handler::ehrec_off - 12;
+    out << '\t' << "mov	DWORD PTR [ebp-" << n << "], 0" << '\n';
+  }
 } // end of namespace intel
 
 void intel::try_begin(COMPILER::tac* tac)
 {
-    mode == GNU ? gnu_try_begin(tac) : ms_try_begin(tac);
+  mode == GNU ? gnu_try_begin(tac) : ms_try_begin(tac);
 }
 
 namespace intel {
-    using namespace COMPILER;
-    void gnu_try_end(tac* tac)
-    {
-        string label = to_impl::label(tac);
-        out << label << ":\n";
-        assert(!except::call_sites.empty());
-        except::call_site_t& info = except::call_sites.back();
-        assert(!info.m_start.empty());
-        assert(info.m_end.empty());
-        info.m_end = label;
-        assert(info.m_landing.empty());
+  using namespace COMPILER;
+  void gnu_try_end(tac* tac)
+  {
+    string label = to_impl::label(tac);
+    out << label << ":\n";
+    assert(!except::call_sites.empty());
+    except::call_site_t& info = except::call_sites.back();
+    assert(!info.m_start.empty());
+    assert(info.m_end.empty());
+    info.m_end = label;
+    assert(info.m_landing.empty());
+  }
+  void ms_try_end(tac* tac)
+  {
+    if (x64)
+      out << '\t' << "npad	1" << '\n';
+    else {
+      int n = except::ms::x86_handler::ehrec_off - 12;
+      out << '\t' << "mov	DWORD PTR [ebp-" << n << "], -1" << '\n';
     }
-    void ms_try_end(tac* tac)
-    {
-        if (x64)
-            return; // not implemented
-        int n = ms::x86_handler::ehrec_off - 12;
-        out << '\t' << "mov	DWORD PTR [ebp-" << n << "], -1" << '\n';
-    }
+  }
 } // end of namespace intel
 
 void intel::try_end(COMPILER::tac* tac)
 {
-    mode == GNU ? gnu_try_end(tac) : ms_try_end(tac);
+  mode == GNU ? gnu_try_end(tac) : ms_try_end(tac);
 }
 
 void intel::here(COMPILER::tac* tac)
 {
-  if (mode == MS)
-    return;
-  string label = to_impl::label(tac);
-  out << label << ":\n";
-  assert(!except::call_sites.empty());
-  except::call_site_t& info = except::call_sites.back();
-  assert(!info.m_start.empty());
-  assert(!info.m_end.empty());
-  assert(info.m_landing.empty());
-  info.m_landing = label;
-  here3ac* p = static_cast<here3ac*>(tac);
-  if (p->m_for_dest) {
-    info.m_action = 0;
-    info.m_for_dest = true;
-  }
-  else
-    info.m_action = 1;
+    if (mode == MS)
+        return;
+    string label = to_impl::label(tac);
+    out << label << ":\n";
+    assert(!except::call_sites.empty());
+    except::call_site_t& info = except::call_sites.back();
+    assert(!info.m_start.empty());
+    assert(!info.m_end.empty());
+    assert(info.m_landing.empty());
+    info.m_landing = label;
+    here3ac* p = static_cast<here3ac*>(tac);
+    if (p->m_for_dest) {
+        info.m_action = 0;
+        info.m_for_dest = true;
+    }
+    else
+        info.m_action = 1;
 }
 
 void intel::here_reason(COMPILER::tac* tac)
@@ -5121,9 +5255,8 @@ void intel::here_info(COMPILER::tac* tac)
 
 void intel::there(COMPILER::tac* tac)
 {
-    if (mode == MS)
-        return;
-
+  if (mode == MS)
+    return;
   string label = to_impl::label(tac);
   out << label << ":\n";
   assert(!except::call_sites.empty());
@@ -5160,55 +5293,67 @@ void intel::unwind_resume(COMPILER::tac* tac)
 }
 
 namespace intel {
-    using namespace COMPILER;
-    void gnu_catch_begin(tac* tac)
-    {
-      address* y = getaddr(tac->y);
-      if (x64) {
-        y->load(reg::cx);
-        out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
-      }
-      else {
-        y->load();
-        out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
-        out << '\t' << "pushl" << '\t' << "%eax" << '\n';
-        out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
-        out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
-      }
+  using namespace COMPILER;
+  void catch_common(tac* tac)
+  {
       if (!tac->x) {
-        except::call_site_t::types.push_back(0);
-        return;
+          except::call_site_t::types.push_back(0);
+          return;
       }
       address* x = getaddr(tac->x);
       const type* T = tac->x->m_type;
-      T->scalar() ? x->store() : copy(x, 0, T->size());
+      if (mode == GNU)
+        T->scalar() ? x->store() : copy(x, 0, T->size());
       T = T->unqualified();
       if (T->m_id == type::REFERENCE) {
-        typedef const reference_type RT;
-        RT* rt = static_cast<RT*>(T);
-        T = rt->referenced_type();
+          typedef const reference_type RT;
+          RT* rt = static_cast<RT*>(T);
+          T = rt->referenced_type();
       }
       except::call_site_t::types.push_back(T);
+  }
+  void gnu_catch_begin(tac* tac)
+  {
+    address* y = getaddr(tac->y);
+    if (x64) {
+      y->load(reg::cx);
+      out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
     }
-    void ms_catch_begin(tac* tac)
+    else {
+      y->load();
+      out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
+      out << '\t' << "pushl" << '\t' << "%eax" << '\n';
+      out << '\t' << "call" << '\t' << "__cxa_begin_catch" << '\n';
+      out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
+    }
+    catch_common(tac);
+  }
+  namespace ms {
+    void x64_catch_begin(tac* ptr)
     {
-      if (x64)
-        return; // not implemented
-      string label = ms::x86_handler::prefix2 + func_label;
+      if (except::ms::x64_handler::catch_code::flag)
+        return; // not implemented nest case
+      except::ms::x64_handler::catch_code::flag = true;
+      if (except::ms::x64_handler::catch_code::ptr)
+          return; // not implemented multiple case
+      except::ms::x64_handler::catch_code::ptr = new vector<tac*>;
+      catch_common(ptr);
+    }
+    void x86_catch_begin(tac* tac)
+    {
+      string label = except::ms::x86_handler::prefix2 + func_label;
       except::call_site_t info;
       info.m_landing = label;
       except::call_sites.push_back(info);
-      out << label << '\t' << "PROC" << '\t' << "PRIVATE" << '\n';
-      out << label << '\t' << "ENDP" << '\n';
-      const type* T = tac->x->m_type;
-      T = T->unqualified();
-      if (T->m_id == type::REFERENCE) {
-        typedef const reference_type RT;
-        RT* rt = static_cast<RT*>(T);
-        T = rt->referenced_type();
-      }
-      except::call_site_t::types.push_back(T);
+      out << label << '\t' << "EQU" << '\t' << '$' << '\n';
+      catch_common(tac);
     }
+  } // end of namespace ms
+  void ms_catch_begin(tac* tac)
+  {
+    using namespace ms;
+    x64 ? x64_catch_begin(tac) : x86_catch_begin(tac);
+  }
 } // end of namespace intel
 
 void intel::catch_begin(COMPILER::tac* tac)
@@ -5218,9 +5363,18 @@ void intel::catch_begin(COMPILER::tac* tac)
 
 void intel::catch_end(COMPILER::tac* tac)
 {
-  if (mode == MS)
-    return;
-  out << '\t' << "call" << '\t' << "__cxa_end_catch" << '\n';
+  if (mode == GNU) {
+      out << '\t' << "call" << '\t' << "__cxa_end_catch" << '\n';
+  }
+  else {
+      if (x64) {
+          except::call_site_t info;
+          string label = func_label + except::ms::x64_handler::postfix;
+          info.m_landing = label;
+          except::call_sites.push_back(info);
+          out << label << '\t' << "EQU $" << '\n';
+      }
+  }
 }
 #endif // CXX_GENERATOR
 

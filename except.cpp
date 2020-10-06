@@ -398,80 +398,193 @@ namespace intel {
     namespace ms {
       namespace out_table {
         using namespace std;
-        void unwind_data()
-        {
-          string unwind = "$unwind$" + func_label;
-          out << "xdata	SEGMENT	READONLY ALIGN(8) ALIAS(\".xdata\")" << '\n';
-          out << unwind << '\t' << "DB 01H" << '\n'; // version : 0, flag : 0
+        namespace x86_gen {
+          const string pre1 = "__catchsym$";
+          const string pre2 = "__unwindtable$";
+          const string pre3 = "__tryblocktable$";
+          void action()
+          {
+            out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+            string label = out_table::x86_gen::pre1 + func_label;
+            out << label << '\t' << "DD" << '\t' << "01H" << '\n';
+            if (call_site_t::types.size() != 1)
+              return;  // not implemented
+            const type* T = call_site_t::types.back();
+            string Le = ms::label(ms::pre4, T);
+            out << '\t' << "DD" << '\t' << Le << '\n';
+            out << '\t' << "DD" << '\t' << "0ffffffe8H" << '\n';
+            if (call_sites.size() != 1)
+              return;  // not implemented
+            const call_site_t& info = call_sites.back();
+            string landing = info.m_landing;
+            assert(!landing.empty());
+            out << '\t' << "DD" << '\t' << landing << '\n';
+            string label2 = out_table::x86_gen::pre2 + func_label;
+            out << label2 << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
+            out << '\t' << "DD" << '\t' << "00H" << '\n';
+            out << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
+            out << '\t' << "DD" << '\t' << "00H" << '\n';
+            string label3 = out_table::x86_gen::pre3 + func_label;
+            out << label3 << '\t' << "DD" << '\t' << "00H" << '\n';
+            out << '\t' << "DD" << '\t' << "00H" << '\n';
+            out << '\t' << "DD" << '\t' << "01H" << '\n';
+            out << '\t' << "DD" << '\t' << "01H" << '\n';
+            out << '\t' << "DD" << '\t' << label << '\n';
+            string label4 = out_table::x86_gen::pre4 + func_label;
+            out << label4 << '\t' << "DD" << '\t' << "019930522H" << '\n';
+            out << '\t' << "DD" << '\t' << "02H" << '\n';
+            out << '\t' << "DD" << '\t' << label2 << '\n';
+            out << '\t' << "DD" << '\t' << "01H" << '\n';
+            out << '\t' << "DD" << '\t' << label3 << '\n';
+            out << '\t' << "DD" << '\t' << "2 DUP(00H)" << '\n';
+            out << '\t' << "DD" << '\t' << "00H" << '\n';
+            out << '\t' << "DD" << '\t' << "01H" << '\n';
+            out << "xdata$x" << '\t' << "ENDS" << '\n';
+          }
+        } // end of namespace x86_gen
+        namespace x64_gen {
+          const string pre1 = "$ip2state$";
+          const string pre2 = "$handlerMap$";
+          const string pre3 = "$tryMap$";
+          const string pre4 = "$stateUnwindMap$";
+          const string pre5 = "$cppxdata$";
+          void unwind_data(bool ms_handler)
+          {
+            out << "xdata	SEGMENT	READONLY ALIGN(4) ALIAS(\".xdata\")" << '\n';
+            string unwind = "$unwind$" + func_label;
 
-          // 0000000000000000: 55                 push        rbp
-          //                                      .pushreg rbp
-          // 0000000000000001: 48 8B EC           mov         rbp, rsp
-          //                                      .setframe rbp, 0
-          // 0000000000000004: 53                 push        rbx
-          // 0000000000000005: 48 83 EC xx        sub         rsp, xx
-          //                                      .allocstack xx+8
-          //                                      .endprolog
-          // 0000000000000009:
-          out << '\t' << "DB " << func_label << "$prolog_size" << '\n'; // prolog size
-          out << '\t' << "DB 03H" << '\n'; // Count of unwind codes
-          out << '\t' << "DB 05H" << '\n'; // frame register : rbp
-          out << '\t' << "WORD" << ' ' << "05209H" << '\n'; // .allocstack
-          out << '\t' << "WORD" << ' ' << "05304H" << '\n'; // .setframe rbp, 0
-          out << '\t' << "WORD" << ' ' << "05001H" << '\n'; // .pushreg rbp
-          out << "xdata	ENDS" << '\n';
-          out << "pdata	SEGMENT	READONLY ALIGN(4) ALIAS(\".pdata\")" << '\n';
-          out << '\t' << "DD imagerel " << func_label << '\n';
-          out << '\t' << "DD imagerel " << func_label << "$end" << '\n';
-          out << '\t' << "DD imagerel " << unwind << '\n';
-          out << "pdata	ENDS" << '\n';
-        }
-        const string pre1 = "__catchsym$";
-        const string pre2 = "__unwindtable$";
-        const string pre3 = "__tryblocktable$";
-        void gen()
+            if (ms_handler) {
+              // push	rbp
+              // .pushreg rbp
+              // push	rdi
+              // .pushreg rdi
+              // mov rbp, rsp
+              // .setframe rbp, 0
+              // sub	rsp, xx
+              // .allocstack xx
+              out << unwind << '\t' << "DB 019H" << '\n'; // version : 1,
+              // flag : UNW_FLAG_EHANDLER | UNW_FLAG_UHANDLER
+              out << '\t' << "DB " << func_label << except::ms::prolog_size << '\n'; // prolog size
+              out << '\t' << "DB 05H" << '\n'; // Count of unwind codes
+              out << '\t' << "DB 05H" << '\n';  // frame register : rbp, offset 0
+              out << '\t' << "WORD 010cH" << '\n';  // .allocstack xx (UWOP_ALLOC_LARGE = 1)
+              int n = stack::delta_sp >> 3;
+              out << '\t' << "WORD " << n << '\n';
+              out << '\t' << "WORD 05305H" << '\n'; // .setframe rbp, 0
+              out << '\t' << "WORD 07002H" << '\n'; // .pushreg rdi
+              out << '\t' << "WORD 05001H" << '\n'; // .pushreg rbp
+              out << '\t' << "WORD 0H" << '\n';
+              string label = "__CxxFrameHandler4";
+              mem::refed.insert(mem::refgen_t(label, usr::FUNCTION, 0));
+              out << '\t' << "DD imagerel " << label << '\n';
+              out << '\t' << "DD imagerel " << pre5 << func_label << '\n';
+            }
+            else {
+              // push rbp
+              // .pushreg rbp
+              // mov rbp, rsp
+              // .setframe rbp, 0
+              // push rbp
+              // sub rsp, xx
+              // .allocstack xx+8
+              // .endprolog
+              out << unwind << '\t' << "DB 01H" << '\n'; // version : 1, flag : 0
+              out << '\t' << "DB " << func_label << except::ms::prolog_size << '\n'; // prolog size
+              out << '\t' << "DB 03H" << '\n'; // Count of unwind codes
+              out << '\t' << "DB 05H" << '\n'; // frame register : rbp, offset 0
+              out << '\t' << "WORD" << ' ' << "05209H" << '\n'; // .allocstack
+              out << '\t' << "WORD" << ' ' << "05304H" << '\n'; // .setframe rbp, 0
+              out << '\t' << "WORD" << ' ' << "05001H" << '\n'; // .pushreg rbp
+            }
+
+            out << "xdata	ENDS" << '\n';
+            out << "pdata	SEGMENT	READONLY ALIGN(4) ALIAS(\".pdata\")" << '\n';
+            out << '\t' << "DD imagerel " << func_label << '\n';
+            out << '\t' << "DD imagerel " << func_label << "$end" << '\n';
+            out << '\t' << "DD imagerel " << unwind << '\n';
+            out << "pdata	ENDS" << '\n';
+          }
+          void action()
+          {
+            out << "xdata	SEGMENT" << '\n';
+            string label1 = x64_gen::pre1 + func_label;
+            out << label1 << " DB 06H" << '\n';
+            out << '\t' << "DB 00H" << '\n';
+            out << '\t' << "DB 00H" << '\n';
+            out << '\t' << "DB 'V'" << '\n';
+            out << '\t' << "DB 02H" << '\n';
+            out << '\t' << "DB 0cH" << '\n';
+            out << '\t' << "DB 00H" << '\n';
+            out << "xdata	ENDS" << '\n';
+
+            out << "xdata	SEGMENT" << '\n';
+            string label2 = x64_gen::pre2 + func_label;
+            out << label2 << " DB 02H" << '\n';
+            out << '\t' << "DB 07H" << '\n';
+            out << '\t' << "DB 02H" << '\n';
+            if (call_site_t::types.size() != 1)
+              return;  // not implemented
+            const type* T = call_site_t::types.back();
+            string Le = ms::label(ms::pre4, T);
+            out << '\t' << "DD imagerel " << Le << '\n';
+            out << '\t' << "DB 'P'" << '\n';
+            out << '\t' << "DD imagerel ";
+            out << x64_handler::catch_code::pre;
+            out << func_label;
+            out << x64_handler::catch_code::post << '\n';
+            out << "xdata	ENDS" << '\n';
+
+            out << "xdata	SEGMENT" << '\n';
+            string label3 = x64_gen::pre3 + func_label;
+            out << label3 << " DB 02H" << '\n';
+            out << '\t' << "DB 00H" << '\n';
+            out << '\t' << "DB 00H" << '\n';
+            out << '\t' << "DB 02H" << '\n';
+            out << '\t' << "DD imagerel " << label2 << '\n';
+            out << "xdata	ENDS" << '\n';
+
+            out << "xdata	SEGMENT" << '\n';
+            string label4 = x64_gen::pre4 + func_label;
+            out << label4 << " DB 04H" << '\n';
+            out << '\t' << "DB 08H" << '\n';
+            out << '\t' << "DB 010H" << '\n';
+            out << "xdata	ENDS" << '\n';
+
+            out << "xdata	SEGMENT" << '\n';
+            out << except::ms::out_table::x64_gen::pre5;
+            out << func_label << ' ';
+            out << "DB 038H" << '\n';
+            out << '\t' << "DD imagerel " << label4 << '\n';
+            out << '\t' << "DD imagerel " << label3 << '\n';
+            out << '\t' << "DD imagerel " << label1 << '\n';
+            out << "xdata	ENDS" << '\n';
+
+            out << "CONST	SEGMENT" << '\n';
+            string label5 = func_label + "$rtcName$";
+            out << label5 << ' ' << "DB 070H" << '\n';
+            out << '\t' << "DB 00H" << '\n';
+            out << '\t' << "ORG $+14" << '\n';
+            string label6 = func_label + "$rtcVarDesc";
+            out << label6 << ' ' << "DD 028H" << '\n';
+            out << '\t' << "DD 08H" << '\n';
+            out << '\t' << "DQ " << label5 << '\n';
+            out << '\t' << "ORG $+48" << '\n';
+            string label7 = func_label + "$rtcFrameData";
+            out << label7 << ' ' << "DD 01H" << '\n';
+            out << '\t' << "DD 00H" << '\n';
+            out << '\t' << "DQ " << label6 << '\n';
+            out << "CONST	ENDS" << '\n';
+          }
+        } // end of namespace x64_gen
+        void gen(bool ms_handler)
         {
-            unwind_data();
+          if (x64)
+            x64_gen::unwind_data(ms_handler);
           if (call_sites.empty()) {
             assert(call_site_t::types.empty());
             return;
           }
-          out << "xdata$x" << '\t' << "SEGMENT" << '\n';
-          string label = out_table::pre1 + func_label;
-          out << label << '\t' << "DD" << '\t' << "01H" << '\n';
-          if (call_site_t::types.size() != 1)
-            return;  // not implemented
-          const type* T = call_site_t::types.back();
-          string Le = ms::label(ms::pre4, T);
-          out << '\t' << "DD" << '\t' << Le << '\n';
-          out << '\t' << "DD" << '\t' << "0ffffffe8H" << '\n';
-          if (call_sites.size() != 1)
-            return;  // not implemented
-          const call_site_t& info = call_sites.back();
-          string landing = info.m_landing;
-          assert(!landing.empty());
-          out << '\t' << "DD" << '\t' << landing << '\n';
-          string label2 = out_table::pre2 + func_label;
-          out << label2 << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
-          out << '\t' << "DD" << '\t' << "00H" << '\n';
-          out << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
-          out << '\t' << "DD" << '\t' << "00H" << '\n';
-          string label3 = out_table::pre3 + func_label;
-          out << label3 << '\t' << "DD" << '\t' << "00H" << '\n';
-          out << '\t' << "DD" << '\t' << "00H" << '\n';
-          out << '\t' << "DD" << '\t' << "01H" << '\n';
-          out << '\t' << "DD" << '\t' << "01H" << '\n';
-          out << '\t' << "DD" << '\t' << label << '\n';
-          string label4 = out_table::pre4 + func_label;
-          out << label4 << '\t' << "DD" << '\t' << "019930522H" << '\n';
-          out << '\t' << "DD" << '\t' << "02H" << '\n';
-          out << '\t' << "DD" << '\t' << label2 << '\n';
-          out << '\t' << "DD" << '\t' << "01H" << '\n';
-          out << '\t' << "DD" << '\t' << label3 << '\n';
-          out << '\t' << "DD" << '\t' << "2 DUP(00H)" << '\n';
-          out << '\t' << "DD" << '\t' << "00H" << '\n';
-          out << '\t' << "DD" << '\t' << "01H" << '\n';
-          out << "xdata$x" << '\t' << "ENDS" << '\n';
+          x64 ? x64_gen::action() : x86_gen::action();
           call_sites.clear();
           for (auto T : call_site_t::types) {
             if (T) {
@@ -485,9 +598,9 @@ namespace intel {
         }
       } // end of namespace out_table
     } // end of namespace ms
-    void out_table()
+    void out_table(bool ms_handler)
     {
-      mode == GNU ? gnu_out_table() : ms::out_table::gen();
+      mode == GNU ? gnu_out_table() : ms::out_table::gen(ms_handler);
     }
 #if defined(_MSC_VER) || defined(__CYGWIN__)
     // nothing to be defined

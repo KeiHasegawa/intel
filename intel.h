@@ -318,7 +318,9 @@ namespace intel {
       extern std::set<const COMPILER::type*> call_sites_types_to_output;
       extern void out_call_site_type_info(const COMPILER::type* T);
       namespace out_table {
-        const std::string pre4 = "__ehfuncinfo$";	  
+          namespace x86_gen {
+              const std::string pre4 = "__ehfuncinfo$";
+          } // end of namespace x86_gen
       } // end of namespace out_table
     } // end of namespace ms
     extern std::string gnu_label(const COMPILER::type*, char);
@@ -331,9 +333,16 @@ namespace intel {
         extern std::string pre4;
         extern std::string pre5;
         extern std::string vpsig;
+        namespace x64_handler {
+            namespace catch_code {
+                const std::string pre = "?catch$0@?0?";
+                const std::string post = "@4HA";
+            } // end of namespace catch_code
+        } // end of namespace x64_handler
+        const std::string prolog_size = "$prolog_size";
     } // end of namespace ms
     extern std::vector<call_site_t> call_sites;
-    extern void out_table();
+    extern void out_table(bool);
 #if defined(_MSC_VER) || defined(__CYGWIN__)
     extern void out_labeled_types();
 #else // defined(_MSC_VER) || defined(__CYGWIN__)
