@@ -30,50 +30,50 @@ namespace intel {
   std::vector<std::string> init_fun;
   std::vector<std::string> term_fun;
   namespace except {
-      namespace ms {
-          inline bool handler(const std::vector<tac*>& code)
-          {
-              using namespace std;
-              if (mode != MS)
-                  return false;
-              typedef vector<tac*>::const_iterator IT;
-              IT p = find_if(begin(code), end(code),
-                  [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
-              return p != end(code);
-          }
-          namespace x86_handler {
-              const std::string prefix = "__ehhandler$";
-              const std::string prefix2 = "__catch$";
-              void extra()
-              {
-                  using namespace std;
-                  sec_hlp sentry(CODE);
-                  out << prefix << func_label << ':' << '\n';
-                  if (except::call_sites.empty())
-                      return; // work around
-                  out << '\t' << "npad	1" << '\n';
-                  out << '\t' << "npad	1" << '\n';
-                  out << '\t' << "mov	edx, DWORD PTR[esp + 8]" << '\n';
-                  out << '\t' << "lea	eax, DWORD PTR[edx + 12]" << '\n';
-                  out << '\t' << "mov	ecx, DWORD PTR[edx - 224]" << '\n';
-                  out << '\t' << "xor ecx, eax" << '\n';
-                  string label1 = "@__security_check_cookie@4";
-                  out << '\t' << "call	" << label1 << '\n';
-                  mem::refed.insert(mem::refgen_t(label1, usr::FUNCTION, 0));
-                  out << '\t' << "mov	eax, OFFSET ";
-                  out << except::ms::out_table::x86_gen::pre4 << func_label << '\n';
-                  string label2 = "___CxxFrameHandler3";
-                  out << '\t' << "jmp	" << label2 << '\n';
-                  mem::refed.insert(mem::refgen_t(label2, usr::FUNCTION, 0));
-              }
-          } // end of namespace x86_handler
-          namespace x64_handler {
-              void magic_code2();
-              namespace catch_code {
-                  void gen();
-              } // end of namespace catch_code
-          } // end of namespace x64_handler
-      } // end of namespace ms
+    namespace ms {
+      inline bool handler(const std::vector<tac*>& code)
+      {
+	using namespace std;
+	if (mode != MS)
+	  return false;
+	typedef vector<tac*>::const_iterator IT;
+	IT p = find_if(begin(code), end(code),
+		       [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
+	return p != end(code);
+      }
+      namespace x86_handler {
+	const std::string prefix = "__ehhandler$";
+	const std::string prefix2 = "__catch$";
+	void extra()
+	{
+	  using namespace std;
+	  sec_hlp sentry(CODE);
+	  out << prefix << func_label << ':' << '\n';
+	  if (except::call_sites.empty())
+	    return; // work around
+	  out << '\t' << "npad	1" << '\n';
+	  out << '\t' << "npad	1" << '\n';
+	  out << '\t' << "mov	edx, DWORD PTR[esp + 8]" << '\n';
+	  out << '\t' << "lea	eax, DWORD PTR[edx + 12]" << '\n';
+	  out << '\t' << "mov	ecx, DWORD PTR[edx - 224]" << '\n';
+	  out << '\t' << "xor ecx, eax" << '\n';
+	  string label1 = "@__security_check_cookie@4";
+	  out << '\t' << "call	" << label1 << '\n';
+	  mem::refed.insert(mem::refgen_t(label1, usr::FUNCTION, 0));
+	  out << '\t' << "mov	eax, OFFSET ";
+	  out << except::ms::out_table::x86_gen::pre4 << func_label << '\n';
+	  string label2 = "___CxxFrameHandler3";
+	  out << '\t' << "jmp	" << label2 << '\n';
+	  mem::refed.insert(mem::refgen_t(label2, usr::FUNCTION, 0));
+	}
+      } // end of namespace x86_handler
+      namespace x64_handler {
+	void magic_code2();
+	namespace catch_code {
+	  void gen();
+	} // end of namespace catch_code
+      } // end of namespace x64_handler
+    } // end of namespace ms
   } // end of namespace except
 #endif // CXX_GENERATOR
 } // end of namespace intel
@@ -152,15 +152,8 @@ void intel::genfunc(const COMPILER::fundef* func,
     else
       except::ms::x86_handler::extra();
   }
-
-  {
-    map<var*, address*>& table = address_descriptor.second;
-    for_each(table.begin(), table.end(), destroy_address<var*>());
-    table.clear();
-  }
-
   if (ms_handler && x64)
-      except::ms::x64_handler::magic_code2();
+    except::ms::x64_handler::magic_code2();
   except::out_table(ms_handler);
   for (auto T : except::throw_types) {
     if (T->tmp())
@@ -179,6 +172,11 @@ void intel::genfunc(const COMPILER::fundef* func,
   leave(func);
   end_section(CODE);
 #endif // CXX_GENERATOR
+  {
+    map<var*, address*>& table = address_descriptor.second;
+    for_each(table.begin(), table.end(), destroy_address<var*>());
+    table.clear();
+  }
 }
 
 #ifdef CXX_GENERATOR
