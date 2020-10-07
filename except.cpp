@@ -10,6 +10,7 @@ namespace intel {
     vector<call_site_t> call_sites;
     vector<const type*> types;
     vector<const type*> call_site_t::types;
+    vector<int> call_site_t::offsets;
     vector<const type*> throw_types;
     set<const type*> types_to_output;
     set<const type*> ms::call_sites_types_to_output;
@@ -412,7 +413,10 @@ namespace intel {
             const type* T = call_site_t::types.back();
             string Le = ms::label(ms::pre4, T);
             out << '\t' << "DD" << '\t' << Le << '\n';
-            out << '\t' << "DD" << '\t' << "0ffffffe8H" << '\n';
+            if (call_site_t::offsets.size() != 1)
+	      return;  // not implemented
+            int offset = call_site_t::offsets.back();
+            out << '\t' << "DD" << '\t' << offset << '\n';
             if (call_sites.size() != 1)
               return;  // not implemented
             const call_site_t& info = call_sites.back();

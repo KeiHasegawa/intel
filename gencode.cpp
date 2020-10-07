@@ -5294,21 +5294,27 @@ namespace intel {
   using namespace COMPILER;
   void catch_common(tac* tac)
   {
-      if (!tac->x) {
-          except::call_site_t::types.push_back(0);
-          return;
-      }
-      address* x = getaddr(tac->x);
-      const type* T = tac->x->m_type;
-      if (mode == GNU)
-        T->scalar() ? x->store() : copy(x, 0, T->size());
-      T = T->unqualified();
-      if (T->m_id == type::REFERENCE) {
-          typedef const reference_type RT;
-          RT* rt = static_cast<RT*>(T);
-          T = rt->referenced_type();
-      }
-      except::call_site_t::types.push_back(T);
+    if (!tac->x) {
+      except::call_site_t::types.push_back(0);
+      return;
+    }
+    address* x = getaddr(tac->x);
+    const type* T = tac->x->m_type;
+    if (mode == GNU)
+      T->scalar() ? x->store() : copy(x, 0, T->size());
+    else {
+      assert(x->m_id == address::STACK);
+      stack* ps = static_cast<stack*>(x);
+      int offset = ps->m_offset;
+      except::call_site_t::offsets.push_back(offset);
+    }
+    T = T->unqualified();
+    if (T->m_id == type::REFERENCE) {
+      typedef const reference_type RT;
+      RT* rt = static_cast<RT*>(T);
+      T = rt->referenced_type();
+    }
+    except::call_site_t::types.push_back(T);
   }
   void gnu_catch_begin(tac* tac)
   {
@@ -5333,7 +5339,7 @@ namespace intel {
         return; // not implemented nest case
       except::ms::x64_handler::catch_code::flag = true;
       if (except::ms::x64_handler::catch_code::ptr)
-          return; // not implemented multiple case
+	return; // not implemented multiple case
       except::ms::x64_handler::catch_code::ptr = new vector<tac*>;
       catch_common(ptr);
     }
@@ -5362,16 +5368,16 @@ void intel::catch_begin(COMPILER::tac* tac)
 void intel::catch_end(COMPILER::tac* tac)
 {
   if (mode == GNU) {
-      out << '\t' << "call" << '\t' << "__cxa_end_catch" << '\n';
+    out << '\t' << "call" << '\t' << "__cxa_end_catch" << '\n';
   }
   else {
-      if (x64) {
-          except::call_site_t info;
-          string label = func_label + except::ms::x64_handler::postfix;
-          info.m_landing = label;
-          except::call_sites.push_back(info);
-          out << label << '\t' << "EQU $" << '\n';
-      }
+    if (x64) {
+      except::call_site_t info;
+      string label = func_label + except::ms::x64_handler::postfix;
+      info.m_landing = label;
+      except::call_sites.push_back(info);
+      out << label << '\t' << "EQU $" << '\n';
+    }
   }
 }
 #endif // CXX_GENERATOR

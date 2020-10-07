@@ -309,6 +309,7 @@ namespace intel {
       bool m_for_dest;
       call_site_t() : m_action(0), m_for_dest(false) {}
       static std::vector<const COMPILER::type*> types;
+      static std::vector<int> offsets;
     };
     extern void out_type_info(const COMPILER::type* T);
     extern std::vector<const COMPILER::type*> throw_types;
