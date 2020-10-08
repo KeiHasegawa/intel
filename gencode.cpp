@@ -33,45 +33,45 @@ namespace intel {
     namespace ms {
       inline bool handler(const std::vector<tac*>& code)
       {
-	using namespace std;
-	if (mode != MS)
-	  return false;
-	typedef vector<tac*>::const_iterator IT;
-	IT p = find_if(begin(code), end(code),
-		       [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
-	return p != end(code);
+        using namespace std;
+        if (mode != MS)
+          return false;
+        typedef vector<tac*>::const_iterator IT;
+        IT p = find_if(begin(code), end(code),
+        	       [](tac* p) {return p->m_id == tac::CATCH_BEGIN; });
+        return p != end(code);
       }
       namespace x86_handler {
-	const std::string prefix = "__ehhandler$";
-	const std::string prefix2 = "__catch$";
-	void extra()
-	{
-	  using namespace std;
-	  sec_hlp sentry(CODE);
-	  out << prefix << func_label << ':' << '\n';
-	  if (except::call_sites.empty())
-	    return; // work around
-	  out << '\t' << "npad	1" << '\n';
-	  out << '\t' << "npad	1" << '\n';
-	  out << '\t' << "mov	edx, DWORD PTR[esp + 8]" << '\n';
-	  out << '\t' << "lea	eax, DWORD PTR[edx + 12]" << '\n';
-	  out << '\t' << "mov	ecx, DWORD PTR[edx - 224]" << '\n';
-	  out << '\t' << "xor ecx, eax" << '\n';
-	  string label1 = "@__security_check_cookie@4";
-	  out << '\t' << "call	" << label1 << '\n';
-	  mem::refed.insert(mem::refgen_t(label1, usr::FUNCTION, 0));
-	  out << '\t' << "mov	eax, OFFSET ";
-	  out << except::ms::out_table::x86_gen::pre4 << func_label << '\n';
-	  string label2 = "___CxxFrameHandler3";
-	  out << '\t' << "jmp	" << label2 << '\n';
-	  mem::refed.insert(mem::refgen_t(label2, usr::FUNCTION, 0));
-	}
+        const std::string prefix = "__ehhandler$";
+        const std::string prefix2 = "__catch$";
+        void extra()
+        {
+          using namespace std;
+          sec_hlp sentry(CODE);
+          out << prefix << func_label << ':' << '\n';
+          if (except::call_sites.empty())
+            return; // work around
+          out << '\t' << "npad	1" << '\n';
+          out << '\t' << "npad	1" << '\n';
+          out << '\t' << "mov	edx, DWORD PTR[esp + 8]" << '\n';
+          out << '\t' << "lea	eax, DWORD PTR[edx + 12]" << '\n';
+          out << '\t' << "mov	ecx, DWORD PTR[edx - 224]" << '\n';
+          out << '\t' << "xor ecx, eax" << '\n';
+          string label1 = "@__security_check_cookie@4";
+          out << '\t' << "call	" << label1 << '\n';
+          mem::refed.insert(mem::refgen_t(label1, usr::FUNCTION, 0));
+          out << '\t' << "mov	eax, OFFSET ";
+          out << except::ms::out_table::x86_gen::pre4 << func_label << '\n';
+          string label2 = "___CxxFrameHandler3";
+          out << '\t' << "jmp	" << label2 << '\n';
+          mem::refed.insert(mem::refgen_t(label2, usr::FUNCTION, 0));
+        }
       } // end of namespace x86_handler
       namespace x64_handler {
-	void magic_code2();
-	namespace catch_code {
-	  void gen();
-	} // end of namespace catch_code
+        void magic_code2();
+        namespace catch_code {
+          void gen();
+        } // end of namespace catch_code
       } // end of namespace x64_handler
     } // end of namespace ms
   } // end of namespace except
@@ -502,7 +502,7 @@ void intel::enter(const COMPILER::fundef* func,
     }
   }
 #ifdef CXX_GENERATOR
-  if (x64) {
+  if (mode == MS && x64) {
     out << func_label << except::ms::prolog_size << ' ';
     out << "EQU" << ' ' << "$ - " << func_label << '\n';
     if (ms_handler)
@@ -5339,7 +5339,7 @@ namespace intel {
         return; // not implemented nest case
       except::ms::x64_handler::catch_code::flag = true;
       if (except::ms::x64_handler::catch_code::ptr)
-	return; // not implemented multiple case
+        return; // not implemented multiple case
       except::ms::x64_handler::catch_code::ptr = new vector<tac*>;
       catch_common(ptr);
     }
