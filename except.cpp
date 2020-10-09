@@ -87,8 +87,10 @@ namespace intel {
       return os.str();
     }
     bool ms::label_flag;
-    std::string ms::pre1 = "_TI2C";
-    std::string ms::pre2 = "_CTA2";
+    std::string ms::pre1a = "_TI1";
+    std::string ms::pre1b = "_TI2C";
+    std::string ms::pre2a = "_CTA1";
+    std::string ms::pre2b = "_CTA2";
     std::string ms::pre3 = "_CT??_R0";
     std::string ms::pre4 = "??_R0";
     std::string ms::pre5 = ".";
@@ -173,15 +175,18 @@ namespace intel {
           out << mem::refgen(obj) << '\n';
         }
       }
-      void ms_none_tag(const type* T)
+      void ms_common(const type* T, tag* ptr)
       {
-        string La = ms::label(ms::pre1, T);
-        string Lb = ms::label(ms::pre2, T);
+        string s1 = ptr ? ms::pre1a : ms::pre1b;
+        string La = ms::label(s1, T);
+        string s2 = ptr ? ms::pre2a : ms::pre2b;
+        string Lb = ms::label(s2, T);
         string pre = x64 ? "imagerel\t" : "";
 
         out << "xdata$x" << '\t' << "SEGMENT" << '\n';
         out << La;
-        out << '\t' << "DD" << '\t' << "01H" << '\n';
+        out << '\t' << "DD" << '\t';
+        out << (ptr ? "00H" : "01H") << '\n';
         out << '\t' << "DD" << '\t' << "00H" << '\n';
         out << '\t' << "DD" << '\t' << "00H" << '\n';
         out << '\t' << "DD" << '\t' << pre << Lb << '\n';
@@ -206,13 +211,14 @@ namespace intel {
         string Le = ms::label(ms::pre4, T);
         out << "xdata$x" << '\t' << "SEGMENT" << '\n';
         out << Lc;
-        out << '\t' << "DD" << '\t' << "01H" << '\n';
+        out << '\t' << "DD" << '\t';
+        out << (ptr ? "00H" : "01H") << '\n';
         out << '\t' << "DD" << '\t' << pre << Le << '\n';
         out << '\t' << "DD" << '\t' << "00H" << '\n';
         out << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
         out << '\t' << "ORG $ + 4" << '\n';
-        int psz = psize();
-        out << '\t' << "DD" << '\t' << '0' << psz << 'H' << '\n';
+        int sz = T->size();
+        out << '\t' << "DD" << '\t' << '0' << sz << 'H' << '\n';
         out << '\t' << "DD" << '\t' << "00H" << '\n';
         out << "xdata$x" << '\t' << "ENDS" << '\n';
 
@@ -226,7 +232,7 @@ namespace intel {
           out << '\t' << "DD" << '\t' << "00H" << '\n';
           out << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
           out << '\t' << "ORG $ + 4" << '\n';
-          out << '\t' << "DD" << '\t' << '0' << psz << 'H' << '\n';
+          out << '\t' << "DD" << '\t' << '0' << sz << 'H' << '\n';
           out << '\t' << "DD" << '\t' << "00H" << '\n';
           out << "xdata$x" << '\t' << "ENDS" << '\n';
         }
@@ -248,7 +254,76 @@ namespace intel {
       }
       void none_tag(const type* T)
       {
-        mode == GNU ? gnu_none_tag(T) : ms_none_tag(T);
+        mode == GNU ? gnu_none_tag(T) : ms_common(T, 0);
+      }
+      void gnu_tagged(const type* T, tag* ptr)
+      {
+        string L1 = gnu_label(T, 'I');
+#if defined(_MSC_VER) || defined(__CYGWIN__)      
+        out << '\t' << ".globl	" << L1 << '\n';
+        out << '\t' << ".section	.rdata$" << L1 << ",\"dr\"" << '\n';
+        out << '\t' << ".linkonce same_size" << '\n';
+        out << '\t' << ".align 8" << '\n';
+#else  // defined(_MSC_VER) || defined(__CYGWIN__)
+        out << '\t' << ".weak	" << L1 << '\n';
+        out << '\t' << ".section	.rodata." << L1 << ",\"aG\",@progbits,";
+        out << L1 << ",comdat" << '\n';
+        out << '\t' << ".align 4" << '\n';
+        out << '\t' << ".type	" << L1 << ", @object" << '\n';
+        out << '\t' << ".size	" << L1 << ", 8" << '\n';
+#endif  // defined(_MSC_VER) || defined(__CYGWIN__)
+        out << L1 << ':' << '\n';      
+        if (x64)
+          out << '\t' << ".quad	";
+        else
+          out << '\t' << ".long	";
+        vector<base*>* bases = ptr->m_bases;
+        if (!bases)
+          out << "_ZTVN10__cxxabiv117__class_type_infoE+";
+        else
+          out << "_ZTVN10__cxxabiv120__si_class_type_infoE+";
+        out << (x64 ? 16 : 8) << '\n';
+        string L2 = gnu_label(T, 'S');
+        if (x64)
+          out << '\t' << ".quad	";
+        else
+          out << '\t' << ".long	";
+        out << L2 << '\n';
+        if (bases) {
+          for (auto b : *bases) {
+            tag* bptr = b->m_tag;
+            const type* bT = bptr->m_types.second;
+            assert(bT);
+            string bL = gnu_label(bT, 'I');
+            if (x64)
+              out << '\t' << ".quad	";
+            else
+              out << '\t' << ".long	";
+            out << bL << '\n';
+          }
+        }
+
+        ostringstream os;
+        T->encode(os);
+        string s = os.str();
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+        out << '\t' << ".globl	" << L2 << '\n';
+        out << '\t' << ".section	.rdata$" << L2 << ",\"dr\"" << '\n';
+        out << '\t' << ".linkonce same_size" << '\n';
+#else  // defined(_MSC_VER) || defined(__CYGWIN__)
+        out << '\t' << ".weak	" << L2 << '\n';
+        out << '\t' << ".section	.rodata." << L2 << ",\"aG\",@progbits,";
+        out << L2 << ",comdat" << '\n';
+        out << '\t' << ".align 4" << '\n';
+        out << '\t' << ".type	" << L2 << ", @object" << '\n';
+        out << '\t' << ".size	" << L2 << ", " << s.length()+1 << '\n';
+#endif  // defined(_MSC_VER) || defined(__CYGWIN__)
+        out << L2 << ':' << '\n';
+        out << '\t' << ".string	" << '"' << s << '"' << '\n';
+      }
+      void tagged(const type* T, tag* ptr)
+      {
+        mode == GNU ? gnu_tagged(T, ptr) : ms_common(T, ptr);
       }
     } // end of namespace out_type_impl
     void out_type_info(const type* T)
@@ -256,74 +331,11 @@ namespace intel {
       if (!T)
         return;
       tag* ptr = T->get_tag();
-      if (!ptr)
-        return out_type_impl::none_tag(T);
-      string L1 = gnu_label(T, 'I');
-#if defined(_MSC_VER) || defined(__CYGWIN__)      
-      out << '\t' << ".globl	" << L1 << '\n';
-      out << '\t' << ".section	.rdata$" << L1 << ",\"dr\"" << '\n';
-      out << '\t' << ".linkonce same_size" << '\n';
-      out << '\t' << ".align 8" << '\n';
-#else  // defined(_MSC_VER) || defined(__CYGWIN__)
-      out << '\t' << ".weak	" << L1 << '\n';
-      out << '\t' << ".section	.rodata." << L1 << ",\"aG\",@progbits,";
-      out << L1 << ",comdat" << '\n';
-      out << '\t' << ".align 4" << '\n';
-      out << '\t' << ".type	" << L1 << ", @object" << '\n';
-      out << '\t' << ".size	" << L1 << ", 8" << '\n';
-#endif  // defined(_MSC_VER) || defined(__CYGWIN__)
-      out << L1 << ':' << '\n';      
-      if (x64)
-        out << '\t' << ".quad	";
-      else
-        out << '\t' << ".long	";
-      vector<base*>* bases = ptr->m_bases;
-      if (!bases)
-        out << "_ZTVN10__cxxabiv117__class_type_infoE+";
-      else
-        out << "_ZTVN10__cxxabiv120__si_class_type_infoE+";
-      out << (x64 ? 16 : 8) << '\n';
-      string L2 = gnu_label(T, 'S');
-      if (x64)
-        out << '\t' << ".quad	";
-      else
-        out << '\t' << ".long	";
-      out << L2 << '\n';
-      if (bases) {
-        for (auto b : *bases) {
-          tag* bptr = b->m_tag;
-          const type* bT = bptr->m_types.second;
-          assert(bT);
-          string bL = gnu_label(bT, 'I');
-          if (x64)
-            out << '\t' << ".quad	";
-          else
-            out << '\t' << ".long	";
-          out << bL << '\n';
-        }
-      }
-
-      ostringstream os;
-      T->encode(os);
-      string s = os.str();
-#if defined(_MSC_VER) || defined(__CYGWIN__)
-      out << '\t' << ".globl	" << L2 << '\n';
-      out << '\t' << ".section	.rdata$" << L2 << ",\"dr\"" << '\n';
-      out << '\t' << ".linkonce same_size" << '\n';
-#else  // defined(_MSC_VER) || defined(__CYGWIN__)
-      out << '\t' << ".weak	" << L2 << '\n';
-      out << '\t' << ".section	.rodata." << L2 << ",\"aG\",@progbits,";
-      out << L2 << ",comdat" << '\n';
-      out << '\t' << ".align 4" << '\n';
-      out << '\t' << ".type	" << L2 << ", @object" << '\n';
-      out << '\t' << ".size	" << L2 << ", " << s.length()+1 << '\n';
-#endif  // defined(_MSC_VER) || defined(__CYGWIN__)
-      out << L2 << ':' << '\n';
-      out << '\t' << ".string	" << '"' << s << '"' << '\n';
+      ptr ? out_type_impl::tagged(T, ptr) : out_type_impl::none_tag(T);
     }
     namespace ms {
       namespace out_call_site_type_impl {
-        void none_tag(const type* T)
+        void ms_common(const type* T)
         {
           mem::refed.insert(mem::refgen_t(ms::ti_label, usr::NONE, 8));
           out << "data$r" << '\t' << "SEGMENT" << '\n';
@@ -340,11 +352,8 @@ namespace intel {
       void out_call_site_type_info(const type* T)
       {
         assert(mode == MS);
-        if (!T)
-          return;
-        tag* ptr = T->get_tag();
-        if (!ptr)
-          return out_call_site_type_impl::none_tag(T);
+        if (T)
+            out_call_site_type_impl::ms_common(T);
       }
     } // end of namespace ms
     bool gnu_table_outputed;
@@ -407,14 +416,16 @@ namespace intel {
           {
             out << "xdata$x" << '\t' << "SEGMENT" << '\n';
             string label = out_table::x86_gen::pre1 + func_label;
-            out << label << '\t' << "DD" << '\t' << "01H" << '\n';
+            out << label << '\t' << "DD" << '\t';
             if (call_site_t::types.size() != 1)
-              return;  // not implemented
+                return;  // not implemented
             const type* T = call_site_t::types.back();
+            tag* ptr = T->get_tag();
+            out << (ptr ? "08H" : "01H") << '\n';
             string Le = ms::label(ms::pre4, T);
             out << '\t' << "DD" << '\t' << Le << '\n';
             if (call_site_t::offsets.size() != 1)
-	      return;  // not implemented
+              return;  // not implemented
             int offset = call_site_t::offsets.back();
             out << '\t' << "DD" << '\t' << offset << '\n';
             if (call_sites.size() != 1)
@@ -531,7 +542,7 @@ namespace intel {
             const type* T = call_site_t::types.back();
             string Le = ms::label(ms::pre4, T);
             out << '\t' << "DD imagerel " << Le << '\n';
-            out << '\t' << "DB 'P'" << '\n';
+            out << '\t' << "DB 050H" << '\n';
             out << '\t' << "DD imagerel ";
             out << x64_handler::catch_code::pre;
             out << func_label;

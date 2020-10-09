@@ -328,8 +328,10 @@ namespace intel {
     namespace ms {
         extern std::string label(std::string, const COMPILER::type*);
         extern bool label_flag;
-        extern std::string pre1;
-        extern std::string pre2;
+        extern std::string pre1a;
+        extern std::string pre1b;
+        extern std::string pre2a;
+        extern std::string pre2b;
         extern std::string pre3;
         extern std::string pre4;
         extern std::string pre5;

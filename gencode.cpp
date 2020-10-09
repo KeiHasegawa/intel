@@ -53,9 +53,10 @@ namespace intel {
             return; // work around
           out << '\t' << "npad	1" << '\n';
           out << '\t' << "npad	1" << '\n';
-          out << '\t' << "mov	edx, DWORD PTR[esp + 8]" << '\n';
-          out << '\t' << "lea	eax, DWORD PTR[edx + 12]" << '\n';
-          out << '\t' << "mov	ecx, DWORD PTR[edx - 224]" << '\n';
+          out << '\t' << "mov	edx, DWORD PTR [esp+8]" << '\n';
+          out << '\t' << "lea	eax, DWORD PTR [edx+12]" << '\n';
+          int n = stack::delta_sp + 20;
+          out << '\t' << "mov	ecx, DWORD PTR [edx-" << n << ']' << '\n';
           out << '\t' << "xor ecx, eax" << '\n';
           string label1 = "@__security_check_cookie@4";
           out << '\t' << "call	" << label1 << '\n';
@@ -287,65 +288,71 @@ namespace intel {
   );
 #ifdef CXX_GENERATOR
   namespace except {
-      namespace ms {
-          namespace x86_handler {
-              void partof_prolog()
-              {
-                  assert(mode == MS && !x64);
-                  out << '\t' << "push  -1" << '\n';
-                  out << '\t' << "push	" << prefix << func_label << '\n';
-                  out << '\t' << "mov	eax, DWORD PTR fs:0" << '\n';
-                  out << '\t' << "push	eax" << '\n';
-                  out << '\t' << "push	ecx" << '\n';
-              }
-              const int ehrec_off = 16;
-              void partof_prolog2()
-              {
-                  using namespace std;
-                  assert(mode == MS && !x64);
-                  out << '\t' << "push	ebx" << '\n';
-                  out << '\t' << "push	esi" << '\n';
-                  out << '\t' << "push	edi" << '\n';
-                  string label = "___security_cookie";
-                  out << '\t' << "mov	eax, DWORD PTR " << label << '\n';
-                  mem::refed.insert(mem::refgen_t(label, usr::NONE, 4));
-                  out << '\t' << "xor eax, ebp" << '\n';
-                  out << '\t' << "push	eax" << '\n';
-                  int n = ms::x86_handler::ehrec_off - 4;
-                  out << '\t' << "lea	eax, DWORD PTR [ebp-" << n << ']' << '\n';
-                  out << '\t' << "mov	DWORD PTR fs:0, eax" << '\n';
-                  int m = ms::x86_handler::ehrec_off;
-                  out << '\t' << "mov	DWORD PTR [ebp-" << m << "], esp" << '\n';
-              }
-          } // end of namespace x86_handler
-          namespace x64_handler {
-              const int magic = 16 * 14;
-              const std::string magic_label = "__97ABDBD4_bbb@cpp";
-              void magic_code()
-              {
-                  using namespace std;
-                  out << '\t' << "mov	rdi, rsp" << '\n';
-                  int n = stack::delta_sp >> 2;
-                  out << '\t' << "mov	ecx, " << n << '\n';
-                  out << '\t' << "mov	eax, -858993460" << '\n';
-                  out << '\t' << "rep stosd" << '\n';
-                  out << '\t' << "lea	rcx, OFFSET " << magic_label << '\n';
-                  string label = "__CheckForDebuggerJustMyCode";
-                  out << '\t' << "call	" << label << '\n';
-                  mem::refed.insert(mem::refgen_t(label, usr::FUNCTION, 0));
-                  out << '\t' << "npad	1" << '\n';
-              }
-              void magic_code2()
-              {
-                  out << "msvcjmc	SEGMENT" << '\n';
-                  out << magic_label << " DB 01H" << '\n';
-                  out << "msvcjmc	ENDS" << '\n';
-              }
-          } // end of namespace x64_handler
-      } // end of namespace ms
+    namespace ms {
+      namespace x86_handler {
+        void partof_prolog()
+        {
+          assert(mode == MS && !x64);
+          out << '\t' << "push  -1" << '\n';
+          out << '\t' << "push	" << prefix << func_label << '\n';
+          out << '\t' << "mov	eax, DWORD PTR fs:0" << '\n';
+          out << '\t' << "push	eax" << '\n';
+          out << '\t' << "push	ecx" << '\n';
+        }
+        const int ehrec_off = 16;
+        void partof_prolog2()
+        {
+          using namespace std;
+          assert(mode == MS && !x64);
+          out << '\t' << "push	ebx" << '\n';
+          out << '\t' << "push	esi" << '\n';
+          out << '\t' << "push	edi" << '\n';
+          string label = "___security_cookie";
+          out << '\t' << "mov	eax, DWORD PTR " << label << '\n';
+          mem::refed.insert(mem::refgen_t(label, usr::NONE, 4));
+          out << '\t' << "xor eax, ebp" << '\n';
+          out << '\t' << "push	eax" << '\n';
+          int n = ms::x86_handler::ehrec_off - 4;
+          out << '\t' << "lea	eax, DWORD PTR [ebp-" << n << ']' << '\n';
+          out << '\t' << "mov	DWORD PTR fs:0, eax" << '\n';
+          int m = ms::x86_handler::ehrec_off;
+          out << '\t' << "mov	DWORD PTR [ebp-" << m << "], esp" << '\n';
+        }
+      } // end of namespace x86_handler
+      namespace x64_handler {
+        const int magic = 16 * 14;
+        const std::string magic_label = "__97ABDBD4_bbb@cpp";
+        void magic_code()
+        {
+          using namespace std;
+          out << '\t' << "mov	rdi, rsp" << '\n';
+          int n = stack::delta_sp >> 2;
+          out << '\t' << "mov	ecx, " << n << '\n';
+          out << '\t' << "mov	eax, -858993460" << '\n';
+          out << '\t' << "rep stosd" << '\n';
+          out << '\t' << "lea	rcx, OFFSET " << magic_label << '\n';
+          string label = "__CheckForDebuggerJustMyCode";
+          out << '\t' << "call	" << label << '\n';
+          mem::refed.insert(mem::refgen_t(label, usr::FUNCTION, 0));
+          out << '\t' << "npad	1" << '\n';
+        }
+        void magic_code2()
+        {
+          out << "msvcjmc	SEGMENT" << '\n';
+          out << magic_label << " DB 01H" << '\n';
+          out << "msvcjmc	ENDS" << '\n';
+        }
+      } // end of namespace x64_handler
+    } // end of namespace ms
   } // end of namespace except
 #endif // CXX_GENERATOR
-}
+} // end of namespace intel
+
+namespace intel {
+  namespace call_arg {
+    int calculate(const std::vector<COMPILER::tac*>& code);
+  }  // end of namespace call_arg
+} // end of namespace intel
 
 void intel::enter(const COMPILER::fundef* func,
                   const std::vector<COMPILER::tac*>& code
@@ -541,8 +548,11 @@ void intel::enter(const COMPILER::fundef* func,
   }
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
 #ifdef CXX_GENERATOR
-  if (ms_handler && !x64)
+  if (ms_handler && !x64) {
     except::ms::x86_handler::partof_prolog2();
+    int n = call_arg::calculate(code);
+    out << '\t' << "sub" << '\t' << "esp, " << n << '\n';
+  }
 #endif // CXX_GENERATOR
 }
 
@@ -706,9 +716,6 @@ namespace intel {
                  , bool ms_handler
 #endif // CXX_GENERATOR
   );
-  namespace call_arg {
-    int calculate(const std::vector<COMPILER::tac*>& code);
-  }  // end of namespace call_arg
   inline int align(int n, int m)
   {
     if (n & (m - 1))
@@ -733,23 +740,8 @@ void intel::sched_stack(const COMPILER::fundef* func,
   int psz = psize();
   stack::local_area = psz;  // for return address save area
 #ifdef CXX_GENERATOR
-  if (ms_handler && !x64) {
+  if (ms_handler && !x64)
     stack::local_area += except::ms::x86_handler::ehrec_off;
-    typedef vector<tac*>::const_iterator IT;
-    IT p = find_if(begin(code), end(code),
-        	   [](const tac* ptr) { return ptr->m_id == tac::CATCH_BEGIN; });
-    if (p != end(code)) {
-      tac* ptr = *p;
-      if (var* x = ptr->x) {
-        stack::local_area = align(stack::local_area, 8);
-        address_descriptor.second[x] =
-          new stack(x, -stack::local_area); // reserved here
-        const type* T = x->m_type;
-        int size = T->size();
-        stack::local_area += size;
-      }
-    }
-  }
 #endif // CXX_GENERATOR
   vector<tac*>::const_iterator p =
     max_element(code.begin(),code.end(), aggregate_func::ret::cmp);
@@ -805,7 +797,13 @@ void intel::sched_stack(const COMPILER::fundef* func,
       out << '\n';
   }
 
+#ifdef CXX_GENERATOR
+  int n = stack::local_area;
+  if (!ms_handler || x64)
+    n += call_arg::calculate(code);
+#else // CXX_GENERATOR
   int n = stack::local_area + call_arg::calculate(code);
+#endif // CXX_GENERATOR
   n = align(n, 16);
   stack::delta_sp = n;
 }
@@ -1192,8 +1190,8 @@ int intel::decide_local(int offset, COMPILER::var* v)
     }
   }
   else {
-    if (tbl.find(v) == tbl.end())
-      tbl[v] = new stack(v, -offset);
+    assert(tbl.find(v) == tbl.end());
+    tbl[v] = new stack(v, -offset);
   }
   return offset;
 }
@@ -1206,46 +1204,46 @@ namespace intel {
   } gencode_table;
 #ifdef CXX_GENERATOR
   namespace except {
-      namespace ms {
-          namespace x64_handler {
-              const string postfix = "$catch_end";
-              namespace catch_code {
-                  vector<tac*>* ptr;
-                  bool flag;
-                  void gen()
-                  {
-                      if (!ptr)
-                          return;
-                      auto_ptr<vector<tac*> > sweeper1(ptr);
-                      sec_hlp sweeper2(CODE);
-                      string label = catch_code::pre + func_label + catch_code::post;
-                      out << label;
-                      out << ' ' << "PROC	FRAME" << '\n';
-                      out << '\t' << "mov	QWORD PTR [rsp+8], rcx" << '\n';
-                      out << '\t' << ".savereg rcx, 8" << '\n';
-                      out << '\t' << "mov	QWORD PTR [rsp+16], rdx" << '\n';
-                      out << '\t' << ".savereg rdx, 16" << '\n';
-                      out << '\t' << "push	rbp" << '\n';
-                      out << '\t' << ".pushreg rbp" << '\n';
-                      out << '\t' << "push	rdi" << '\n';
-                      out << '\t' << ".pushreg rdi" << '\n';
-                      out << '\t' << "sub	rsp, 40" << '\n';
-                      out << '\t' << ".allocstack 40" << '\n';
-                      out << '\t' << ".endprolog" << '\n';
-                      out << '\t' << "lea	rbp, QWORD PTR [rdx+72]" << '\n';
-                      for_each(begin(*ptr), end(*ptr), gencode);
-                      out << '\t' << "npad	1" << '\n';
-                      out << '\t' << "lea	rax, " << func_label << postfix << '\n';
-                      out << '\t' << "add	rsp, 40" << '\n';
-                      out << '\t' << "pop	rdi" << '\n';
-                      out << '\t' << "pop	rbp" << '\n';
-                      out << '\t' << "ret	0" << '\n';
-                      out << '\t' << "int	3" << '\n';
-                      out << label << ' ' << "ENDP" << '\n';
-                  }
-              } // end of namespace catch_code;
-          } // end of namespace x64_handler
-      } // end of namespace ms
+    namespace ms {
+      namespace x64_handler {
+        const string postfix = "$catch_end";
+        namespace catch_code {
+          vector<tac*>* ptr;
+          bool flag;
+          void gen()
+          {
+            if (!ptr)
+              return;
+            auto_ptr<vector<tac*> > sweeper1(ptr);
+            sec_hlp sweeper2(CODE);
+            string label = catch_code::pre + func_label + catch_code::post;
+            out << label;
+            out << ' ' << "PROC	FRAME" << '\n';
+            out << '\t' << "mov	QWORD PTR [rsp+8], rcx" << '\n';
+            out << '\t' << ".savereg rcx, 8" << '\n';
+            out << '\t' << "mov	QWORD PTR [rsp+16], rdx" << '\n';
+            out << '\t' << ".savereg rdx, 16" << '\n';
+            out << '\t' << "push	rbp" << '\n';
+            out << '\t' << ".pushreg rbp" << '\n';
+            out << '\t' << "push	rdi" << '\n';
+            out << '\t' << ".pushreg rdi" << '\n';
+            out << '\t' << "sub	rsp, 40" << '\n';
+            out << '\t' << ".allocstack 40" << '\n';
+            out << '\t' << ".endprolog" << '\n';
+            out << '\t' << "lea	rbp, QWORD PTR [rdx+048H]" << '\n';
+            for_each(begin(*ptr), end(*ptr), gencode);
+            out << '\t' << "npad	1" << '\n';
+            out << '\t' << "lea	rax, " << func_label << postfix << '\n';
+            out << '\t' << "add	rsp, 40" << '\n';
+            out << '\t' << "pop	rdi" << '\n';
+            out << '\t' << "pop	rbp" << '\n';
+            out << '\t' << "ret	0" << '\n';
+            out << '\t' << "int	3" << '\n';
+            out << label << ' ' << "ENDP" << '\n';
+          }
+        } // end of namespace catch_code;
+      } // end of namespace x64_handler
+    } // end of namespace ms
   } // end of namespace except
 #endif // CXX_GENERATOR
 } // end of namespace intel
@@ -1260,12 +1258,12 @@ void intel::gencode(COMPILER::tac* ptr)
   }
 #ifdef CXX_GENERATOR
   if (except::ms::x64_handler::catch_code::flag) {
-      if (ptr->m_id == tac::CATCH_END) {
-          except::ms::x64_handler::catch_code::flag = false;
-          gencode_table[ptr->m_id](ptr);
-      }
-      else
-          except::ms::x64_handler::catch_code::ptr->push_back(ptr);
+    if (ptr->m_id == tac::CATCH_END) {
+      except::ms::x64_handler::catch_code::flag = false;
+      gencode_table[ptr->m_id](ptr);
+    }
+    else
+      except::ms::x64_handler::catch_code::ptr->push_back(ptr);
   }
   else
     gencode_table[ptr->m_id](ptr);
@@ -5117,9 +5115,11 @@ namespace intel {
     {
       throw3ac* p = static_cast<throw3ac*>(tac);
       const type* T = p->m_type;
+      tag* ptr = T->get_tag();
+      string pre = ptr ? except::ms::pre1a : except::ms::pre1b;
       if (x64) {
         out << '\t' << "lea" << '\t' << "rdx, ";
-        out << except::ms::label(except::ms::pre1, T) << '\n';
+        out << except::ms::label(pre, T) << '\n';
         address* y = getaddr(tac->y);
         y->load(reg::cx);
         string label = "_CxxThrowException";
@@ -5128,7 +5128,7 @@ namespace intel {
       }
       else {
         out << '\t' << "push" << '\t';
-        out << "OFFSET " << except::ms::label(except::ms::pre1, T) << '\n';
+        out << "OFFSET " << except::ms::label(pre, T) << '\n';
         address* y = getaddr(tac->y);
         y->load();
         out << '\t' << "push" << '\t' << "eax" << '\n';

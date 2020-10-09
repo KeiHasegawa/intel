@@ -57,6 +57,22 @@ bool intel::debug_flag;
 
 bool intel::x64 = true;
 
+namespace intel {
+  namespace option_impl {
+    inline void add_()
+    {
+#ifdef CXX_GENERATOR
+      except::ms::pre1a = "_" + except::ms::pre1a;
+      except::ms::pre1b = "_" + except::ms::pre1b;
+      except::ms::pre2a = "_" + except::ms::pre2a;
+      except::ms::pre2b = "_" + except::ms::pre2b;
+      except::ms::pre3 = "_" + except::ms::pre3;
+      except::ms::vpsig = "PAX";
+#endif // CXX_GENERATOR
+    }
+  }
+} // end of namespace intel
+
 int intel::option_handler(const char* option)
 {
   using namespace std;
@@ -71,8 +87,10 @@ int intel::option_handler(const char* option)
   if (string("--x86") == option) {
     x64 = false;
     intel::literal::floating::long_double::size = (mode == MS) ? 8 : 12;
-    if (mode == MS)
+    if (mode == MS) {
       external_header = "_";
+      option_impl::add_();
+    }
     intel::first_param_offset = (mode == MS) ? 12 : 8;
     return 0;
   }
@@ -84,12 +102,7 @@ int intel::option_handler(const char* option)
     if (!x64) {
       intel::first_param_offset = 12;
       external_header = "_";
-#ifdef CXX_GENERATOR
-      except::ms::pre1 = "_" + except::ms::pre1;
-      except::ms::pre2 = "_" + except::ms::pre2;
-      except::ms::pre3 = "_" + except::ms::pre3;
-      except::ms::vpsig = "PAX";
-#endif // CXX_GENERATOR
+      option_impl::add_();
     }
     return 0;
   }
