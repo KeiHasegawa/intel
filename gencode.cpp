@@ -320,7 +320,6 @@ namespace intel {
         }
       } // end of namespace x86_handler
       namespace x64_handler {
-        const int magic = 16 * 14;
         const std::string magic_label = "__97ABDBD4_bbb@cpp";
         void magic_code()
         {
@@ -510,7 +509,8 @@ void intel::enter(const COMPILER::fundef* func,
   }
 #ifdef CXX_GENERATOR
   if (mode == MS && x64) {
-    out << func_label << except::ms::prolog_size << ' ';
+    string s = func_label + except::ms::x64_handler::prolog_size;
+    out << s << ' ';
     out << "EQU" << ' ' << "$ - " << func_label << '\n';
     if (ms_handler)
       except::ms::x64_handler::magic_code();
@@ -1230,7 +1230,8 @@ namespace intel {
             out << '\t' << "sub	rsp, 40" << '\n';
             out << '\t' << ".allocstack 40" << '\n';
             out << '\t' << ".endprolog" << '\n';
-            out << '\t' << "lea	rbp, QWORD PTR [rdx+048H]" << '\n';
+            int m = stack::delta_sp - except::ms::x64_handler::magic;
+            out << '\t' << "lea	rbp, QWORD PTR [rdx+" << m << ']' << '\n';
             for_each(begin(*ptr), end(*ptr), gencode);
             out << '\t' << "npad	1" << '\n';
             out << '\t' << "lea	rax, " << func_label << postfix << '\n';
@@ -5200,8 +5201,11 @@ namespace intel {
   }
   void ms_try_end(tac* tac)
   {
-    if (x64)
+    if (x64) {
       out << '\t' << "npad	1" << '\n';
+      string label = except::ms::x64_handler::try_size_pre + func_label;
+      out << label << " EQU $-" << func_label << '\n';
+    }
     else {
       int n = except::ms::x86_handler::ehrec_off - 12;
       out << '\t' << "mov	DWORD PTR [ebp-" << n << "], -1" << '\n';

@@ -341,8 +341,10 @@ namespace intel {
                 const std::string pre = "?catch$0@?0?";
                 const std::string post = "@4HA";
             } // end of namespace catch_code
+            const std::string prolog_size = "$prolog_size";
+            const std::string try_size_pre = "try_size$";
+            const int magic = 16 * 14;
         } // end of namespace x64_handler
-        const std::string prolog_size = "$prolog_size";
     } // end of namespace ms
     extern std::vector<call_site_t> call_sites;
     extern void out_table(bool);

@@ -418,7 +418,7 @@ namespace intel {
             string label = out_table::x86_gen::pre1 + func_label;
             out << label << '\t' << "DD" << '\t';
             if (call_site_t::types.size() != 1)
-                return;  // not implemented
+	      return;  // not implemented
             const type* T = call_site_t::types.back();
             tag* ptr = T->get_tag();
             out << (ptr ? "08H" : "01H") << '\n';
@@ -479,7 +479,8 @@ namespace intel {
               // .allocstack xx
               out << unwind << '\t' << "DB 019H" << '\n'; // version : 1,
               // flag : UNW_FLAG_EHANDLER | UNW_FLAG_UHANDLER
-              out << '\t' << "DB " << func_label << except::ms::prolog_size << '\n'; // prolog size
+              string s = func_label + except::ms::x64_handler::prolog_size;
+              out << '\t' << "DB " << s << '\n'; // prolog size
               out << '\t' << "DB 05H" << '\n'; // Count of unwind codes
               out << '\t' << "DB 05H" << '\n';  // frame register : rbp, offset 0
               out << '\t' << "WORD 010cH" << '\n';  // .allocstack xx (UWOP_ALLOC_LARGE = 1)
@@ -504,7 +505,8 @@ namespace intel {
               // .allocstack xx+8
               // .endprolog
               out << unwind << '\t' << "DB 01H" << '\n'; // version : 1, flag : 0
-              out << '\t' << "DB " << func_label << except::ms::prolog_size << '\n'; // prolog size
+              string s = func_label + except::ms::x64_handler::prolog_size;
+              out << '\t' << "DB " << s << '\n'; // prolog size
               out << '\t' << "DB 03H" << '\n'; // Count of unwind codes
               out << '\t' << "DB 05H" << '\n'; // frame register : rbp, offset 0
               out << '\t' << "WORD" << ' ' << "05209H" << '\n'; // .allocstack
@@ -528,7 +530,8 @@ namespace intel {
             out << '\t' << "DB 00H" << '\n';
             out << '\t' << "DB 'V'" << '\n';
             out << '\t' << "DB 02H" << '\n';
-            out << '\t' << "DB 0cH" << '\n';
+            string s = except::ms::x64_handler::try_size_pre + func_label;
+            out << '\t' << "DB " << s << '\n';
             out << '\t' << "DB 00H" << '\n';
             out << "xdata	ENDS" << '\n';
 
@@ -536,13 +539,22 @@ namespace intel {
             string label2 = x64_gen::pre2 + func_label;
             out << label2 << " DB 02H" << '\n';
             out << '\t' << "DB 07H" << '\n';
-            out << '\t' << "DB 02H" << '\n';
+            out << '\t' << "DB ";
             if (call_site_t::types.size() != 1)
-              return;  // not implemented
+	      return;  // not implemented
             const type* T = call_site_t::types.back();
+            tag* ptr = T->get_tag();
+            out << (ptr ? "010H" : "02H") << '\n';
             string Le = ms::label(ms::pre4, T);
             out << '\t' << "DD imagerel " << Le << '\n';
-            out << '\t' << "DB 050H" << '\n';
+            int n = stack::delta_sp - except::ms::x64_handler::magic;
+            assert(n > 0);
+            n -= 0x48;
+            assert(n > 0);
+            assert(!(n & 7));
+            n <<= 1;
+            n += 0x50;
+            out << '\t' << "DB " << n << '\n';
             out << '\t' << "DD imagerel ";
             out << x64_handler::catch_code::pre;
             out << func_label;
@@ -576,9 +588,18 @@ namespace intel {
 
             out << "CONST	SEGMENT" << '\n';
             string label5 = func_label + "$rtcName$";
-            out << label5 << ' ' << "DB 070H" << '\n';
-            out << '\t' << "DB 00H" << '\n';
-            out << '\t' << "ORG $+14" << '\n';
+            out << label5 << ' ';
+            if (ptr) {
+              out << "DB 06fH" << '\n';
+              out << '\t' << "DB 06fH" << '\n';
+              out << '\t' << "DB 00H" << '\n';
+              out << '\t' << "ORG $+13" << '\n';
+            }
+            else {
+              out << "DB 070H" << '\n';
+              out << '\t' << "DB 00H" << '\n';
+              out << '\t' << "ORG $+14" << '\n';
+            }
             string label6 = func_label + "$rtcVarDesc";
             out << label6 << ' ' << "DD 028H" << '\n';
             out << '\t' << "DD 08H" << '\n';
