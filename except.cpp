@@ -549,11 +549,10 @@ namespace intel {
             out << '\t' << "DD imagerel " << Le << '\n';
             int n = stack::delta_sp - except::ms::x64_handler::magic;
             assert(n > 0);
-            n -= 0x48;
-            assert(n > 0);
+            n -= 0x20;
+            assert(n >= 0);
             assert(!(n & 7));
             n <<= 1;
-            n += 0x50;
             out << '\t' << "DB " << n << '\n';
             out << '\t' << "DD imagerel ";
             out << x64_handler::catch_code::pre;
