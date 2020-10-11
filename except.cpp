@@ -418,12 +418,19 @@ namespace intel {
             string label = out_table::x86_gen::pre1 + func_label;
             out << label << '\t' << "DD" << '\t';
             if (call_site_t::types.size() != 1)
-	      return;  // not implemented
+              return;  // not implemented
             const type* T = call_site_t::types.back();
-            tag* ptr = T->get_tag();
-            out << (ptr ? "08H" : "01H") << '\n';
-            string Le = ms::label(ms::pre4, T);
-            out << '\t' << "DD" << '\t' << Le << '\n';
+            if (T) {
+              tag* ptr = T->get_tag();
+              out << (ptr ? "08H" : "01H") << '\n';
+              string Le = ms::label(ms::pre4, T);
+              out << '\t' << "DD" << '\t' << Le << '\n';
+            }
+            else {
+              out << "040H" << '\n';
+              out << '\t' << "DD" << '\t' << "00H" << '\n';
+            }
+
             if (call_site_t::offsets.size() != 1)
               return;  // not implemented
             int offset = call_site_t::offsets.back();
@@ -483,7 +490,8 @@ namespace intel {
               out << '\t' << "DB " << s << '\n'; // prolog size
               out << '\t' << "DB 05H" << '\n'; // Count of unwind codes
               out << '\t' << "DB 05H" << '\n';  // frame register : rbp, offset 0
-              out << '\t' << "WORD 010cH" << '\n';  // .allocstack xx (UWOP_ALLOC_LARGE = 1)
+              out << '\t' << "WORD ";
+              out << "0100H OR " << s << '\n';  // .allocstack xx (UWOP_ALLOC_LARGE = 1)
               int n = stack::delta_sp >> 3;
               out << '\t' << "WORD " << n << '\n';
               out << '\t' << "WORD 05305H" << '\n'; // .setframe rbp, 0
@@ -507,9 +515,12 @@ namespace intel {
               out << unwind << '\t' << "DB 01H" << '\n'; // version : 1, flag : 0
               string s = func_label + except::ms::x64_handler::prolog_size;
               out << '\t' << "DB " << s << '\n'; // prolog size
-              out << '\t' << "DB 03H" << '\n'; // Count of unwind codes
+              out << '\t' << "DB 04H" << '\n'; // Count of unwind codes
               out << '\t' << "DB 05H" << '\n'; // frame register : rbp, offset 0
-              out << '\t' << "WORD" << ' ' << "05209H" << '\n'; // .allocstack
+              out << '\t' << "WORD" << ' ';
+              out << "0100H OR " << s << '\n'; // .allocstack xx+8 (UWOP_ALLOC_LARGE = 1)
+              int n = (stack::delta_sp+8) >> 3;
+              out << '\t' << "WORD " << n << '\n';
               out << '\t' << "WORD" << ' ' << "05304H" << '\n'; // .setframe rbp, 0
               out << '\t' << "WORD" << ' ' << "05001H" << '\n'; // .pushreg rbp
             }
@@ -538,15 +549,20 @@ namespace intel {
             out << "xdata	SEGMENT" << '\n';
             string label2 = x64_gen::pre2 + func_label;
             out << label2 << " DB 02H" << '\n';
-            out << '\t' << "DB 07H" << '\n';
-            out << '\t' << "DB ";
             if (call_site_t::types.size() != 1)
-	      return;  // not implemented
+              return;  // not implemented
             const type* T = call_site_t::types.back();
-            tag* ptr = T->get_tag();
-            out << (ptr ? "010H" : "02H") << '\n';
-            string Le = ms::label(ms::pre4, T);
-            out << '\t' << "DD imagerel " << Le << '\n';
+            if (T) {
+              out << '\t' << "DB 07H" << '\n';
+              out << '\t' << "DB ";
+              tag* ptr = T->get_tag();
+              out << (ptr ? "010H" : "02H") << '\n';
+              string Le = ms::label(ms::pre4, T);
+              out << '\t' << "DD imagerel " << Le << '\n';
+            }
+            else {
+              out << '\t' << "DB 01H" << '\n';
+            }
             int n = stack::delta_sp - except::ms::x64_handler::magic;
             assert(n > 0);
             n -= 0x20;
@@ -585,10 +601,13 @@ namespace intel {
             out << '\t' << "DD imagerel " << label1 << '\n';
             out << "xdata	ENDS" << '\n';
 
+            if (!T)
+              return;
+
             out << "CONST	SEGMENT" << '\n';
             string label5 = func_label + "$rtcName$";
             out << label5 << ' ';
-            if (ptr) {
+            if (T->get_tag()) {
               out << "DB 06fH" << '\n';
               out << '\t' << "DB 06fH" << '\n';
               out << '\t' << "DB 00H" << '\n';

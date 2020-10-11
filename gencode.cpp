@@ -147,15 +147,13 @@ void intel::genfunc(const COMPILER::fundef* func,
   if (f2 & usr::TERMINATE_FUNCTION)
     term_fun.push_back(func_label);
 
-  if (ms_handler) {
-    if (x64)
-      except::ms::x64_handler::catch_code::gen();
-    else
-      except::ms::x86_handler::extra();
-  }
+  if (ms_handler && !x64)
+    except::ms::x86_handler::extra();
   if (ms_handler && x64)
     except::ms::x64_handler::magic_code2();
   except::out_table(ms_handler);
+  if (ms_handler && x64)
+    except::ms::x64_handler::catch_code::gen();
   for (auto T : except::throw_types) {
     if (T->tmp())
       except::out_type_info(T);
@@ -1215,21 +1213,15 @@ namespace intel {
             if (!ptr)
               return;
             auto_ptr<vector<tac*> > sweeper1(ptr);
-            sec_hlp sweeper2(CODE);
+            output_section(CODE);
             string label = catch_code::pre + func_label + catch_code::post;
             out << label;
-            out << ' ' << "PROC	FRAME" << '\n';
+            out << ' ' << "PROC" << '\n';
             out << '\t' << "mov	QWORD PTR [rsp+8], rcx" << '\n';
-            out << '\t' << ".savereg rcx, 8" << '\n';
             out << '\t' << "mov	QWORD PTR [rsp+16], rdx" << '\n';
-            out << '\t' << ".savereg rdx, 16" << '\n';
             out << '\t' << "push	rbp" << '\n';
-            out << '\t' << ".pushreg rbp" << '\n';
             out << '\t' << "push	rdi" << '\n';
-            out << '\t' << ".pushreg rdi" << '\n';
             out << '\t' << "sub	rsp, 40" << '\n';
-            out << '\t' << ".allocstack 40" << '\n';
-            out << '\t' << ".endprolog" << '\n';
             int m = stack::delta_sp - except::ms::x64_handler::magic;
             out << '\t' << "lea	rbp, QWORD PTR [rdx+" << m << ']' << '\n';
             for_each(begin(*ptr), end(*ptr), gencode);
@@ -1238,9 +1230,27 @@ namespace intel {
             out << '\t' << "add	rsp, 40" << '\n';
             out << '\t' << "pop	rdi" << '\n';
             out << '\t' << "pop	rbp" << '\n';
-            out << '\t' << "ret	0" << '\n';
+            out << '\t' << "ret" << '\n';
             out << '\t' << "int	3" << '\n';
+            string end = label + "$end";
+            out << end << " EQU $" << '\n';
             out << label << ' ' << "ENDP" << '\n';
+            end_section(CODE);
+
+            out << "xdata	SEGMENT	READONLY ALIGN(4) ALIAS(\".xdata\")" << '\n';
+            string unwind = "$unwind$" + label;
+            out << unwind << " DD 031001H" << '\n';  // version : 1 flag 0, prolog size : 0x10
+                                                    // count of unwind code : 3
+                                                    // no frame pointer
+            out << '\t' << "DD	0700c4210H" << '\n';  // allocstack 40
+                                                      // push rdi
+            out << '\t' << "DD  0500bH" << '\n';      // push rbp
+            out << "xdata	ENDS" << '\n';
+            out << "pdata	SEGMENT	READONLY ALIGN(4) ALIAS(\".pdata\")" << '\n';
+            out << '\t' << "DD imagerel " << label << '\n';
+            out << '\t' << "DD imagerel " << end << '\n';
+            out << '\t' << "DD imagerel " << unwind << '\n';
+            out << "pdata	ENDS" << '\n';
           }
         } // end of namespace catch_code;
       } // end of namespace x64_handler
@@ -5300,6 +5310,8 @@ namespace intel {
   {
     if (!tac->x) {
       except::call_site_t::types.push_back(0);
+      if (mode == MS)
+        except::call_site_t::offsets.push_back(0);
       return;
     }
     address* x = getaddr(tac->x);
