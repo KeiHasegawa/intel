@@ -335,9 +335,13 @@ namespace intel {
         }
         void magic_code2()
         {
+          static bool done;
+          if (done)
+            return;
           out << "msvcjmc	SEGMENT" << '\n';
           out << magic_label << " DB 01H" << '\n';
           out << "msvcjmc	ENDS" << '\n';
+          done = true;
         }
       } // end of namespace x64_handler
     } // end of namespace ms
@@ -1210,9 +1214,8 @@ namespace intel {
           bool flag;
           void gen()
           {
-            if (!ptr)
+            if (!catch_code::ptr)
               return;
-            auto_ptr<vector<tac*> > sweeper1(ptr);
             output_section(CODE);
             string label = catch_code::pre + func_label + catch_code::post;
             out << label;
@@ -1224,7 +1227,10 @@ namespace intel {
             out << '\t' << "sub	rsp, 40" << '\n';
             int m = stack::delta_sp - except::ms::x64_handler::magic;
             out << '\t' << "lea	rbp, QWORD PTR [rdx+" << m << ']' << '\n';
-            for_each(begin(*ptr), end(*ptr), gencode);
+            (void)find_if(begin(*catch_code::ptr), end(*catch_code::ptr),
+                [](tac* p) { gencode(p); return p->m_id == tac::RETHROW; });
+            delete catch_code::ptr;
+            catch_code::ptr = 0;
             out << '\t' << "npad	1" << '\n';
             out << '\t' << "lea	rax, " << func_label << postfix << '\n';
             out << '\t' << "add	rsp, 40" << '\n';
@@ -1240,7 +1246,7 @@ namespace intel {
             out << "xdata	SEGMENT	READONLY ALIGN(4) ALIAS(\".xdata\")" << '\n';
             string unwind = "$unwind$" + label;
             out << unwind << " DD 031001H" << '\n';  // version : 1 flag 0, prolog size : 0x10
-                                                    // count of unwind code : 3
+                                                    // count of reunwind code : 3
                                                     // no frame pointer
             out << '\t' << "DD	0700c4210H" << '\n';  // allocstack 40
                                                       // push rdi
@@ -1270,8 +1276,8 @@ void intel::gencode(COMPILER::tac* ptr)
 #ifdef CXX_GENERATOR
   if (except::ms::x64_handler::catch_code::flag) {
     if (ptr->m_id == tac::CATCH_END) {
-      except::ms::x64_handler::catch_code::flag = false;
       gencode_table[ptr->m_id](ptr);
+      except::ms::x64_handler::catch_code::flag = false;
     }
     else
       except::ms::x64_handler::catch_code::ptr->push_back(ptr);
@@ -5156,20 +5162,44 @@ void intel::throwe(COMPILER::tac* tac)
   return mode == GNU ? gnu_throwe(tac) : ms_throwe(tac);
 }
 
+namespace intel {
+  using namespace COMPILER;
+  void gnu_rethrow(tac* tac)
+  {
+    string start = new_label(".label");
+    out << start << ":\n";
+    out << '\t' << "call" << '\t' << "__cxa_rethrow" << '\n';
+    string end = new_label(".label");
+    out << end << ":\n";
+
+    except::call_site_t info;
+    info.m_start = start;
+    info.m_end = end;
+    except::call_sites.push_back(info);
+  }
+  void ms_rethrow(tac* tac)
+  {
+    if (x64) {
+      out << '\t' << "xor	edx, edx" << '\n';
+      out << '\t' << "xor	ecx, ecx" << '\n';
+      string label = "_CxxThrowException";
+      out << '\t' << "call	" << label << '\n';
+      out << '\t' << "npad	1" << '\n';
+      mem::refed.insert(mem::refgen_t(label, usr::FUNCTION, 0));
+    }
+    else {
+      out << '\t' << "push	0" << '\n';
+      out << '\t' << "push	0" << '\n';
+      string label = "__CxxThrowException@8";
+      out << '\t' << "call	" << label << '\n';
+      mem::refed.insert(mem::refgen_t(label, usr::FUNCTION, 0));
+    }
+  }
+} // end of namespace intel
+
 void intel::rethrow(COMPILER::tac* tac)
 {
-  if (mode == MS)
-    return;
-  string start = new_label((mode == GNU) ? ".label" : "label$");
-  out << start << ":\n";
-  out << '\t' << "call" << '\t' << "__cxa_rethrow" << '\n';
-  string end = new_label((mode == GNU) ? ".label" : "label$");
-  out << end << ":\n";
-
-  except::call_site_t info;
-  info.m_start = start;
-  info.m_end = end;
-  except::call_sites.push_back(info);
+  mode == GNU ? gnu_rethrow(tac) : ms_rethrow(tac);
 }
 
 namespace intel {
@@ -5388,11 +5418,13 @@ void intel::catch_end(COMPILER::tac* tac)
   }
   else {
     if (x64) {
-      except::call_site_t info;
-      string label = func_label + except::ms::x64_handler::postfix;
-      info.m_landing = label;
-      except::call_sites.push_back(info);
-      out << label << '\t' << "EQU $" << '\n';
+        if (except::ms::x64_handler::catch_code::flag) {
+            except::call_site_t info;
+            string label = func_label + except::ms::x64_handler::postfix;
+            info.m_landing = label;
+            except::call_sites.push_back(info);
+            out << label << '\t' << "EQU $" << '\n';
+        }
     }
   }
 }

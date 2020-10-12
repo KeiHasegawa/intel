@@ -649,6 +649,7 @@ namespace intel {
             }
           }
           call_site_t::types.clear();
+          call_site_t::offsets.clear();
         }
       } // end of namespace out_table
     } // end of namespace ms
