@@ -38,7 +38,7 @@ namespace intel {
           return false;
         typedef vector<tac*>::const_iterator IT;
         IT p = find_if(begin(code), end(code),
-        	       [](tac* p) {return p->m_id == tac::CATCH_BEGIN; });
+            [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
         return p != end(code);
       }
       namespace x86_handler {
@@ -48,9 +48,14 @@ namespace intel {
         {
           using namespace std;
           sec_hlp sentry(CODE);
+          if (except::call_sites.empty()) {
+            string label1 = out_table::x86_gen::pre5 + func_label;
+            out << label1 << ':' << '\n';
+            string label2 = out_table::x86_gen::pre6 + func_label;
+            out << '\t' << "jmp	" << label2 << '\n';
+            out << '\t' << "int	3" << '\n';
+          }
           out << prefix << func_label << ':' << '\n';
-          if (except::call_sites.empty())
-            return; // work around
           out << '\t' << "npad	1" << '\n';
           out << '\t' << "npad	1" << '\n';
           out << '\t' << "mov	edx, DWORD PTR [esp+8]" << '\n';
@@ -316,6 +321,7 @@ namespace intel {
           int m = ms::x86_handler::ehrec_off;
           out << '\t' << "mov	DWORD PTR [ebp-" << m << "], esp" << '\n';
         }
+        int delta_sp;
       } // end of namespace x86_handler
       namespace x64_handler {
         const std::string magic_label = "__97ABDBD4_bbb@cpp";
@@ -552,8 +558,9 @@ void intel::enter(const COMPILER::fundef* func,
 #ifdef CXX_GENERATOR
   if (ms_handler && !x64) {
     except::ms::x86_handler::partof_prolog2();
-    int n = call_arg::calculate(code);
-    out << '\t' << "sub" << '\t' << "esp, " << n << '\n';
+    except::ms::x86_handler::delta_sp = call_arg::calculate(code);
+    if (except::ms::x86_handler::delta_sp)
+      out << '\t' << "sub" << '\t' << "esp, " << except::ms::x86_handler::delta_sp << '\n';
   }
 #endif // CXX_GENERATOR
 }
@@ -5258,10 +5265,10 @@ void intel::try_end(COMPILER::tac* tac)
   mode == GNU ? gnu_try_end(tac) : ms_try_end(tac);
 }
 
-void intel::here(COMPILER::tac* tac)
-{
-    if (mode == MS)
-        return;
+namespace intel {
+  using namespace COMPILER;
+  void gnu_here(tac* tac)
+  {
     string label = to_impl::label(tac);
     out << label << ":\n";
     assert(!except::call_sites.empty());
@@ -5272,11 +5279,26 @@ void intel::here(COMPILER::tac* tac)
     info.m_landing = label;
     here3ac* p = static_cast<here3ac*>(tac);
     if (p->m_for_dest) {
-        info.m_action = 0;
-        info.m_for_dest = true;
+      info.m_action = 0;
+      info.m_for_dest = true;
     }
     else
-        info.m_action = 1;
+      info.m_action = 1;
+  }
+  void ms_here(tac* tac)
+  {
+    if (x64)
+      return;
+    string label = except::ms::out_table::x86_gen::pre6 + func_label;
+    out << label << '\t' << "EQU $" << '\n';
+    if (except::ms::x86_handler::delta_sp)
+      out << '\t' << "sub esp, " << except::ms::x86_handler::delta_sp << '\n';
+  }
+} // end of namespace intel
+
+void intel::here(COMPILER::tac* tac)
+{
+  return mode == GNU ? gnu_here(tac) : ms_here(tac);
 }
 
 void intel::here_reason(COMPILER::tac* tac)
@@ -5310,28 +5332,42 @@ void intel::there(COMPILER::tac* tac)
   info.m_action = 0;
 }
 
+namespace intel {
+  using namespace COMPILER;
+  void gnu_unwind_resume(tac* tac)
+  {
+    address* y = getaddr(tac->y);
+    if (x64)
+      y->load(reg::cx);
+    else {
+      y->load();
+      out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
+      out << '\t' << "pushl" << '\t' << "%eax" << '\n';
+    }
+    string label = to_impl::label(tac);
+    string start = label + ".start";
+    out << start << ":\n";
+    out << '\t' << "call" << '\t' << "_Unwind_Resume" << '\n';
+    string end = label + ".end";
+    out << end << ":\n";
+    except::call_site_t info;
+    info.m_start = start;
+    info.m_end = end;
+    except::call_sites.push_back(info);
+  }
+  void ms_unwind_resume(tac*)
+  {
+    if (x64)
+      return;
+    if (except::ms::x86_handler::delta_sp)
+      out << '\t' << "add esp, " << except::ms::x86_handler::delta_sp << '\n';
+    out << '\t' << "ret" << '\n';
+  }
+} // end of namespace intel
+
 void intel::unwind_resume(COMPILER::tac* tac)
 {
-  if (mode == MS)
-    return;
-  address* y = getaddr(tac->y);
-  if (x64)
-    y->load(reg::cx);
-  else {
-    y->load();
-    out << '\t' << "subl" << '\t' << "$12, %esp" << '\n';
-    out << '\t' << "pushl" << '\t' << "%eax" << '\n';
-  }
-  string label = to_impl::label(tac);
-  string start = label + ".start";
-  out << start << ":\n";
-  out << '\t' << "call" << '\t' << "_Unwind_Resume" << '\n';
-  string end = label + ".end";
-  out << end << ":\n";
-  except::call_site_t info;
-  info.m_start = start;
-  info.m_end = end;
-  except::call_sites.push_back(info);
+  mode == GNU ? gnu_unwind_resume(tac) : ms_unwind_resume(tac);
 }
 
 namespace intel {

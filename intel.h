@@ -319,32 +319,34 @@ namespace intel {
       extern std::set<const COMPILER::type*> call_sites_types_to_output;
       extern void out_call_site_type_info(const COMPILER::type* T);
       namespace out_table {
-          namespace x86_gen {
-              const std::string pre4 = "__ehfuncinfo$";
-          } // end of namespace x86_gen
+        namespace x86_gen {
+          const std::string pre4 = "__ehfuncinfo$";
+          const std::string pre5 = "__unwindfunclet$";
+          const std::string pre6 = "here$";
+        } // end of namespace x86_gen
       } // end of namespace out_table
     } // end of namespace ms
     extern std::string gnu_label(const COMPILER::type*, char);
     namespace ms {
-        extern std::string label(std::string, const COMPILER::type*);
-        extern bool label_flag;
-        extern std::string pre1a;
-        extern std::string pre1b;
-        extern std::string pre2a;
-        extern std::string pre2b;
-        extern std::string pre3;
-        extern std::string pre4;
-        extern std::string pre5;
-        extern std::string vpsig;
-        namespace x64_handler {
-            namespace catch_code {
-                const std::string pre = "?catch$0@?0?";
-                const std::string post = "@4HA";
-            } // end of namespace catch_code
-            const std::string prolog_size = "$prolog_size";
-            const std::string try_size_pre = "try_size$";
-            const int magic = 16 * 14;
-        } // end of namespace x64_handler
+      extern std::string label(std::string, const COMPILER::type*);
+      extern bool label_flag;
+      extern std::string pre1a;
+      extern std::string pre1b;
+      extern std::string pre2a;
+      extern std::string pre2b;
+      extern std::string pre3;
+      extern std::string pre4;
+      extern std::string pre5;
+      extern std::string vpsig;
+      namespace x64_handler {
+        namespace catch_code {
+          const std::string pre = "?catch$0@?0?";
+          const std::string post = "@4HA";
+        } // end of namespace catch_code
+        const std::string prolog_size = "$prolog_size";
+        const std::string try_size_pre = "try_size$";
+        const int magic = 16 * 14;
+      } // end of namespace x64_handler
     } // end of namespace ms
     extern std::vector<call_site_t> call_sites;
     extern void out_table(bool);

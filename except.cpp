@@ -415,49 +415,66 @@ namespace intel {
           void action()
           {
             out << "xdata$x" << '\t' << "SEGMENT" << '\n';
-            string label = out_table::x86_gen::pre1 + func_label;
-            out << label << '\t' << "DD" << '\t';
-            if (call_site_t::types.size() != 1)
-              return;  // not implemented
-            const type* T = call_site_t::types.back();
-            if (T) {
-              tag* ptr = T->get_tag();
-              out << (ptr ? "08H" : "01H") << '\n';
-              string Le = ms::label(ms::pre4, T);
-              out << '\t' << "DD" << '\t' << Le << '\n';
-            }
-            else {
-              out << "040H" << '\n';
-              out << '\t' << "DD" << '\t' << "00H" << '\n';
-            }
+            string label1;
+            if (!call_site_t::types.empty()) {
+              label1 = out_table::x86_gen::pre1 + func_label;
+              out << label1 << '\t' << "DD" << '\t';
+              if (call_site_t::types.size() != 1)
+        	return;  // not implemented
+              const type* T = call_site_t::types.back();
+              if (T) {
+        	tag* ptr = T->get_tag();
+        	out << (ptr ? "08H" : "01H") << '\n';
+        	string Le = ms::label(ms::pre4, T);
+        	out << '\t' << "DD" << '\t' << Le << '\n';
+              }
+              else {
+        	out << "040H" << '\n';
+        	out << '\t' << "DD" << '\t' << "00H" << '\n';
+              }
 
-            if (call_site_t::offsets.size() != 1)
-              return;  // not implemented
-            int offset = call_site_t::offsets.back();
-            out << '\t' << "DD" << '\t' << offset << '\n';
-            if (call_sites.size() != 1)
-              return;  // not implemented
-            const call_site_t& info = call_sites.back();
-            string landing = info.m_landing;
-            assert(!landing.empty());
-            out << '\t' << "DD" << '\t' << landing << '\n';
+              if (call_site_t::offsets.size() != 1)
+        	return;  // not implemented
+              int offset = call_site_t::offsets.back();
+              out << '\t' << "DD" << '\t' << offset << '\n';
+              if (call_sites.size() != 1)
+        	return;  // not implemented
+              const call_site_t& info = call_sites.back();
+              string landing = info.m_landing;
+              assert(!landing.empty());
+              out << '\t' << "DD" << '\t' << landing << '\n';
+            }
             string label2 = out_table::x86_gen::pre2 + func_label;
             out << label2 << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
-            out << '\t' << "DD" << '\t' << "00H" << '\n';
-            out << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
-            out << '\t' << "DD" << '\t' << "00H" << '\n';
-            string label3 = out_table::x86_gen::pre3 + func_label;
-            out << label3 << '\t' << "DD" << '\t' << "00H" << '\n';
-            out << '\t' << "DD" << '\t' << "00H" << '\n';
-            out << '\t' << "DD" << '\t' << "01H" << '\n';
-            out << '\t' << "DD" << '\t' << "01H" << '\n';
-            out << '\t' << "DD" << '\t' << label << '\n';
+            string label3;
+            if (!call_site_t::types.empty()) {
+              out << '\t' << "DD" << '\t' << "00H" << '\n';
+              out << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
+              out << '\t' << "DD" << '\t' << "00H" << '\n';
+              label3 = out_table::x86_gen::pre3 + func_label;
+              out << label3 << '\t' << "DD" << '\t' << "00H" << '\n';
+              out << '\t' << "DD" << '\t' << "00H" << '\n';
+              out << '\t' << "DD" << '\t' << "01H" << '\n';
+              out << '\t' << "DD" << '\t' << "01H" << '\n';
+              out << '\t' << "DD" << '\t' << label1 << '\n';
+            }
+            else {
+              string label5 = x86_gen::pre5 + func_label;
+              out << '\t' << "DD" << '\t' << label5 << '\n';
+            }
             string label4 = out_table::x86_gen::pre4 + func_label;
             out << label4 << '\t' << "DD" << '\t' << "019930522H" << '\n';
-            out << '\t' << "DD" << '\t' << "02H" << '\n';
-            out << '\t' << "DD" << '\t' << label2 << '\n';
-            out << '\t' << "DD" << '\t' << "01H" << '\n';
-            out << '\t' << "DD" << '\t' << label3 << '\n';
+            if (!call_site_t::types.empty()) {
+              out << '\t' << "DD" << '\t' << "02H" << '\n';
+              out << '\t' << "DD" << '\t' << label2 << '\n';
+              out << '\t' << "DD" << '\t' << "01H" << '\n';
+              out << '\t' << "DD" << '\t' << label3 << '\n';
+            }
+            else {
+              out << '\t' << "DD" << '\t' << "01H" << '\n';
+              out << '\t' << "DD" << '\t' << label2 << '\n';
+              out << '\t' << "DD" << '\t' << "2 DUP(00H)" << '\n';
+            }
             out << '\t' << "DD" << '\t' << "2 DUP(00H)" << '\n';
             out << '\t' << "DD" << '\t' << "00H" << '\n';
             out << '\t' << "DD" << '\t' << "01H" << '\n';
@@ -636,6 +653,8 @@ namespace intel {
             x64_gen::unwind_data(ms_handler);
           if (call_sites.empty()) {
             assert(call_site_t::types.empty());
+            if (ms_handler)
+              x64 ? x64_gen::action() : x86_gen::action();
             return;
           }
           x64 ? x64_gen::action() : x86_gen::action();
