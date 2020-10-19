@@ -341,6 +341,7 @@ namespace intel {
       namespace x64_handler {
         namespace catch_code {
           const std::string pre = "?catch$0@?0?";
+          const std::string pre2 = "?dtor$0@?0?";
           const std::string post = "@4HA";
         } // end of namespace catch_code
         const std::string prolog_size = "$prolog_size";

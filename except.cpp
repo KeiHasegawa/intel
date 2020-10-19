@@ -184,6 +184,7 @@ namespace intel {
         string pre = x64 ? "imagerel\t" : "";
 
         out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+        out << '\t' << "ALIGN 4" << '\n';
         out << La;
         out << '\t' << "DD" << '\t';
         out << (ptr ? "00H" : "01H") << '\n';
@@ -193,6 +194,7 @@ namespace intel {
         out << "xdata$x" << '\t' << "ENDS" << '\n';
 
         out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+        out << '\t' << "ALIGN 4" << '\n';
         out << Lb;
         string Lc = ms::label(ms::pre3, T);
         string Ld;
@@ -210,6 +212,7 @@ namespace intel {
 
         string Le = ms::label(ms::pre4, T);
         out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+        out << '\t' << "ALIGN 4" << '\n';
         out << Lc;
         out << '\t' << "DD" << '\t';
         out << (ptr ? "00H" : "01H") << '\n';
@@ -226,6 +229,7 @@ namespace intel {
         if (!Ld.empty()) {
           Lf = ms::pre4 + ms::vpsig;
           out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+          out << '\t' << "ALIGN 4" << '\n';
           out << Ld;
           out << '\t' << "DD" << '\t' << "01H" << '\n';
           out << '\t' << "DD" << '\t' << pre << Lf << '\n';
@@ -415,6 +419,7 @@ namespace intel {
           void action()
           {
             out << "xdata$x" << '\t' << "SEGMENT" << '\n';
+            out << '\t' << "ALIGN 4" << '\n';
             string label1;
             if (!call_site_t::types.empty()) {
               label1 = out_table::x86_gen::pre1 + func_label;
@@ -490,6 +495,7 @@ namespace intel {
           void unwind_data(bool ms_handler)
           {
             out << "xdata	SEGMENT	READONLY ALIGN(4) ALIAS(\".xdata\")" << '\n';
+            out << '\t' << "ALIGN 4" << '\n';
             string unwind = "$unwind$" + func_label;
 
             if (ms_handler) {
@@ -552,6 +558,7 @@ namespace intel {
           void action()
           {
             out << "xdata	SEGMENT" << '\n';
+            out << '\t' << "ALIGN 4" << '\n';
             string label1 = x64_gen::pre1 + func_label;
             out << label1 << " DB 06H" << '\n';
             out << '\t' << "DB 00H" << '\n';
@@ -563,88 +570,132 @@ namespace intel {
             out << '\t' << "DB 00H" << '\n';
             out << "xdata	ENDS" << '\n';
 
-            out << "xdata	SEGMENT" << '\n';
-            string label2 = x64_gen::pre2 + func_label;
-            out << label2 << " DB 02H" << '\n';
-            if (call_site_t::types.size() != 1)
-              return;  // not implemented
-            const type* T = call_site_t::types.back();
-            if (T) {
-              out << '\t' << "DB 07H" << '\n';
-              out << '\t' << "DB ";
-              tag* ptr = T->get_tag();
-              out << (ptr ? "010H" : "02H") << '\n';
-              string Le = ms::label(ms::pre4, T);
-              out << '\t' << "DD imagerel " << Le << '\n';
-            }
-            else {
-              out << '\t' << "DB 01H" << '\n';
-            }
-            int n = stack::delta_sp - except::ms::x64_handler::magic;
-            assert(n > 0);
-            n -= 0x20;
-            assert(n >= 0);
-            assert(!(n & 7));
-            n <<= 1;
-            out << '\t' << "DB " << n << '\n';
-            out << '\t' << "DD imagerel ";
-            out << x64_handler::catch_code::pre;
-            out << func_label;
-            out << x64_handler::catch_code::post << '\n';
-            out << "xdata	ENDS" << '\n';
+            if (call_sites.empty()) {
+              out << "xdata	SEGMENT" << '\n';
+              out << '\t' << "ALIGN 4" << '\n';
+              string label4 = x64_gen::pre4 + func_label;
+              out << label4 << " DB 02H" << '\n';
+              out << '\t' << "DB 0eH" << '\n';
+              string dlabel = x64_handler::catch_code::pre2 + func_label;
+              dlabel += x64_handler::catch_code::post;
+              out << '\t' << "DD imagerel " << dlabel << '\n';
+              out << "xdata	ENDS" << '\n';
 
-            out << "xdata	SEGMENT" << '\n';
-            string label3 = x64_gen::pre3 + func_label;
-            out << label3 << " DB 02H" << '\n';
-            out << '\t' << "DB 00H" << '\n';
-            out << '\t' << "DB 00H" << '\n';
-            out << '\t' << "DB 02H" << '\n';
-            out << '\t' << "DD imagerel " << label2 << '\n';
-            out << "xdata	ENDS" << '\n';
+              out << "xdata	SEGMENT" << '\n';
+              out << '\t' << "ALIGN 4" << '\n';
+              out << except::ms::out_table::x64_gen::pre5;
+              out << func_label << ' ';
+              out << "DB 028H" << '\n';
+              out << '\t' << "DD imagerel " << label4 << '\n';
+              out << '\t' << "DD imagerel " << label1 << '\n';
+              out << "xdata	ENDS" << '\n';
 
-            out << "xdata	SEGMENT" << '\n';
-            string label4 = x64_gen::pre4 + func_label;
-            out << label4 << " DB 04H" << '\n';
-            out << '\t' << "DB 08H" << '\n';
-            out << '\t' << "DB 010H" << '\n';
-            out << "xdata	ENDS" << '\n';
-
-            out << "xdata	SEGMENT" << '\n';
-            out << except::ms::out_table::x64_gen::pre5;
-            out << func_label << ' ';
-            out << "DB 038H" << '\n';
-            out << '\t' << "DD imagerel " << label4 << '\n';
-            out << '\t' << "DD imagerel " << label3 << '\n';
-            out << '\t' << "DD imagerel " << label1 << '\n';
-            out << "xdata	ENDS" << '\n';
-
-            if (!T)
-              return;
-
-            out << "CONST	SEGMENT" << '\n';
-            string label5 = func_label + "$rtcName$";
-            out << label5 << ' ';
-            if (T->get_tag()) {
-              out << "DB 06fH" << '\n';
-              out << '\t' << "DB 06fH" << '\n';
-              out << '\t' << "DB 00H" << '\n';
-              out << '\t' << "ORG $+13" << '\n';
-            }
-            else {
-              out << "DB 070H" << '\n';
+              out << "CONST	SEGMENT" << '\n';
+              string label5 = func_label + "$rtcName$";
+              out << label5 << ' ';
+              out << "DB 073H" << '\n';
               out << '\t' << "DB 00H" << '\n';
               out << '\t' << "ORG $+14" << '\n';
+              string label6 = func_label + "$rtcVarDesc";
+              out << label6 << ' ' << "DD 024H" << '\n';
+              out << '\t' << "DD 01H" << '\n';
+              out << '\t' << "DQ " << label5 << '\n';
+              out << '\t' << "ORG $+48" << '\n';
+              string label7 = func_label + "$rtcFrameData";
+              out << label7 << ' ' << "DD 01H" << '\n';
+              out << '\t' << "DD 00H" << '\n';
+              out << '\t' << "DQ " << label6 << '\n';
+              out << "CONST	ENDS" << '\n';
             }
-            string label6 = func_label + "$rtcVarDesc";
-            out << label6 << ' ' << "DD 028H" << '\n';
-            out << '\t' << "DD 08H" << '\n';
-            out << '\t' << "DQ " << label5 << '\n';
-            out << '\t' << "ORG $+48" << '\n';
-            string label7 = func_label + "$rtcFrameData";
-            out << label7 << ' ' << "DD 01H" << '\n';
-            out << '\t' << "DD 00H" << '\n';
-            out << '\t' << "DQ " << label6 << '\n';
-            out << "CONST	ENDS" << '\n';
+            else {
+              out << "xdata	SEGMENT" << '\n';
+              out << '\t' << "ALIGN 4" << '\n';
+              string label2 = x64_gen::pre2 + func_label;
+              out << label2 << " DB 02H" << '\n';
+              if (call_site_t::types.size() != 1)
+        	return;  // not implemented
+              const type* T = call_site_t::types.back();
+              if (T) {
+        	out << '\t' << "DB 07H" << '\n';
+        	out << '\t' << "DB ";
+        	tag* ptr = T->get_tag();
+        	out << (ptr ? "010H" : "02H") << '\n';
+        	string Le = ms::label(ms::pre4, T);
+        	out << '\t' << "DD imagerel " << Le << '\n';
+              }
+              else {
+        	out << '\t' << "DB 01H" << '\n';
+              }
+              int n = stack::delta_sp - except::ms::x64_handler::magic;
+              assert(n > 0);
+              n -= 0x20;
+              assert(n >= 0);
+              assert(!(n & 7));
+              n <<= 1;
+              out << '\t' << "DB " << n << '\n';
+              out << '\t' << "DD imagerel ";
+              out << x64_handler::catch_code::pre;
+              out << func_label;
+              out << x64_handler::catch_code::post << '\n';
+              out << "xdata	ENDS" << '\n';
+
+              out << "xdata	SEGMENT" << '\n';
+              out << '\t' << "ALIGN 4" << '\n';
+              string label3 = x64_gen::pre3 + func_label;
+              out << label3 << " DB 02H" << '\n';
+              out << '\t' << "DB 00H" << '\n';
+              out << '\t' << "DB 00H" << '\n';
+              out << '\t' << "DB 02H" << '\n';
+              out << '\t' << "DD imagerel " << label2 << '\n';
+              out << "xdata	ENDS" << '\n';
+
+              out << "xdata	SEGMENT" << '\n';
+              out << '\t' << "ALIGN 4" << '\n';
+              string label4 = x64_gen::pre4 + func_label;
+              out << label4 << " DB 04H" << '\n';
+              out << '\t' << "DB 08H" << '\n';
+              out << '\t' << "DB 010H" << '\n';
+              out << "xdata	ENDS" << '\n';
+
+              out << "xdata	SEGMENT" << '\n';
+              out << '\t' << "ALIGN 4" << '\n';
+              out << except::ms::out_table::x64_gen::pre5;
+              out << func_label << ' ';
+              out << "DB 038H" << '\n';
+              out << '\t' << "DD imagerel " << label4 << '\n';
+              out << '\t' << "DD imagerel " << label3 << '\n';
+              out << '\t' << "DD imagerel " << label1 << '\n';
+              out << "xdata	ENDS" << '\n';
+
+
+              if (!T)
+        	return;
+
+              out << "CONST	SEGMENT" << '\n';
+              string label5 = func_label + "$rtcName$";
+              out << label5 << ' ';
+              if (T->get_tag()) {
+        	out << "DB 06fH" << '\n';
+        	out << '\t' << "DB 06fH" << '\n';
+        	out << '\t' << "DB 00H" << '\n';
+        	out << '\t' << "ORG $+13" << '\n';
+              }
+              else {
+        	out << "DB 070H" << '\n';
+        	out << '\t' << "DB 00H" << '\n';
+        	out << '\t' << "ORG $+14" << '\n';
+              }
+              string label6 = func_label + "$rtcVarDesc";
+              out << label6 << ' ' << "DD 028H" << '\n';
+              out << '\t' << "DD 08H" << '\n';
+              out << '\t' << "DQ " << label5 << '\n';
+              out << '\t' << "ORG $+48" << '\n';
+              string label7 = func_label + "$rtcFrameData";
+              out << label7 << ' ' << "DD 01H" << '\n';
+              out << '\t' << "DD 00H" << '\n';
+              out << '\t' << "DQ " << label6 << '\n';
+              out << "CONST	ENDS" << '\n';
+            }
           }
         } // end of namespace x64_gen
         void gen(bool ms_handler)

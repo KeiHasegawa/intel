@@ -38,7 +38,7 @@ namespace intel {
           return false;
         typedef vector<tac*>::const_iterator IT;
         IT p = find_if(begin(code), end(code),
-            [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
+                      [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
         return p != end(code);
       }
       namespace x86_handler {
@@ -588,22 +588,22 @@ namespace intel { namespace aggregate_func {
 
 #ifdef CXX_GENERATOR
 namespace intel {
-    namespace except {
-        namespace ms {
-            namespace x86_handler {
-                void partof_epilog()
-                {
-                    int n = ms::x86_handler::ehrec_off - 4;
-                    out << '\t' << "mov	ecx, DWORD PTR [ebp-" << n << ']' << '\n';
-                    out << '\t' << "mov	DWORD PTR fs:0, ecx" << '\n';
-                    out << '\t' << "pop	ecx" << '\n';
-                    out << '\t' << "pop	edi" << '\n';
-                    out << '\t' << "pop	esi" << '\n';
-                    out << '\t' << "pop	ebx" << '\n';
-                }
-            } // end of namespace x86_handler
-        } // end of namespace ms
-    } // end of namespace except
+  namespace except {
+    namespace ms {
+      namespace x86_handler {
+        void partof_epilog()
+        {
+          int n = ms::x86_handler::ehrec_off - 4;
+          out << '\t' << "mov	ecx, DWORD PTR [ebp-" << n << ']' << '\n';
+          out << '\t' << "mov	DWORD PTR fs:0, ecx" << '\n';
+          out << '\t' << "pop	ecx" << '\n';
+          out << '\t' << "pop	edi" << '\n';
+          out << '\t' << "pop	esi" << '\n';
+          out << '\t' << "pop	ebx" << '\n';
+        }
+      } // end of namespace x86_handler
+    } // end of namespace ms
+  } // end of namespace except
 } // end of namespace intel
 #endif // CXX_GENERATOR
 
@@ -1219,12 +1219,13 @@ namespace intel {
         namespace catch_code {
           vector<tac*>* ptr;
           bool flag;
+          bool here_flag;
+          vector<tac*>* here_ptr;
           void gen()
           {
-            if (!catch_code::ptr)
-              return;
             output_section(CODE);
-            string label = catch_code::pre + func_label + catch_code::post;
+            string label = catch_code::ptr ? catch_code::pre : catch_code::pre2;
+            label += func_label + catch_code::post;
             out << label;
             out << ' ' << "PROC" << '\n';
             out << '\t' << "mov	QWORD PTR [rsp+8], rcx" << '\n';
@@ -1234,12 +1235,24 @@ namespace intel {
             out << '\t' << "sub	rsp, 40" << '\n';
             int m = stack::delta_sp - except::ms::x64_handler::magic;
             out << '\t' << "lea	rbp, QWORD PTR [rdx+" << m << ']' << '\n';
-            (void)find_if(begin(*catch_code::ptr), end(*catch_code::ptr),
-                [](tac* p) { gencode(p); return p->m_id == tac::RETHROW; });
-            delete catch_code::ptr;
-            catch_code::ptr = 0;
-            out << '\t' << "npad	1" << '\n';
-            out << '\t' << "lea	rax, " << func_label << postfix << '\n';
+            if (catch_code::ptr) {
+              (void)find_if(begin(*catch_code::ptr), end(*catch_code::ptr),
+        	    [](tac* p) { gencode(p); return p->m_id == tac::RETHROW; });
+              delete catch_code::ptr;
+              catch_code::ptr = 0;
+              out << '\t' << "npad	1" << '\n';
+              out << '\t' << "lea	rax, " << func_label << postfix << '\n';
+              assert(catch_code::here_ptr);
+              delete catch_code::here_ptr;
+              catch_code::here_ptr = 0;
+            }
+            else {
+              assert(catch_code::here_ptr);
+              for_each(begin(*catch_code::here_ptr), end(*catch_code::here_ptr),
+                       gencode);
+              delete catch_code::here_ptr;
+              catch_code::here_ptr = 0;
+            }
             out << '\t' << "add	rsp, 40" << '\n';
             out << '\t' << "pop	rdi" << '\n';
             out << '\t' << "pop	rbp" << '\n';
@@ -1251,6 +1264,7 @@ namespace intel {
             end_section(CODE);
 
             out << "xdata	SEGMENT	READONLY ALIGN(4) ALIAS(\".xdata\")" << '\n';
+            out << '\t' << "ALIGN 4" << '\n';
             string unwind = "$unwind$" + label;
             out << unwind << " DD 031001H" << '\n';  // version : 1 flag 0, prolog size : 0x10
                                                     // count of reunwind code : 3
@@ -1288,6 +1302,16 @@ void intel::gencode(COMPILER::tac* ptr)
     }
     else
       except::ms::x64_handler::catch_code::ptr->push_back(ptr);
+  }
+  else if (except::ms::x64_handler::catch_code::here_flag) {
+    if (ptr->m_id == tac::CATCH_BEGIN) {
+      gencode_table[ptr->m_id](ptr);
+      except::ms::x64_handler::catch_code::here_flag = false;
+    }
+    else if (ptr->m_id == tac::UNWIND_RESUME)
+      except::ms::x64_handler::catch_code::here_flag = false;
+    else
+      except::ms::x64_handler::catch_code::here_ptr->push_back(ptr);
   }
   else
     gencode_table[ptr->m_id](ptr);
@@ -5285,14 +5309,22 @@ namespace intel {
     else
       info.m_action = 1;
   }
-  void ms_here(tac* tac)
+  void ms_here(tac*)
   {
-    if (x64)
-      return;
-    string label = except::ms::out_table::x86_gen::pre6 + func_label;
-    out << label << '\t' << "EQU $" << '\n';
-    if (except::ms::x86_handler::delta_sp)
-      out << '\t' << "sub esp, " << except::ms::x86_handler::delta_sp << '\n';
+    if (x64) {
+        if (except::ms::x64_handler::catch_code::here_flag)
+            return; // not implemented nest case
+        except::ms::x64_handler::catch_code::here_flag = true;
+        if (except::ms::x64_handler::catch_code::here_ptr)
+            return; // not implemented multiple case
+        except::ms::x64_handler::catch_code::here_ptr = new vector<tac*>;
+    }
+    else {
+        string label = except::ms::out_table::x86_gen::pre6 + func_label;
+        out << label << '\t' << "EQU $" << '\n';
+        if (except::ms::x86_handler::delta_sp)
+            out << '\t' << "sub esp, " << except::ms::x86_handler::delta_sp << '\n';
+    }
   }
 } // end of namespace intel
 
@@ -5454,13 +5486,13 @@ void intel::catch_end(COMPILER::tac* tac)
   }
   else {
     if (x64) {
-        if (except::ms::x64_handler::catch_code::flag) {
-            except::call_site_t info;
-            string label = func_label + except::ms::x64_handler::postfix;
-            info.m_landing = label;
-            except::call_sites.push_back(info);
-            out << label << '\t' << "EQU $" << '\n';
-        }
+      if (except::ms::x64_handler::catch_code::flag) {
+        except::call_site_t info;
+        string label = func_label + except::ms::x64_handler::postfix;
+        info.m_landing = label;
+        except::call_sites.push_back(info);
+        out << label << '\t' << "EQU $" << '\n';
+      }
     }
   }
 }
