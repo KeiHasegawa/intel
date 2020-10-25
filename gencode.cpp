@@ -1237,7 +1237,7 @@ namespace intel {
             out << '\t' << "lea	rbp, QWORD PTR [rdx+" << m << ']' << '\n';
             if (catch_code::ptr) {
               (void)find_if(begin(*catch_code::ptr), end(*catch_code::ptr),
-        	    [](tac* p) { gencode(p); return p->m_id == tac::RETHROW; });
+                    [](tac* p) { gencode(p); return p->m_id == tac::RETHROW; });
               delete catch_code::ptr;
               catch_code::ptr = 0;
               out << '\t' << "npad	1" << '\n';
@@ -5846,7 +5846,7 @@ namespace intel {
         const instantiated_tag::SEED* seed = get_seed(ptr);
         typedef instantiated_tag::SEED::const_iterator IT;
         transform(begin(*seed), end(*seed),
-        	  ostream_iterator<string>(os), helper);
+                  ostream_iterator<string>(os), helper);
       }
       else
         os << name;

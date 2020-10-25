@@ -381,7 +381,7 @@ namespace intel {
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
       typedef vector<call_site_t>::const_iterator IT;
       IT p = find_if(begin(call_sites), end(call_sites),
-        	     [](const call_site_t& info){ return info.m_for_dest; });
+                     [](const call_site_t& info){ return info.m_for_dest; });
       bool for_dest = (p != end(call_sites));
       out << '\t' << ".byte	0xff" << '\n'; // LDSA header
       out << '\t' << ".byte	";
@@ -425,25 +425,25 @@ namespace intel {
               label1 = out_table::x86_gen::pre1 + func_label;
               out << label1 << '\t' << "DD" << '\t';
               if (call_site_t::types.size() != 1)
-        	return;  // not implemented
+                return;  // not implemented
               const type* T = call_site_t::types.back();
               if (T) {
-        	tag* ptr = T->get_tag();
-        	out << (ptr ? "08H" : "01H") << '\n';
-        	string Le = ms::label(ms::pre4, T);
-        	out << '\t' << "DD" << '\t' << Le << '\n';
+                tag* ptr = T->get_tag();
+                out << (ptr ? "08H" : "01H") << '\n';
+                string Le = ms::label(ms::pre4, T);
+                out << '\t' << "DD" << '\t' << Le << '\n';
               }
               else {
-        	out << "040H" << '\n';
-        	out << '\t' << "DD" << '\t' << "00H" << '\n';
+                out << "040H" << '\n';
+                out << '\t' << "DD" << '\t' << "00H" << '\n';
               }
 
               if (call_site_t::offsets.size() != 1)
-        	return;  // not implemented
+                return;  // not implemented
               int offset = call_site_t::offsets.back();
               out << '\t' << "DD" << '\t' << offset << '\n';
               if (call_sites.size() != 1)
-        	return;  // not implemented
+                return;  // not implemented
               const call_site_t& info = call_sites.back();
               string landing = info.m_landing;
               assert(!landing.empty());
@@ -613,18 +613,18 @@ namespace intel {
               string label2 = x64_gen::pre2 + func_label;
               out << label2 << " DB 02H" << '\n';
               if (call_site_t::types.size() != 1)
-        	return;  // not implemented
+                return;  // not implemented
               const type* T = call_site_t::types.back();
               if (T) {
-        	out << '\t' << "DB 07H" << '\n';
-        	out << '\t' << "DB ";
-        	tag* ptr = T->get_tag();
-        	out << (ptr ? "010H" : "02H") << '\n';
-        	string Le = ms::label(ms::pre4, T);
-        	out << '\t' << "DD imagerel " << Le << '\n';
+                out << '\t' << "DB 07H" << '\n';
+                out << '\t' << "DB ";
+                tag* ptr = T->get_tag();
+                out << (ptr ? "010H" : "02H") << '\n';
+                string Le = ms::label(ms::pre4, T);
+                out << '\t' << "DD imagerel " << Le << '\n';
               }
               else {
-        	out << '\t' << "DB 01H" << '\n';
+                out << '\t' << "DB 01H" << '\n';
               }
               int n = stack::delta_sp - except::ms::x64_handler::magic;
               assert(n > 0);
@@ -669,21 +669,21 @@ namespace intel {
 
 
               if (!T)
-        	return;
+                return;
 
               out << "CONST	SEGMENT" << '\n';
               string label5 = func_label + "$rtcName$";
               out << label5 << ' ';
               if (T->get_tag()) {
-        	out << "DB 06fH" << '\n';
-        	out << '\t' << "DB 06fH" << '\n';
-        	out << '\t' << "DB 00H" << '\n';
-        	out << '\t' << "ORG $+13" << '\n';
+                out << "DB 06fH" << '\n';
+                out << '\t' << "DB 06fH" << '\n';
+                out << '\t' << "DB 00H" << '\n';
+                out << '\t' << "ORG $+13" << '\n';
               }
               else {
-        	out << "DB 070H" << '\n';
-        	out << '\t' << "DB 00H" << '\n';
-        	out << '\t' << "ORG $+14" << '\n';
+                out << "DB 070H" << '\n';
+                out << '\t' << "DB 00H" << '\n';
+                out << '\t' << "ORG $+14" << '\n';
               }
               string label6 = func_label + "$rtcVarDesc";
               out << label6 << ' ' << "DD 028H" << '\n';
@@ -713,9 +713,9 @@ namespace intel {
           for (auto T : call_site_t::types) {
             if (T) {
               if (T->tmp())
-        	out_type_info(T);
+                out_type_info(T);
               else
-        	ms::call_sites_types_to_output.insert(T);
+                ms::call_sites_types_to_output.insert(T);
             }
           }
           call_site_t::types.clear();
