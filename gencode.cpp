@@ -5263,10 +5263,12 @@ namespace intel {
   {
     string label = to_impl::label(tac);
     out << label << ":\n";
-    assert(!except::call_sites.empty());
-    except::call_site_t& info = except::call_sites.back();
-    assert(!info.m_start.empty());
-    assert(info.m_end.empty());
+    vector<except::call_site_t>& v = except::call_sites;
+    typedef vector<except::call_site_t>::reverse_iterator IT;
+    IT p = find_if(rbegin(v), rend(v),
+                   [](except::call_site_t& x){ return x.m_end.empty(); });
+    assert(p != rend(v));
+    except::call_site_t& info = *p;
     info.m_end = label;
     assert(info.m_landing.empty());
   }
