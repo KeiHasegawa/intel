@@ -350,7 +350,7 @@ namespace intel {
       } // end of namespace x64_handler
     } // end of namespace ms
     extern std::vector<call_site_t> call_sites;
-    extern void out_table(bool);
+    extern void out_table(int ms_handler);
 #if defined(_MSC_VER) || defined(__CYGWIN__)
     extern void out_labeled_types();
 #else // defined(_MSC_VER) || defined(__CYGWIN__)

@@ -11,7 +11,7 @@ namespace intel {
   std::string func_label;
   using namespace COMPILER;
 #ifdef CXX_GENERATOR
-  void enter(const fundef* func, const std::vector<tac*>& code, bool);
+  void enter(const fundef* func, const std::vector<tac*>& code, int ms_handler);
 #else // CXX_GENERATOR
   void enter(const fundef* func, const std::vector<tac*>& code);
 #endif // CXX_GENERATOR
@@ -21,7 +21,7 @@ namespace intel {
     std::string leave_label;
   }
 #ifdef CXX_GENERATOR
-  void leave(const fundef* func, bool);
+  void leave(const fundef* func, int ms_handler);
 #else // CXX_GENERATOR
   void leave(const fundef* func);
 #endif // CXX_GENERATOR
@@ -31,17 +31,74 @@ namespace intel {
   std::vector<std::string> term_fun;
   namespace except {
     namespace ms {
-      inline bool handler(const std::vector<tac*>& code)
+      inline int handler(const std::vector<tac*>& code)
       {
         using namespace std;
         if (mode != MS)
-          return false;
-        typedef vector<tac*>::const_iterator IT;
-        IT p = find_if(begin(code), end(code),
-                      [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
-        return p != end(code);
+          return 0;
+        return count_if(begin(code), end(code),
+                        [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
       }
       namespace x86_handler {
+        std::map<tac*, int> table;
+        struct init_subr {
+          struct info_t {
+            tac* m_try_begin;
+            tac* m_try_end;
+            tac* m_here;
+            int m_no;
+            info_t() : m_try_begin(0), m_try_end(0), m_here(0), m_no(0) {}
+          };
+          std::vector<info_t> m_info;
+          int m_cnt;
+          init_subr() : m_cnt(0) {}
+          void operator()(tac* ptr)
+          {
+            tac::id_t id = ptr->m_id;
+            switch (id) {
+            case tac::TRY_BEGIN:
+              {
+        	info_t info;
+        	info.m_try_begin = ptr;
+        	info.m_no = ++m_cnt;
+        	m_info.push_back(info);
+        	table[ptr] = info.m_no;
+        	return;
+              }
+            case tac::TRY_END:
+              {
+        	assert(!m_info.empty());
+        	info_t& info = m_info.back();
+        	assert(info.m_try_begin);
+        	assert(!info.m_try_end);
+        	info.m_try_end = ptr;
+        	assert(!info.m_here);
+        	table[ptr] = info.m_no;
+        	return;
+              }
+            case tac::HERE:
+              {
+        	assert(!m_info.empty());
+        	info_t& info = m_info.back();
+        	assert(info.m_try_begin);
+        	assert(info.m_try_end);
+        	assert(!info.m_here);
+        	info.m_here = ptr;
+        	table[ptr] = info.m_no;
+        	m_info.pop_back();
+        	return;
+              }
+            default:
+              return;
+            }
+          }
+        };
+        void init(const std::vector<tac*>& code)
+        {
+	  using namespace std;
+	  table.clear();
+	  for_each(begin(code), end(code), init_subr());
+        }
         const std::string prefix = "__ehhandler$";
         const std::string prefix2 = "__catch$";
         void extra()
@@ -52,6 +109,7 @@ namespace intel {
             string label1 = out_table::x86_gen::pre5 + func_label;
             out << label1 << ':' << '\n';
             string label2 = out_table::x86_gen::pre6 + func_label;
+            label2 += "$1";  // WA
             out << '\t' << "jmp	" << label2 << '\n';
             out << '\t' << "int	3" << '\n';
           }
@@ -91,9 +149,15 @@ void intel::genfunc(const COMPILER::fundef* func,
   using namespace COMPILER;
 
 #ifdef CXX_GENERATOR
-  bool ms_handler = except::ms::handler(code);
-  if (ms_handler && !x64)
+  int ms_handler = except::ms::handler(code);
+  if (mode == MS) {
+    if (!x64)
+      first_param_offset = ms_handler ? 8 : 12;
+  }
+  if (ms_handler && !x64) {
     out << "ASSUME NOTHING" << '\n';
+    except::ms::x86_handler::init(code);
+  }
 #endif // CXX_GENERATOR
   output_section(CODE);
   usr* u = func->m_usr;
@@ -286,7 +350,7 @@ namespace intel {
   using namespace COMPILER;
   void sched_stack(const fundef* func, const std::vector<tac*>& code
 #ifdef CXX_GENERATOR
-                   , bool ms_handler
+                   , int ms_handler
 #endif // CXX_GENERATOR
   );
 #ifdef CXX_GENERATOR
@@ -364,7 +428,7 @@ namespace intel {
 void intel::enter(const COMPILER::fundef* func,
                   const std::vector<COMPILER::tac*>& code
 #ifdef CXX_GENERATOR
-                  , bool ms_handler
+                  , int ms_handler
 #endif // CXX_GENERATOR
 )
 {
@@ -609,7 +673,7 @@ namespace intel {
 
 void intel::leave(const COMPILER::fundef* func
 #ifdef CXX_GENERATOR
-                  , bool ms_handler
+                  , int ms_handler
 #endif // CXX_GENERATOR
 )
 {
@@ -722,7 +786,7 @@ void intel::leave(const COMPILER::fundef* func
 namespace intel {
   int func_local(const COMPILER::fundef* func
 #ifdef CXX_GENERATOR
-                 , bool ms_handler
+                 , int ms_handler
 #endif // CXX_GENERATOR
   );
   inline int align(int n, int m)
@@ -740,7 +804,7 @@ namespace intel {
 void intel::sched_stack(const COMPILER::fundef* func,
                         const std::vector<COMPILER::tac*>& code
 #ifdef CXX_GENERATOR
-                        , bool ms_handler
+                        , int ms_handler
 #endif // CXX_GENERATOR
 )
 {
@@ -750,7 +814,7 @@ void intel::sched_stack(const COMPILER::fundef* func,
   stack::local_area = psz;  // for return address save area
 #ifdef CXX_GENERATOR
   if (ms_handler && !x64)
-    stack::local_area += except::ms::x86_handler::ehrec_off;
+    stack::local_area += except::ms::x86_handler::ehrec_off * ms_handler;
 #endif // CXX_GENERATOR
   vector<tac*>::const_iterator p =
     max_element(code.begin(),code.end(), aggregate_func::ret::cmp);
@@ -894,7 +958,7 @@ namespace intel {
 
 int intel::func_local(const COMPILER::fundef* func
 #ifdef CXX_GENERATOR
-                      , bool ms_handler
+                      , int ms_handler
 #endif // CXX_GENERATOR
 )
 {
@@ -5243,11 +5307,16 @@ namespace intel {
     info.m_start = label;
     except::call_sites.push_back(info);
   }
-  void ms_try_begin(tac* tac)
+  void ms_try_begin(tac* ptr)
   {
     if (x64)
-      return; // not implemented
-    int n = except::ms::x86_handler::ehrec_off - 12;
+      return;
+    typedef map<tac*, int>::const_iterator IT;
+    IT p = except::ms::x86_handler::table.find(ptr);
+    assert(p != except::ms::x86_handler::table.end());
+    int n = p->second;
+    n *= except::ms::x86_handler::ehrec_off;
+    n -= 12;
     out << '\t' << "mov	DWORD PTR [ebp-" << n << "], 0" << '\n';
   }
 } // end of namespace intel
@@ -5272,7 +5341,7 @@ namespace intel {
     info.m_end = label;
     assert(info.m_landing.empty());
   }
-  void ms_try_end(tac* tac)
+  void ms_try_end(tac* ptr)
   {
     if (x64) {
       out << '\t' << "npad	1" << '\n';
@@ -5280,7 +5349,12 @@ namespace intel {
       out << label << " EQU $-" << func_label << '\n';
     }
     else {
-      int n = except::ms::x86_handler::ehrec_off - 12;
+      typedef map<tac*, int>::const_iterator IT;
+      IT p = except::ms::x86_handler::table.find(ptr);
+      assert(p != except::ms::x86_handler::table.end());
+      int n = p->second;
+      n *= except::ms::x86_handler::ehrec_off;
+      n -= 12;
       out << '\t' << "mov	DWORD PTR [ebp-" << n << "], -1" << '\n';
     }
   }
@@ -5311,21 +5385,25 @@ namespace intel {
     else
       info.m_action = 1;
   }
-  void ms_here(tac*)
+  void ms_here(tac* ptr)
   {
     if (x64) {
-        if (except::ms::x64_handler::catch_code::here_flag)
-            return; // not implemented nest case
-        except::ms::x64_handler::catch_code::here_flag = true;
-        if (except::ms::x64_handler::catch_code::here_ptr)
-            return; // not implemented multiple case
-        except::ms::x64_handler::catch_code::here_ptr = new vector<tac*>;
+      if (except::ms::x64_handler::catch_code::here_flag)
+        return; // not implemented nest case
+      except::ms::x64_handler::catch_code::here_flag = true;
+      if (except::ms::x64_handler::catch_code::here_ptr)
+        return; // not implemented multiple case
+      except::ms::x64_handler::catch_code::here_ptr = new vector<tac*>;
     }
     else {
-        string label = except::ms::out_table::x86_gen::pre6 + func_label;
-        out << label << '\t' << "EQU $" << '\n';
-        if (except::ms::x86_handler::delta_sp)
-            out << '\t' << "sub esp, " << except::ms::x86_handler::delta_sp << '\n';
+      string label = except::ms::out_table::x86_gen::pre6 + func_label;
+      typedef map<tac*, int>::const_iterator IT;
+      IT p = except::ms::x86_handler::table.find(ptr);
+      assert(p != except::ms::x86_handler::table.end());
+      int n = p->second;
+      out << label << '$' << n << '\t' << "EQU $" << '\n';
+      if (except::ms::x86_handler::delta_sp)
+        out << '\t' << "sub esp, " << except::ms::x86_handler::delta_sp << '\n';
     }
   }
 } // end of namespace intel

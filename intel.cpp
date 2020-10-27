@@ -991,8 +991,16 @@ void intel::mem::store(reg::gpr r) const
     if ( size <= 4 ) {
       if (mode == GNU)
         out << '\t' << "mov" << sf << '\t' << reg::name(r, size) << ", " << m_label << '\n';
-      else
+      else {
+#if 0 // change 2020.10.27 11:07
         out << '\t' << "mov" << '\t' << ms_pseudo(size) << " PTR " << m_label << ", " << reg::name(r, size) << '\n';
+#else
+        reg::gpr tmp = r == reg::ax ? reg::bx : reg::ax;
+        string ind = reg::name(tmp, psize());
+        out << '\t' << "lea" << '\t' << ind << ", " << m_label << '\n';
+        out << '\t' << "mov" << '\t' << ms_pseudo(size) << " PTR [" << ind << "], " << reg::name(r, size) << '\n';
+#endif
+      }
     }
     else {
       assert(size == 8 || size == 12);

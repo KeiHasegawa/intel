@@ -492,7 +492,7 @@ namespace intel {
           const string pre3 = "$tryMap$";
           const string pre4 = "$stateUnwindMap$";
           const string pre5 = "$cppxdata$";
-          void unwind_data(bool ms_handler)
+          void unwind_data(int ms_handler)
           {
             out << "xdata	SEGMENT	READONLY ALIGN(4) ALIAS(\".xdata\")" << '\n';
             out << '\t' << "ALIGN 4" << '\n';
@@ -698,7 +698,7 @@ namespace intel {
             }
           }
         } // end of namespace x64_gen
-        void gen(bool ms_handler)
+        void gen(int ms_handler)
         {
           if (x64)
             x64_gen::unwind_data(ms_handler);
@@ -723,7 +723,7 @@ namespace intel {
         }
       } // end of namespace out_table
     } // end of namespace ms
-    void out_table(bool ms_handler)
+    void out_table(int ms_handler)
     {
       mode == GNU ? gnu_out_table() : ms::out_table::gen(ms_handler);
     }
