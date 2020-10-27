@@ -563,10 +563,13 @@ namespace intel {
             out << label1 << " DB 06H" << '\n';
             out << '\t' << "DB 00H" << '\n';
             out << '\t' << "DB 00H" << '\n';
-            out << '\t' << "DB 'V'" << '\n';
+            string b = func_label + except::ms::x64_handler::try_begin_label;
+            b += "1"; // WA
+            out << '\t' << "DB (" << b << '-' << func_label << ") * 2" << '\n';
             out << '\t' << "DB 02H" << '\n';
-            string s = except::ms::x64_handler::try_size_pre + func_label;
-            out << '\t' << "DB " << s << '\n';
+            string e = func_label + except::ms::x64_handler::try_end_label;
+            e += "1"; // WA
+            out << '\t' << "DB (" << e << '-' << b << ") * 2" << '\n';
             out << '\t' << "DB 00H" << '\n';
             out << "xdata	ENDS" << '\n';
 

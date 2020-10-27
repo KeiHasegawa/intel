@@ -345,7 +345,8 @@ namespace intel {
           const std::string post = "@4HA";
         } // end of namespace catch_code
         const std::string prolog_size = "$prolog_size";
-        const std::string try_size_pre = "try_size$";
+        const std::string try_begin_label = "$try_begin$";
+        const std::string try_end_label = "$try_end$";
         const int magic = 16 * 14;
       } // end of namespace x64_handler
     } // end of namespace ms

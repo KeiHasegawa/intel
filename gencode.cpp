@@ -39,66 +39,66 @@ namespace intel {
         return count_if(begin(code), end(code),
                         [](tac* p) {return p->m_id == tac::TRY_BEGIN; });
       }
-      namespace x86_handler {
-        std::map<tac*, int> table;
-        struct init_subr {
-          struct info_t {
-            tac* m_try_begin;
-            tac* m_try_end;
-            tac* m_here;
-            int m_no;
-            info_t() : m_try_begin(0), m_try_end(0), m_here(0), m_no(0) {}
-          };
-          std::vector<info_t> m_info;
-          int m_cnt;
-          init_subr() : m_cnt(0) {}
-          void operator()(tac* ptr)
-          {
-            tac::id_t id = ptr->m_id;
-            switch (id) {
-            case tac::TRY_BEGIN:
-              {
-        	info_t info;
-        	info.m_try_begin = ptr;
-        	info.m_no = ++m_cnt;
-        	m_info.push_back(info);
-        	table[ptr] = info.m_no;
-        	return;
-              }
-            case tac::TRY_END:
-              {
-        	assert(!m_info.empty());
-        	info_t& info = m_info.back();
-        	assert(info.m_try_begin);
-        	assert(!info.m_try_end);
-        	info.m_try_end = ptr;
-        	assert(!info.m_here);
-        	table[ptr] = info.m_no;
-        	return;
-              }
-            case tac::HERE:
-              {
-        	assert(!m_info.empty());
-        	info_t& info = m_info.back();
-        	assert(info.m_try_begin);
-        	assert(info.m_try_end);
-        	assert(!info.m_here);
-        	info.m_here = ptr;
-        	table[ptr] = info.m_no;
-        	m_info.pop_back();
-        	return;
-              }
-            default:
+      std::map<tac*, int> table;
+      struct init_subr {
+        struct info_t {
+          tac* m_try_begin;
+          tac* m_try_end;
+          tac* m_here;
+          int m_no;
+          info_t() : m_try_begin(0), m_try_end(0), m_here(0), m_no(0) {}
+        };
+        std::vector<info_t> m_info;
+        int m_cnt;
+        init_subr() : m_cnt(0) {}
+        void operator()(tac* ptr)
+        {
+          tac::id_t id = ptr->m_id;
+          switch (id) {
+          case tac::TRY_BEGIN:
+            {
+              info_t info;
+              info.m_try_begin = ptr;
+              info.m_no = ++m_cnt;
+              m_info.push_back(info);
+              table[ptr] = info.m_no;
               return;
             }
+          case tac::TRY_END:
+            {
+              assert(!m_info.empty());
+              info_t& info = m_info.back();
+              assert(info.m_try_begin);
+              assert(!info.m_try_end);
+              info.m_try_end = ptr;
+              assert(!info.m_here);
+              table[ptr] = info.m_no;
+              return;
+            }
+          case tac::HERE:
+            {
+              assert(!m_info.empty());
+              info_t& info = m_info.back();
+              assert(info.m_try_begin);
+              assert(info.m_try_end);
+              assert(!info.m_here);
+              info.m_here = ptr;
+              table[ptr] = info.m_no;
+              m_info.pop_back();
+              return;
+            }
+          default:
+            return;
           }
-        };
-        void init(const std::vector<tac*>& code)
-        {
-	  using namespace std;
-	  table.clear();
-	  for_each(begin(code), end(code), init_subr());
         }
+      };
+      void init(const std::vector<tac*>& code)
+      {
+        using namespace std;
+        table.clear();
+        for_each(begin(code), end(code), init_subr());
+      }
+      namespace x86_handler {
         const std::string prefix = "__ehhandler$";
         const std::string prefix2 = "__catch$";
         void extra()
@@ -154,9 +154,10 @@ void intel::genfunc(const COMPILER::fundef* func,
     if (!x64)
       first_param_offset = ms_handler ? 8 : 12;
   }
-  if (ms_handler && !x64) {
-    out << "ASSUME NOTHING" << '\n';
-    except::ms::x86_handler::init(code);
+  if (ms_handler) {
+    if (!x64)
+      out << "ASSUME NOTHING" << '\n';
+    except::ms::init(code);
   }
 #endif // CXX_GENERATOR
   output_section(CODE);
@@ -5309,15 +5310,19 @@ namespace intel {
   }
   void ms_try_begin(tac* ptr)
   {
-    if (x64)
-      return;
     typedef map<tac*, int>::const_iterator IT;
-    IT p = except::ms::x86_handler::table.find(ptr);
-    assert(p != except::ms::x86_handler::table.end());
+    IT p = except::ms::table.find(ptr);
+    assert(p != except::ms::table.end());
     int n = p->second;
-    n *= except::ms::x86_handler::ehrec_off;
-    n -= 12;
-    out << '\t' << "mov	DWORD PTR [ebp-" << n << "], 0" << '\n';
+    if (x64) {
+      string label = func_label + except::ms::x64_handler::try_begin_label;
+      out << label << n << " EQU $" << '\n';
+    }
+    else {
+      n *= except::ms::x86_handler::ehrec_off;
+      n -= 12;
+      out << '\t' << "mov	DWORD PTR [ebp-" << n << "], 0" << '\n';
+    }
   }
 } // end of namespace intel
 
@@ -5343,16 +5348,16 @@ namespace intel {
   }
   void ms_try_end(tac* ptr)
   {
+    typedef map<tac*, int>::const_iterator IT;
+    IT p = except::ms::table.find(ptr);
+    assert(p != except::ms::table.end());
+    int n = p->second;
     if (x64) {
       out << '\t' << "npad	1" << '\n';
-      string label = except::ms::x64_handler::try_size_pre + func_label;
-      out << label << " EQU $-" << func_label << '\n';
+      string label = func_label + except::ms::x64_handler::try_end_label;
+      out << label << n << " EQU $" << '\n';
     }
     else {
-      typedef map<tac*, int>::const_iterator IT;
-      IT p = except::ms::x86_handler::table.find(ptr);
-      assert(p != except::ms::x86_handler::table.end());
-      int n = p->second;
       n *= except::ms::x86_handler::ehrec_off;
       n -= 12;
       out << '\t' << "mov	DWORD PTR [ebp-" << n << "], -1" << '\n';
@@ -5387,6 +5392,10 @@ namespace intel {
   }
   void ms_here(tac* ptr)
   {
+    typedef map<tac*, int>::const_iterator IT;
+    IT p = except::ms::table.find(ptr);
+    assert(p != except::ms::table.end());
+    int n = p->second;
     if (x64) {
       if (except::ms::x64_handler::catch_code::here_flag)
         return; // not implemented nest case
@@ -5397,10 +5406,6 @@ namespace intel {
     }
     else {
       string label = except::ms::out_table::x86_gen::pre6 + func_label;
-      typedef map<tac*, int>::const_iterator IT;
-      IT p = except::ms::x86_handler::table.find(ptr);
-      assert(p != except::ms::x86_handler::table.end());
-      int n = p->second;
       out << label << '$' << n << '\t' << "EQU $" << '\n';
       if (except::ms::x86_handler::delta_sp)
         out << '\t' << "sub esp, " << except::ms::x86_handler::delta_sp << '\n';
