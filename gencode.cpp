@@ -1306,7 +1306,7 @@ namespace intel {
             out << '\t' << "push	rdi" << '\n';
             out << '\t' << "sub	rsp, 40" << '\n';
             int m = stack::delta_sp - except::ms::x64_handler::magic;
-            m -= 16;
+            m -= except::ms::x64_handler::magic2;
             out << '\t' << "lea	rbp, QWORD PTR [rdx+" << m << ']' << '\n';
             if (ptr) {
               (void)find_if(begin(*ptr), end(*ptr),

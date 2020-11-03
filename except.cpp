@@ -95,6 +95,7 @@ namespace intel {
     std::string ms::pre4 = "??_R0";
     std::string ms::pre5 = ".";
     std::string ms::vpsig = "PEAX";
+    bool vpsig_done = false;
     string ms::label(string pre, const type* T)
     {
       assert(mode == MS);
@@ -256,7 +257,7 @@ namespace intel {
 
         ms::out_call_site_type_info(T);
 
-        if (!Lf.empty()) {
+        if (!Lf.empty() && !vpsig_done) {
           out << "data$r" << '\t' << "SEGMENT" << '\n';
           out << Lf;
           string d = ms_pseudo(psize());
@@ -265,6 +266,7 @@ namespace intel {
           out << '\t' << "DB" << '\t';
           out << "'" << ms::pre5 << ms::vpsig << "', 00H" << '\n';
           out << "data$r" << '\t' << "ENDS" << '\n';
+          vpsig_done = true;
         }
 
         ms::call_sites_types_to_output.erase(T);
@@ -355,8 +357,13 @@ namespace intel {
         void ms_common(const type* T)
         {
           mem::refed.insert(mem::refgen_t(ms::ti_label, usr::NONE, 8));
-          out << "data$r" << '\t' << "SEGMENT" << '\n';
           string Le = ms::label(ms::pre4, T);
+          if (Le == ms::pre4 + ms::vpsig) {
+            if (vpsig_done)
+              return;
+            vpsig_done = true;
+          }
+          out << "data$r" << '\t' << "SEGMENT" << '\n';
           out << Le;
           string d = ms_pseudo(psize());
           out << '\t' << d << '\t' << ms::ti_label << '\n';
@@ -592,7 +599,8 @@ namespace intel {
             }
             int n = stack::delta_sp - except::ms::x64_handler::magic;
             assert(n > 0);
-            n -= 0x30;
+            n -= 0x20;
+            n -= except::ms::x64_handler::magic2;
             assert(n >= 0);
             assert(!(n & 7));
             n <<= 1;

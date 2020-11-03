@@ -348,6 +348,7 @@ namespace intel {
         const std::string try_begin_label = "$try_begin$";
         const std::string try_end_label = "$try_end$";
         const int magic = 16 * 14;
+        const int magic2 = 16;
       } // end of namespace x64_handler
     } // end of namespace ms
     extern std::vector<call_site_t> call_sites;
