@@ -151,7 +151,9 @@ void intel::genfunc(const COMPILER::fundef* func,
 #ifdef CXX_GENERATOR
   int ms_handler = except::ms::handler(code);
   if (mode == MS) {
-    if (!x64)
+    if (x64)
+      first_param_offset = ms_handler ? 0x18 : 0x10;
+    else
       first_param_offset = ms_handler ? 8 : 12;
   }
   if (ms_handler) {
@@ -1282,15 +1284,20 @@ namespace intel {
       namespace x64_handler {
         const string postfix = "$catch_end";
         namespace catch_code {
-          vector<tac*>* ptr;
+          vector<vector<tac*>*> contents;
           bool flag;
           bool here_flag;
           vector<tac*>* here_ptr;
-          void gen()
+          int subr(int n, vector<tac*>* ptr)
           {
             output_section(CODE);
-            string label = catch_code::ptr ? catch_code::pre : catch_code::pre2;
-            label += func_label + catch_code::post;
+            ostringstream os;
+            if (ptr)
+              os << catch_code::pre << n << '@';
+            else
+              os << catch_code::pre2;
+            os << func_label << catch_code::post;
+            string label = os.str();
             out << label;
             out << ' ' << "PROC" << '\n';
             out << '\t' << "mov	QWORD PTR [rsp+8], rcx" << '\n';
@@ -1299,17 +1306,14 @@ namespace intel {
             out << '\t' << "push	rdi" << '\n';
             out << '\t' << "sub	rsp, 40" << '\n';
             int m = stack::delta_sp - except::ms::x64_handler::magic;
+            m -= 16;
             out << '\t' << "lea	rbp, QWORD PTR [rdx+" << m << ']' << '\n';
-            if (catch_code::ptr) {
-              (void)find_if(begin(*catch_code::ptr), end(*catch_code::ptr),
+            if (ptr) {
+              (void)find_if(begin(*ptr), end(*ptr),
                     [](tac* p) { gencode(p); return p->m_id == tac::RETHROW; });
-              delete catch_code::ptr;
-              catch_code::ptr = 0;
+              delete ptr;
               out << '\t' << "npad	1" << '\n';
-              out << '\t' << "lea	rax, " << func_label << postfix << '\n';
-              assert(catch_code::here_ptr);
-              delete catch_code::here_ptr;
-              catch_code::here_ptr = 0;
+              out << '\t' << "lea	rax, " << func_label << postfix << '$' << n << '\n';
             }
             else {
               assert(catch_code::here_ptr);
@@ -1343,6 +1347,20 @@ namespace intel {
             out << '\t' << "DD imagerel " << end << '\n';
             out << '\t' << "DD imagerel " << unwind << '\n';
             out << "pdata	ENDS" << '\n';
+            return n + 1;
+          }
+          void gen()
+          {
+            (void)accumulate(begin(contents), end(contents), 0, subr);
+            if (contents.empty()) {
+              subr(0, 0);
+            }
+            else {
+              assert(catch_code::here_ptr);
+              delete catch_code::here_ptr;
+              catch_code::here_ptr = 0;
+            }
+            contents.clear();
           }
         } // end of namespace catch_code;
       } // end of namespace x64_handler
@@ -1365,8 +1383,12 @@ void intel::gencode(COMPILER::tac* ptr)
       gencode_table[ptr->m_id](ptr);
       except::ms::x64_handler::catch_code::flag = false;
     }
-    else
-      except::ms::x64_handler::catch_code::ptr->push_back(ptr);
+    else {
+        vector<vector<tac*>*>& v = except::ms::x64_handler::catch_code::contents;
+        assert(!v.empty());
+        vector<tac*>* pv = v.back();
+        pv->push_back(ptr);
+    }
   }
   else if (except::ms::x64_handler::catch_code::here_flag) {
     if (ptr->m_id == tac::CATCH_BEGIN) {
@@ -5537,14 +5559,17 @@ namespace intel {
       if (except::ms::x64_handler::catch_code::flag)
         return; // not implemented nest case
       except::ms::x64_handler::catch_code::flag = true;
-      if (except::ms::x64_handler::catch_code::ptr)
-        return; // not implemented multiple case
-      except::ms::x64_handler::catch_code::ptr = new vector<tac*>;
+      vector<vector<tac*>*>& v = except::ms::x64_handler::catch_code::contents;
+      v.push_back(new vector<tac*>);
       catch_common(ptr);
     }
     void x86_catch_begin(tac* tac)
     {
       string label = except::ms::x86_handler::prefix2 + func_label;
+      int n = except::call_sites.size();
+      ostringstream os;
+      os << label << '$' << n;
+      label = os.str();
       except::call_site_t info;
       info.m_landing = label;
       except::call_sites.push_back(info);
@@ -5574,6 +5599,10 @@ void intel::catch_end(COMPILER::tac* tac)
       if (except::ms::x64_handler::catch_code::flag) {
         except::call_site_t info;
         string label = func_label + except::ms::x64_handler::postfix;
+        int n = except::call_sites.size();
+        ostringstream os;
+        os << label << '$' << n;
+        label = os.str();
         info.m_landing = label;
         except::call_sites.push_back(info);
         out << label << '\t' << "EQU $" << '\n';

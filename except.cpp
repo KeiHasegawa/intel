@@ -10,7 +10,7 @@ namespace intel {
     vector<call_site_t> call_sites;
     vector<const type*> types;
     vector<const type*> call_site_t::types;
-    vector<int> call_site_t::offsets;
+    vector<int> call_site_t::offsets;  // just use MS mode
     vector<const type*> throw_types;
     set<const type*> types_to_output;
     set<const type*> ms::call_sites_types_to_output;
@@ -175,6 +175,13 @@ namespace intel {
           out << mem::refgen(obj) << '\n';
         }
       }
+      void outbase(base* pb, string pre)
+      {
+        tag* ptr = pb->m_tag;
+        const type* T = ptr->m_types.second;
+        string Lc = ms::label(ms::pre3, T);
+        out << '\t' << "DD" << '\t' << pre << Lc << '\n';
+      }
       void ms_common(const type* T, tag* ptr)
       {
         string s1 = ptr ? ms::pre1a : ms::pre1b;
@@ -205,8 +212,14 @@ namespace intel {
           out << '\t' << "DD" << '\t' << pre << Ld << '\n';
         }
         else {
-          out << '\t' << "DD" << '\t' << "01H" << '\n';
+          vector<base*>* bases = ptr->m_bases;
+          int n = 1;
+          if (bases)
+            n += bases->size();
+          out << '\t' << "DD" << '\t' << n << '\n';
           out << '\t' << "DD" << '\t' << pre << Lc << '\n';
+          if (bases)
+            for_each(begin(*bases), end(*bases), bind2nd(ptr_fun(outbase), pre));
         }
         out << "xdata$x" << '\t' << "ENDS" << '\n';
 
@@ -414,6 +427,28 @@ namespace intel {
         using namespace std;
         namespace x86_gen {
           const string pre1 = "__catchsym$";
+          void pre1_data(const type* T, int offset, const call_site_t& info)
+          {
+            if (T) {
+              out << '\t' << "DD" << '\t';
+              if (call_sites.size() > 1)
+        	out << "00H" << '\n';
+              else {
+        	tag* ptr = T->get_tag();
+        	out << (ptr ? "08H" : "01H") << '\n';
+              }
+              string Le = ms::label(ms::pre4, T);
+              out << '\t' << "DD" << '\t' << Le << '\n';
+            }
+            else {
+              out << '\t' << "DD" << '\t' << "040H" << '\n';
+              out << '\t' << "DD" << '\t' << "00H" << '\n';
+            }
+            out << '\t' << "DD" << '\t' << offset << '\n';
+            string landing = info.m_landing;
+            assert(!landing.empty());
+            out << '\t' << "DD" << '\t' << landing << '\n';
+          }
           const string pre2 = "__unwindtable$";
           const string pre3 = "__tryblocktable$";
           void action()
@@ -423,31 +458,17 @@ namespace intel {
             string label1;
             if (!call_site_t::types.empty()) {
               label1 = out_table::x86_gen::pre1 + func_label;
-              out << label1 << '\t' << "DD" << '\t';
-              if (call_site_t::types.size() != 1)
-                return;  // not implemented
-              const type* T = call_site_t::types.back();
-              if (T) {
-                tag* ptr = T->get_tag();
-                out << (ptr ? "08H" : "01H") << '\n';
-                string Le = ms::label(ms::pre4, T);
-                out << '\t' << "DD" << '\t' << Le << '\n';
-              }
-              else {
-                out << "040H" << '\n';
-                out << '\t' << "DD" << '\t' << "00H" << '\n';
-              }
-
-              if (call_site_t::offsets.size() != 1)
-                return;  // not implemented
-              int offset = call_site_t::offsets.back();
-              out << '\t' << "DD" << '\t' << offset << '\n';
-              if (call_sites.size() != 1)
-                return;  // not implemented
-              const call_site_t& info = call_sites.back();
-              string landing = info.m_landing;
-              assert(!landing.empty());
-              out << '\t' << "DD" << '\t' << landing << '\n';
+              out << label1;
+              assert(call_site_t::types.size() == call_site_t::offsets.size());
+              assert(call_site_t::types.size() == call_sites.size());
+              typedef vector<const type*>::const_iterator ITx;
+              ITx p = begin(call_site_t::types);
+              typedef vector<int>::const_iterator ITy;
+              ITy q = begin(call_site_t::offsets);
+              typedef vector<call_site_t>::const_iterator ITz;
+              ITz r = begin(call_sites);
+              for (; p != end(call_site_t::types); ++p, ++q, ++r)
+        	pre1_data(*p, *q, *r);
             }
             string label2 = out_table::x86_gen::pre2 + func_label;
             out << label2 << '\t' << "DD" << '\t' << "0ffffffffH" << '\n';
@@ -460,7 +481,10 @@ namespace intel {
               out << label3 << '\t' << "DD" << '\t' << "00H" << '\n';
               out << '\t' << "DD" << '\t' << "00H" << '\n';
               out << '\t' << "DD" << '\t' << "01H" << '\n';
-              out << '\t' << "DD" << '\t' << "01H" << '\n';
+              if (call_sites.size() == 1)
+                  out << '\t' << "DD" << '\t' << "01H" << '\n';
+              else
+                  out << '\t' << "DD" << '\t' << "02H" << '\n';
               out << '\t' << "DD" << '\t' << label1 << '\n';
             }
             else {
@@ -555,6 +579,33 @@ namespace intel {
             out << '\t' << "DD imagerel " << unwind << '\n';
             out << "pdata	ENDS" << '\n';
           }
+          void subr(int nth, const type* T, string label1)
+          {
+            if (T) {
+              out << '\t' << "DB 07H" << '\n';
+              out << '\t' << "DB ";
+              tag* ptr = T->get_tag();
+              out << (ptr ? "010H" : "02H") << '\n';
+              string Le = ms::label(ms::pre4, T);
+              out << '\t' << "DD imagerel " << Le << '\n';
+            }
+            else {
+              out << '\t' << "DB 01H" << '\n';
+            }
+            int n = stack::delta_sp - except::ms::x64_handler::magic;
+            assert(n > 0);
+            n -= 0x30;
+            assert(n >= 0);
+            assert(!(n & 7));
+            n <<= 1;
+            if (call_site_t::types.size() > 1)
+              n = 0xb0;  // WA
+            out << '\t' << "DB " << n << '\n';
+            out << '\t' << "DD imagerel ";
+            out << x64_handler::catch_code::pre << nth << '@';
+            out << func_label;
+            out << x64_handler::catch_code::post << '\n';
+          }
           void action()
           {
             out << "xdata	SEGMENT" << '\n';
@@ -611,35 +662,14 @@ namespace intel {
               out << "CONST	ENDS" << '\n';
             }
             else {
+              assert(call_sites.size() == call_site_t::types.size());
+              int sz = call_site_t::types.size();
               out << "xdata	SEGMENT" << '\n';
               out << '\t' << "ALIGN 4" << '\n';
               string label2 = x64_gen::pre2 + func_label;
-              out << label2 << " DB 02H" << '\n';
-              if (call_site_t::types.size() != 1)
-                return;  // not implemented
-              const type* T = call_site_t::types.back();
-              if (T) {
-                out << '\t' << "DB 07H" << '\n';
-                out << '\t' << "DB ";
-                tag* ptr = T->get_tag();
-                out << (ptr ? "010H" : "02H") << '\n';
-                string Le = ms::label(ms::pre4, T);
-                out << '\t' << "DD imagerel " << Le << '\n';
-              }
-              else {
-                out << '\t' << "DB 01H" << '\n';
-              }
-              int n = stack::delta_sp - except::ms::x64_handler::magic;
-              assert(n > 0);
-              n -= 0x20;
-              assert(n >= 0);
-              assert(!(n & 7));
-              n <<= 1;
-              out << '\t' << "DB " << n << '\n';
-              out << '\t' << "DD imagerel ";
-              out << x64_handler::catch_code::pre;
-              out << func_label;
-              out << x64_handler::catch_code::post << '\n';
+              out << label2 << " DB " << (sz << 1) << '\n';
+              for (int i = 0 ; i != sz ; ++i)
+                subr(i, call_site_t::types[i], label1);
               out << "xdata	ENDS" << '\n';
 
               out << "xdata	SEGMENT" << '\n';
@@ -670,12 +700,12 @@ namespace intel {
               out << '\t' << "DD imagerel " << label1 << '\n';
               out << "xdata	ENDS" << '\n';
 
-
+              const type* T = call_site_t::types.back();
               if (!T)
                 return;
 
               out << "CONST	SEGMENT" << '\n';
-              string label5 = func_label + "$rtcName$";
+              string label5 = func_label + "$rtcName";
               out << label5 << ' ';
               if (T->get_tag()) {
                 out << "DB 06fH" << '\n';

@@ -309,7 +309,7 @@ namespace intel {
       bool m_for_dest;
       call_site_t() : m_action(0), m_for_dest(false) {}
       static std::vector<const COMPILER::type*> types;
-      static std::vector<int> offsets;
+      static std::vector<int> offsets;  // just use MS mode
     };
     extern void out_type_info(const COMPILER::type* T);
     extern std::vector<const COMPILER::type*> throw_types;
@@ -340,7 +340,7 @@ namespace intel {
       extern std::string vpsig;
       namespace x64_handler {
         namespace catch_code {
-          const std::string pre = "?catch$0@?0?";
+          const std::string pre = "?catch$";
           const std::string pre2 = "?dtor$0@?0?";
           const std::string post = "@4HA";
         } // end of namespace catch_code

@@ -779,10 +779,14 @@ void intel::mem::load(reg::gpr r) const
     if (x64) {
       mem_impl::load_label_x64(r, m_label, f, size);
       string preg = reg::name(r, psize());
-      if (mode == GNU)
-        out << '\t' << "mov" << sf << '\t' << '(' << preg << "), " << dst << '\n';
-      else
-        out << '\t' << "mov" << sf << '\t' << dst << ", " << ptr << '[' << preg << ']' << '\n';
+      if (mode == GNU) {
+        out << '\t' << "mov" << sf << '\t' << '(' << preg << "), ";
+	out << dst << '\n';
+      }
+      else {
+        out << '\t' << "mov" << sf << '\t' << dst;
+	out << ", " << ptr << '[' << preg << ']' << '\n';
+      }
     }
     else {
       if (size <= 4) {
@@ -792,7 +796,8 @@ void intel::mem::load(reg::gpr r) const
           reg::gpr tmp = r == reg::ax ? reg::bx : reg::ax;
           string ind = reg::name(tmp, psize());
           out << '\t' << "lea" << '\t' << ind << ", " << m_label << '\n';
-          out << '\t' << "mov" << '\t' << dst << ", " << ptr << '[' << ind << ']' << '\n';
+          out << '\t' << "mov" << '\t' << dst;
+	  out << ", " << ptr << '[' << ind << ']' << '\n';
         }
       }
       else
@@ -992,14 +997,11 @@ void intel::mem::store(reg::gpr r) const
       if (mode == GNU)
         out << '\t' << "mov" << sf << '\t' << reg::name(r, size) << ", " << m_label << '\n';
       else {
-#if 0 // change 2020.10.27 11:07
-        out << '\t' << "mov" << '\t' << ms_pseudo(size) << " PTR " << m_label << ", " << reg::name(r, size) << '\n';
-#else
         reg::gpr tmp = r == reg::ax ? reg::bx : reg::ax;
         string ind = reg::name(tmp, psize());
         out << '\t' << "lea" << '\t' << ind << ", " << m_label << '\n';
-        out << '\t' << "mov" << '\t' << ms_pseudo(size) << " PTR [" << ind << "], " << reg::name(r, size) << '\n';
-#endif
+        out << '\t' << "mov" << '\t' << ms_pseudo(size);
+	out << " PTR [" << ind << "], " << reg::name(r, size) << '\n';
       }
     }
     else {
