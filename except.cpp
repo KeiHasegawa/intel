@@ -481,10 +481,8 @@ namespace intel {
               out << label3 << '\t' << "DD" << '\t' << "00H" << '\n';
               out << '\t' << "DD" << '\t' << "00H" << '\n';
               out << '\t' << "DD" << '\t' << "01H" << '\n';
-              if (call_sites.size() == 1)
-                  out << '\t' << "DD" << '\t' << "01H" << '\n';
-              else
-                  out << '\t' << "DD" << '\t' << "02H" << '\n';
+              int n = call_sites.size();
+              out << '\t' << "DD" << '\t' << n << '\n';
               out << '\t' << "DD" << '\t' << label1 << '\n';
             }
             else {
