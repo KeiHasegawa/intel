@@ -1087,9 +1087,11 @@ bool intel::mem::is(COMPILER::usr* u)
   using namespace COMPILER;
   usr::flag_t flag = u->m_flag;
 #ifdef CXX_GENERATOR
+  if (flag & usr::NAMESPACE)
+    return false;
   usr::flag2_t flag2 = u->m_flag2;
   usr::flag2_t mask2 =
-    usr::flag2_t(usr::TEMPLATE | usr::PARTIAL_ORDERING | usr::NAMESPACE);
+    usr::flag2_t(usr::TEMPLATE | usr::PARTIAL_ORDERING);
   if (flag2 & mask2)
     return false;
   if (!(flag & usr::WITH_INI)) {
