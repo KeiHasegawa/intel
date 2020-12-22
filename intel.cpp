@@ -200,6 +200,10 @@ extern "C" DLL_EXPORT int generator_sizeof(int n)
     return 8;
   case type::LONG_DOUBLE:
     return literal::floating::long_double::size;
+#ifdef CXX_GENERATOR
+  case type::FLOAT128:
+    return 64;
+#endif // CXX_GENERATOR
   default:
     assert((type::id_t)n == type::POINTER);
     return x64 ? 8 : 4;
@@ -505,6 +509,11 @@ bool intel::imm::is(COMPILER::usr* u)
   using namespace COMPILER;
   if (!u->isconstant())
     return false;
+#ifdef CXX_GENERATOR
+  usr::flag2_t flag2 = u->m_flag2;
+  if (flag2 & usr::CONST_USR)
+    return false;
+#endif // CXX_GENERATOR
   const type* T = u->m_type;
   return T->size() <= 4;
 }
