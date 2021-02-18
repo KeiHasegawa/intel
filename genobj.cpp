@@ -52,6 +52,8 @@ namespace intel {
     const type* T = x.first;
     if (!T) {
       var* v = x.second;
+      if (!v)
+	return false;
       if (v->addrof_cast())
         return false;
       assert(v->usr_cast());
