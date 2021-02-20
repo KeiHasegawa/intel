@@ -43,6 +43,12 @@ namespace intel {
       T = rt->referenced_type();
       return reduce(T);
     }
+    if (T->m_id == type::ARRAY) {
+      typedef const array_type AT;
+      AT* at = static_cast<AT*>(T);
+      T = at->element_type();
+      return reduce(T);
+    }
     return T;
   }
   bool incomplete(const std::pair<const COMPILER::type*, COMPILER::var*>& x)
@@ -62,6 +68,8 @@ namespace intel {
     }
     T = reduce(T);
     if (T->m_id == type::TEMPLATE_PARAM)
+      return true;
+    if (T->m_id == type::VARRAY)
       return true;
     if (tag* ptr = T->get_tag()) {
       if (ptr->m_flag & tag::TYPENAMED) {
