@@ -71,6 +71,16 @@ namespace intel {
       return true;
     if (T->m_id == type::VARRAY)
       return true;
+    if (T->m_id == type::POINTER_MEMBER) {
+      typedef const pointer_member_type PM;
+      auto pm = static_cast<PM*>(T);
+      T = pm->referenced_type();
+      if (incomplete(make_pair(T, (var*)0)))
+	return true;
+      const tag* ptr = pm->ctag();
+      T = ptr->m_types.first;
+      return incomplete(make_pair(T, (var*)0));
+    }
     if (tag* ptr = T->get_tag()) {
       if (ptr->m_flag & tag::TYPENAMED) {
         if (T->m_id == type::INCOMPLETE_TAGGED)

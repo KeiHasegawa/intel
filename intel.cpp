@@ -1133,12 +1133,12 @@ intel::mem::mem(COMPILER::usr* u) : address(MEM), m_usr(u)
   usr::flag_t f = u->m_flag;
 #ifdef CXX_GENERATOR
   if ((f & usr::C_SYMBOL) || !(f & usr::FUNCTION))
-      m_label = external_header + cxx_label(u);
+    m_label = external_header + cxx_label(u);
   else
-      m_label = cxx_label(u);
+    m_label = cxx_label(u);
 #else // CXX_GENERATOR
   if (mode == MS && name[0] == '.')
-      name = name.substr(1);
+    name = name.substr(1);
   m_label = external_header + name;
 #endif // CXX_GENERATOR
   if (f & usr::STATIC) {

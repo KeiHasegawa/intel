@@ -974,10 +974,6 @@ int intel::func_local(const COMPILER::fundef* func
   T = X->return_type();
   bool big = big_ret(T);
   int offset = first_param_offset;
-#if 0 // #ifdef CXX_GENERATOR  // compile out 2020.10.28 6:30
-  if (ms_handler && !x64)
-    offset -= 4;
-#endif // CXX_GENERATOR
   int psz = psize();
   if (big)
     offset += psz;
