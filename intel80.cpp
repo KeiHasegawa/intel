@@ -279,6 +279,9 @@ void intel80::mul(unsigned char* u, const unsigned char* v)
   fw.first += fw.second >> 32;
   fw.second &= ~(~(__int64)0 << 32);
   normalize(u,ew,fw);
+  if ((fu.first & I0x8000000000000000LL) && !(fv.first & I0x8000000000000000LL) ||
+      !(fu.first & I0x8000000000000000LL) && (fv.first & I0x8000000000000000LL))
+      u[9] |= 0x80;
 }
 
 void intel80::div(unsigned char* u, const unsigned char* v)
@@ -304,6 +307,9 @@ void intel80::div(unsigned char* u, const unsigned char* v)
     fw.first  = fu.first / fv.second  << pp;
     fw.second = fu.second / fv.second << pp;
     normalize(u,ew,fw);
+    if ((fu.first & I0x8000000000000000LL) && !(fv.first & I0x8000000000000000LL) ||
+        !(fu.first & I0x8000000000000000LL) && (fv.first & I0x8000000000000000LL))
+        u[9] |= 0x80;
   }
   else {
     memcpy(u,inf,nbytes);
