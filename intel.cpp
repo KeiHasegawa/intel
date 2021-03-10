@@ -1153,6 +1153,17 @@ intel::mem::mem(COMPILER::usr* u) : address(MEM), m_usr(u)
 
 namespace intel {
   std::string escape_sequence(std::string);
+  inline bool use_ascii(bool str, string name)
+  {
+    if (!str)
+      return false;
+    if (name[0] == 'L')
+      return false;
+    if (mode != GNU)
+      return false;
+    auto p = find_if(begin(name), end(name), not1(ptr_fun(isascii)));
+    return p == end(name);
+  }
 } // end of namespace intel
 
 bool intel::mem::genobj()
@@ -1196,7 +1207,7 @@ bool intel::mem::genobj()
     if (!(flag & ~usr::WITH_INI))
       out << '\t' << pseudo_global << '\t' << m_label << '\n';
     out << m_label << ":\n";
-    if (str && name[0] != 'L' && mode == GNU) {
+    if (use_ascii(str, name)) {
       out << '\t' << ".ascii" << '\t';
       name = escape_sequence(name);
       int len = name.length();
