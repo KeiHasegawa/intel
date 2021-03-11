@@ -1162,6 +1162,9 @@ namespace intel {
     if (mode != GNU)
       return false;
     auto p = find_if(begin(name), end(name), not1(ptr_fun(isascii)));
+    if (p != end(name))
+      return false;
+    p = find(begin(name), end(name), 0x1b);
     return p == end(name);
   }
 } // end of namespace intel
