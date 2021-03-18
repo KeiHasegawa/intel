@@ -289,7 +289,10 @@ namespace intel {
         out << L1 << ",comdat" << '\n';
         out << '\t' << ".align 4" << '\n';
         out << '\t' << ".type	" << L1 << ", @object" << '\n';
-        out << '\t' << ".size	" << L1 << ", 8" << '\n';
+	int n = 8;
+	if (auto bases = ptr->m_bases)
+	  n += bases->size() * 4;
+        out << '\t' << ".size	" << L1 << ", " << n << '\n';
 #endif  // defined(_MSC_VER) || defined(__CYGWIN__)
         out << L1 << ':' << '\n';      
         if (x64)

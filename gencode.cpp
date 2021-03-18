@@ -1447,6 +1447,7 @@ namespace intel {
   void unwind_resume(tac*);
   void catch_begin(tac*);
   void catch_end(tac*);
+  void dcast(tac*);
 #endif // CXX_GENERATOR
 } // end of namespace intel
 
@@ -1495,6 +1496,7 @@ intel::gencode_table::gencode_table()
   (*this)[tac::UNWIND_RESUME] = unwind_resume;
   (*this)[tac::CATCH_BEGIN] = catch_begin;
   (*this)[tac::CATCH_END] = catch_end;
+  (*this)[tac::DCAST] = dcast;
 #endif // CXX_GENERATOR
 }
 
@@ -5605,6 +5607,35 @@ void intel::catch_end(COMPILER::tac* tac)
       }
     }
   }
+}
+
+void intel::dcast(COMPILER::tac* tac)
+{
+  address* y = getaddr(tac->y);
+  y->load();
+  out << '\t' << "pushl" << '\t' << '$' << 0 << '\n';  // src2dst
+  const type* Tx = tac->x->m_type;
+  Tx = Tx->unqualified();
+  assert(Tx->m_id == type::POINTER);
+  typedef const pointer_type PT;
+  auto ptx = static_cast<PT*>(Tx);
+  Tx = ptx->referenced_type();
+  auto labelx = except::gnu_label(Tx, 'I');
+  except::throw_types.push_back(Tx);
+  out << '\t' << "pushl" << '\t' << '$' << labelx << '\n';  // dst_type
+  const type* Ty = tac->y->m_type;
+  Ty = Ty->unqualified();
+  assert(Ty->m_id == type::POINTER);
+  auto pty = static_cast<PT*>(Ty);
+  Ty = pty->referenced_type();
+  auto labely = except::gnu_label(Ty, 'I');
+  except::throw_types.push_back(Ty);
+  out << '\t' << "pushl" << '\t' << '$' << labely << '\n';  // src_type
+  out << '\t' << "pushl" << '\t' << "%eax" << '\n';  // src_ptr
+  out << '\t' << "call" << '\t' << "__dynamic_cast" << '\n';
+  out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
+  address* x = getaddr(tac->x);
+  x->store();
 }
 #endif // CXX_GENERATOR
 
