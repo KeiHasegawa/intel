@@ -390,6 +390,7 @@ namespace intel {
     extern std::string LCFI_label();
 #endif // defined(_MSC_VER) || defined(__CYGWIN__)
   } // end of nmaespace except
+  extern bool output_RTTI;
 #endif // CXX_GENERATOR
 }  // end of namespace intel
 

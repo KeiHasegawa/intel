@@ -5611,6 +5611,7 @@ void intel::catch_end(COMPILER::tac* tac)
 
 void intel::dcast(COMPILER::tac* tac)
 {
+  assert(intel::output_RTTI);
   address* y = getaddr(tac->y);
   y->load();
   out << '\t' << "pushl" << '\t' << '$' << 0 << '\n';  // src2dst
