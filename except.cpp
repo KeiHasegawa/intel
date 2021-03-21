@@ -275,6 +275,26 @@ namespace intel {
       {
         mode == GNU ? gnu_none_tag(T) : ms_common(T, 0);
       }
+      inline bool output_class_type(vector<base*>* bases)
+      {
+        if (!bases) {
+          out << "_ZTVN10__cxxabiv117__class_type_infoE+";
+	  return false;
+	}
+
+	int n = bases->size();
+	if (n == 1) {
+	  auto base = (*bases)[0];
+	  usr::flag_t flag = base->m_flag;
+	  if (!(flag & usr::VIRTUAL)) {
+	    out << "_ZTVN10__cxxabiv120__si_class_type_infoE+";
+	    return false;
+	  }
+	}
+
+	out << "_ZTVN10__cxxabiv121__vmi_class_type_infoE+";
+	return true;
+      }
       void gnu_tagged(const type* T, tag* ptr)
       {
         string L1 = gnu_label(T, 'I');
@@ -300,10 +320,7 @@ namespace intel {
         else
           out << '\t' << ".long	";
         vector<base*>* bases = ptr->m_bases;
-        if (!bases)
-          out << "_ZTVN10__cxxabiv117__class_type_infoE+";
-        else
-          out << "_ZTVN10__cxxabiv120__si_class_type_infoE+";
+	bool abiv121 = output_class_type(bases);
         out << (x64 ? 16 : 8) << '\n';
         string L2 = gnu_label(T, 'S');
         if (x64)
@@ -311,11 +328,15 @@ namespace intel {
         else
           out << '\t' << ".long	";
         out << L2 << '\n';
+	if (abiv121)
+          out << '\t' << ".long	" << 0 << '\n';
         if (bases) {
           for (auto b : *bases) {
             tag* bptr = b->m_tag;
             const type* bT = bptr->m_types.second;
             assert(bT);
+	    if (abiv121)
+	      out << '\t' << ".long	" << 2 << '\n';
             string bL = gnu_label(bT, 'I');
             if (x64)
               out << '\t' << ".quad	";
@@ -323,6 +344,8 @@ namespace intel {
               out << '\t' << ".long	";
             out << bL << '\n';
           }
+	  if (abiv121)
+	    out << '\t' << ".long	" << 1026 << '\n';
         }
 
         ostringstream os;
