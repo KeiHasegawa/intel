@@ -5611,10 +5611,13 @@ void intel::catch_end(COMPILER::tac* tac)
 
 void intel::dcast(COMPILER::tac* tac)
 {
-  assert(intel::output_RTTI);
+  using namespace COMPILER;
   address* y = getaddr(tac->y);
   y->load();
-  out << '\t' << "pushl" << '\t' << '$' << 0 << '\n';  // src2dst
+  assert(tac->m_id == tac::DCAST);
+  auto dc = static_cast<dcast3ac*>(tac);
+  int src2dst = dc->m_src2dst;
+  out << '\t' << "pushl" << '\t' << '$' << src2dst << '\n';  // src2dst
   const type* Tx = tac->x->m_type;
   Tx = Tx->unqualified();
   assert(Tx->m_id == type::POINTER);

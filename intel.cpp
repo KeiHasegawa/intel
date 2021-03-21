@@ -106,12 +106,6 @@ int intel::option_handler(const char* option)
     }
     return 0;
   }
-#ifdef CXX_GENERATOR
-  if (string("--no-runtime-typeinfo") == option) {
-    intel::output_RTTI = false;
-    return 0;
-  }
-#endif // CXX_GENERATOR
   cerr << "unknown option " << option << '\n';
   return 1;
 }
@@ -1173,19 +1167,6 @@ namespace intel {
   }
 } // end of namespace intel
 
-#ifdef CXX_GENERATOR
-namespace intel {
-  void add_types(COMPILER::base* bp)
-  {
-    tag* ptr = bp->m_tag;
-    const type* T = ptr->m_types.second;
-    except::throw_types.push_back(T);
-    if (auto bases = ptr->m_bases)
-      for_each(begin(*bases), end(*bases), add_types);
-  }
-} // end of namespace intel
-#endif // CXX_GENERATOR
-
 bool intel::mem::genobj()
 {
   using namespace std;
@@ -1226,24 +1207,6 @@ bool intel::mem::genobj()
     with_initial* p = static_cast<with_initial*>(m_usr);
     if (!(flag & ~usr::WITH_INI))
       out << '\t' << pseudo_global << '\t' << m_label << '\n';
-#ifdef CXX_GENERATOR
-    if (intel::output_RTTI) {
-      usr::flag2_t flag2 = m_usr->m_flag2;
-      if (flag2 & usr::VFTBL) {
-	scope* ps = m_usr->m_scope;
-	assert(ps->m_id == scope::TAG);
-	auto ptr = static_cast<tag*>(ps);
-	const type* T = ptr->m_types.second;
-	assert(T);
-	string label = except::gnu_label(T, 'I');
-	except::throw_types.push_back(T);
-	if (auto bases = ptr->m_bases)
-	  for_each(begin(*bases), end(*bases), add_types);
-	out << '\t' << ".long" << '\t' << 0 << '\n';
-	out << '\t' << ".long" << '\t' << label << '\n';
-      }
-    }
-#endif // CXX_GENERATOR
     out << m_label << ":\n";
     if (use_ascii(str, name)) {
       out << '\t' << ".ascii" << '\t';
@@ -1301,6 +1264,19 @@ std::string intel::escape_sequence(std::string s)
   return s;
 }
 
+#ifdef CXX_GENERATOR
+namespace intel {
+  void add_types(COMPILER::base* bp)
+  {
+    tag* ptr = bp->m_tag;
+    const type* T = ptr->m_types.second;
+    except::throw_types.push_back(T);
+    if (auto bases = ptr->m_bases)
+      for_each(begin(*bases), end(*bases), add_types);
+  }
+} // end of namespace intel
+#endif // CXX_GENERATOR
+
 int intel::mem::pseudo(int offset, const std::pair<int, COMPILER::var*>& p)
 {
   using namespace std;
@@ -1333,7 +1309,24 @@ int intel::mem::pseudo(int offset, const std::pair<int, COMPILER::var*>& p)
   }
   out << '\t' << intel::pseudo(size) << '\t';
   if (addr) {
-    usr* u = static_cast<usr*>(addr->m_ref);
+    var* v = addr->m_ref;
+#ifdef CXX_GENERATOR
+    usr* u = v->usr_cast();
+    if (!u) {
+      auto ti = static_cast<type_information*>(v);
+      const type* T = ti->m_T;
+      out << except::gnu_label(T, 'I') << '\n';
+      except::throw_types.push_back(T);
+      tag* ptr = T->get_tag();
+      assert(ptr);
+      if (auto bases = ptr->m_bases)
+	for_each(begin(*bases), end(*bases), add_types);
+      return offset;
+    }
+#else  // CXX_GENERATOR
+    assert(v->usr_cast());
+    usr* u = static_cast<usr*>(v);
+#endif  // CXX_GENERATOR
     out << (is_external_declaration(u) ? pseudo_helper1(u) : pseudo_helper2(u));
     if (int offset = addr->m_offset)
       out << " + " << offset;
@@ -1735,8 +1728,4 @@ intel::double_uint64_t intel::double_uint64_t::obj;
 std::string intel::pseudo_global = ".globl";
 
 std::string intel::comment_start = "//";
-
-#ifdef CXX_GENERATOR
-bool intel::output_RTTI = true;
-#endif
 
