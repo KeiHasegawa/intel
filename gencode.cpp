@@ -5609,37 +5609,63 @@ void intel::catch_end(COMPILER::tac* tac)
   }
 }
 
+namespace intel {
+    namespace dcast_impl {
+        using namespace COMPILER;
+        void gnu(tac* tac)
+        {
+            address* y = getaddr(tac->y);
+            y->load();
+            assert(tac->m_id == tac::DCAST);
+            auto dc = static_cast<dcast3ac*>(tac);
+            int src2dst = dc->m_src2dst;
+            if (x64)
+                out << '\t' << "movq" << '\t' << '$' << src2dst << ", %r9" << '\n';
+            else
+                out << '\t' << "pushl" << '\t' << '$' << src2dst << '\n';
+            const type* Tx = tac->x->m_type;
+            Tx = Tx->unqualified();
+            assert(Tx->m_id == type::POINTER);
+            typedef const pointer_type PT;
+            auto ptx = static_cast<PT*>(Tx);
+            Tx = ptx->referenced_type();
+            auto labelx = except::gnu_label(Tx, 'I');
+            except::throw_types.push_back(Tx);
+            if (x64)
+                out << '\t' << "leaq" << '\t' << labelx << "(%rip), %r8" << '\n';
+            else
+                out << '\t' << "pushl" << '\t' << '$' << labelx << '\n';
+            const type* Ty = tac->y->m_type;
+            Ty = Ty->unqualified();
+            assert(Ty->m_id == type::POINTER);
+            auto pty = static_cast<PT*>(Ty);
+            Ty = pty->referenced_type();
+            auto labely = except::gnu_label(Ty, 'I');
+            except::throw_types.push_back(Ty);
+            if (x64)
+                out << '\t' << "leaq" << '\t' << labely << "(%rip), %rdx" << '\n';
+            else
+                out << '\t' << "pushl" << '\t' << '$' << labely << '\n';
+            if (x64)
+                out << '\t' << "movq" << '\t' << "%rax, %rcx" << '\n';
+            else
+                out << '\t' << "pushl" << '\t' << "%eax" << '\n';
+            out << '\t' << "call" << '\t' << "__dynamic_cast" << '\n';
+            if (!x64)
+                out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
+            address* x = getaddr(tac->x);
+            x->store();
+        }
+        void ms(tac*)
+        {
+            assert(0 && "not implemented");
+        }
+    }  // end of namespace dcast_impl
+} // end of namespace intel
+
 void intel::dcast(COMPILER::tac* tac)
 {
-  using namespace COMPILER;
-  address* y = getaddr(tac->y);
-  y->load();
-  assert(tac->m_id == tac::DCAST);
-  auto dc = static_cast<dcast3ac*>(tac);
-  int src2dst = dc->m_src2dst;
-  out << '\t' << "pushl" << '\t' << '$' << src2dst << '\n';  // src2dst
-  const type* Tx = tac->x->m_type;
-  Tx = Tx->unqualified();
-  assert(Tx->m_id == type::POINTER);
-  typedef const pointer_type PT;
-  auto ptx = static_cast<PT*>(Tx);
-  Tx = ptx->referenced_type();
-  auto labelx = except::gnu_label(Tx, 'I');
-  except::throw_types.push_back(Tx);
-  out << '\t' << "pushl" << '\t' << '$' << labelx << '\n';  // dst_type
-  const type* Ty = tac->y->m_type;
-  Ty = Ty->unqualified();
-  assert(Ty->m_id == type::POINTER);
-  auto pty = static_cast<PT*>(Ty);
-  Ty = pty->referenced_type();
-  auto labely = except::gnu_label(Ty, 'I');
-  except::throw_types.push_back(Ty);
-  out << '\t' << "pushl" << '\t' << '$' << labely << '\n';  // src_type
-  out << '\t' << "pushl" << '\t' << "%eax" << '\n';  // src_ptr
-  out << '\t' << "call" << '\t' << "__dynamic_cast" << '\n';
-  out << '\t' << "addl" << '\t' << "$16, %esp" << '\n';
-  address* x = getaddr(tac->x);
-  x->store();
+    mode == GNU ? dcast_impl::gnu(tac) : dcast_impl::ms(tac);
 }
 #endif // CXX_GENERATOR
 
