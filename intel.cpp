@@ -208,6 +208,15 @@ extern "C" DLL_EXPORT int generator_sizeof(int n)
   }
 }
 
+#ifdef linux
+extern "C" DLL_EXPORT
+int generator_ptrdiff_type()
+{
+  using namespace COMPILER;
+  return type::INT;
+}
+#endif // linux
+
 extern "C" DLL_EXPORT
 int generator_wchar_type()
 {
