@@ -849,9 +849,17 @@ void intel::sched_stack(const COMPILER::fundef* func,
   }
   allocated::base = 0;
 #ifdef CXX_GENERATOR
+#if 0
   stack::local_area += func_local(func, ms_handler);
+#else
+  stack::local_area = func_local(func, ms_handler);
+#endif
 #else // CXX_GENERATOR
+#if 0
   stack::local_area += func_local(func);
+#else
+  stack::local_area = func_local(func);
+#endif
 #endif // CXX_GENERATOR
   if (allocated::base) {
     if (debug_flag)
@@ -1053,10 +1061,24 @@ namespace intel {
       bool operator()(COMPILER::tac* tac);
     };
     int param_size(int n, COMPILER::tac*);
+    int normal_case(const std::vector<COMPILER::tac*>& code);
+#ifdef CXX_GENERATOR
+    int for_builtin(const std::vector<COMPILER::tac*>& code);
+#endif // CXX_GENERATOR
   }  // end of namespace call_arg
 }  // end of namespace intel
 
 int intel::call_arg::calculate(const std::vector<COMPILER::tac*>& code)
+{
+#ifdef CXX_GENERATOR
+    using namespace std;
+    return max(normal_case(code), for_builtin(code));
+#else // CXX_GENERATOR
+    return normal_case(code);
+#endif // CXX_GENERATOR
+}
+
+int intel::call_arg::normal_case(const std::vector<COMPILER::tac*>& code)
 {
   using namespace std;
   using namespace COMPILER;
@@ -1124,6 +1146,58 @@ int intel::call_arg::param_size(int n, COMPILER::tac* ptr)
   T = T->complete_type();
   return n + T->size();
 }
+
+#ifdef CXX_GENERATOR
+namespace intel {
+    namespace call_arg {
+        using namespace std;
+        using namespace COMPILER;
+        int cost(tac* p)
+        {
+            assert(x64);
+            tac::id_t id = p->m_id;
+            switch (id) {
+            case tac::DCAST:
+                return mode == GNU ? 32 : 40; // __dynamic_cast or ___RTDynamicCast
+            case tac::THROW:
+                return 8; // __cxa_throw or _CxxThrowException
+            case tac::RETHROW:
+                return mode == GNU ? 0 : 16; // __cxa_rethrow or _CxxThrowException
+            case tac::UNWIND_RESUME:
+                return mode == GNU ? 8 : 0; // _Unwind_Resume
+            case tac::CATCH_BEGIN:
+                return mode == GNU ? 8 : 0; // __cxa_begin_catch
+            default:
+                return 0;
+            }
+        }
+        struct comp {
+            map<pair<tac*, tac*>, bool> m_cache;
+            bool operator()(tac* x, tac* y)
+            {
+                auto p = m_cache.find(make_pair(y, x));
+                if (p != m_cache.end())
+                    return !p->second;
+                int nx = cost(x);
+                int ny = cost(y);
+                return m_cache[make_pair(x, y)] = (nx < ny);
+            }
+        };
+    } // end of namespace call_arg
+} // end of namespace intel
+
+int intel::call_arg::for_builtin(const std::vector<COMPILER::tac*>& code)
+{
+    using namespace std;
+    using namespace COMPILER;
+    if (!x64)
+        return 0;  // because of using `push' instruction
+    auto p = max_element(begin(code), end(code), comp());
+    if (p == end(code))
+        return 0;
+    return cost(*p);
+}
+#endif // CXX_GENERATOR
 
 int intel::param_decide(int offset, COMPILER::usr* u)
 {
@@ -5656,9 +5730,80 @@ namespace intel {
             address* x = getaddr(tac->x);
             x->store();
         }
-        void ms(tac*)
+        void ms(tac* p)
         {
-            assert(0 && "not implemented");
+            // isReference
+            if (x64)
+                out << '\t' << "mov" << '\t' << "DWORD PTR [rsp+32], 0" << '\n';
+            else
+                out << '\t' << "push" << '\t' << 0 << '\n';
+
+            const type* Tx = p->x->m_type;
+            Tx = Tx->unqualified();
+            assert(Tx->m_id == type::POINTER);
+            typedef const pointer_type PT;
+            auto ptx = static_cast<PT*>(Tx);
+            Tx = ptx->referenced_type();
+            auto labelx = except::ms::label(except::ms::pre4, Tx);
+            except::throw_types.push_back(Tx);
+
+            // DstType
+            if (x64)
+                out << '\t' << "lea	r9, OFFSET " << labelx << '\n';
+            else
+                out << '\t' << "push OFFSET " << labelx << '\n';
+
+            const type* Ty = p->y->m_type;
+            Ty = Ty->unqualified();
+            assert(Ty->m_id == type::POINTER);
+            auto pty = static_cast<PT*>(Ty);
+            Ty = pty->referenced_type();
+            auto labely = except::ms::label(except::ms::pre4, Ty);
+            except::throw_types.push_back(Ty);
+            
+            // SrcType
+            if (x64)
+                out << '\t' << "lea	r8, OFFSET " << labely << '\n';
+            else
+                out << '\t' << "push OFFSET " << labely << '\n';
+
+            assert(p->m_id == tac::DCAST);
+            auto dc = static_cast<dcast3ac*>(p);
+            int src2dst = dc->m_src2dst;
+            
+            // VfDelta
+            if (src2dst > 0) {
+                if (x64)
+                    out << '\t' << "push" << '\t' << src2dst << '\n';
+                else
+                    out << '\t' << "mov edx, " << src2dst << '\n';
+            }
+            else {
+                if (x64)
+                    out << '\t' << "xor	edx, edx" << '\n';
+                else
+                    out << '\t' << "push" << '\t' << 0 << '\n';
+            }
+
+            // inptr
+            if (x64) {
+                address* y = getaddr(p->y);
+                y->load(reg::cx);
+            }
+            else {
+                address* y = getaddr(p->y);
+                y->load();
+                out << '\t' << "push" << '\t' << "eax" << '\n';
+            }
+ 
+            string label = "__RTDynamicCast";
+            out << '\t' << "call" << '\t' << label << '\n';
+            if (!x64)
+                out << '\t' << "add" << '\t' << "esp, 20" << '\n';
+            mem::refed.insert(mem::refgen_t(label, usr::FUNCTION, 0));
+
+            address* x = getaddr(p->x);
+            x->store();
         }
     }  // end of namespace dcast_impl
 } // end of namespace intel

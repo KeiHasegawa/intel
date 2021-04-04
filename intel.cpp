@@ -1324,7 +1324,10 @@ int intel::mem::pseudo(int offset, const std::pair<int, COMPILER::var*>& p)
     if (!u) {
       auto ti = static_cast<type_information*>(v);
       const type* T = ti->m_T;
-      out << except::gnu_label(T, 'I') << '\n';
+      if (mode == GNU)
+          out << except::gnu_label(T, 'I') << '\n';
+      else
+          out << except::ms::label(except::ms::pre1a, T) << '\n';
       except::throw_types.push_back(T);
       tag* ptr = T->get_tag();
       assert(ptr);
