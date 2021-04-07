@@ -1443,9 +1443,18 @@ void intel::gencode(COMPILER::tac* ptr)
 {
   using namespace std;
   if (debug_flag) {
-    out << '\t' << comment_start << " ";
-    output3ac(out,ptr);
-    out << '\n';
+      if (mode == MS) {
+          ostringstream os;
+          os << '\t' << comment_start << " ";
+          output3ac(os, ptr);
+          string s = os.str();
+          out << s.substr(0,200) << '\n';
+      }
+      else {
+          out << '\t' << comment_start << " ";
+          output3ac(out, ptr);
+          out << '\n';
+      }
   }
 #ifdef CXX_GENERATOR
   if (except::ms::x64_handler::catch_code::flag) {
