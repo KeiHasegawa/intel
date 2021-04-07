@@ -2791,7 +2791,13 @@ void intel::half_real(COMPILER::tac* tac)
         out << '\t' << "fistp" << '\t' << "DWORD PTR 10[" << SP << ']' << '\n';
       else
         out << '\t' << "fistp" << '\t' << "QWORD PTR 8[" << SP << ']' << '\n';
+      // Compared with the code of `mode == GNU', the next code generation is valid.
+      // But actually the next code generates floating-point inexact exception.
+      // I don't understand the mecanizm about the exception but this comile out
+      // works well.
+#if 0
       out << '\t' << "fldcw" << '\t' << "14[" << SP << ']' << '\n';
+#endif
       if (Tx->_signed())
         out << '\t' << "movzx" << '\t' << "eax, WORD PTR 10[" << SP << ']' << '\n';
       else
