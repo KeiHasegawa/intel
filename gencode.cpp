@@ -6142,6 +6142,12 @@ namespace intel {
 	if (name[1] == '\'' || name[1] == '"')
 	  return name.substr(2, name.length() - 3);
       }
+      const type* T = u->m_type;
+      if (T->real()) {
+	string::size_type p = name.find_first_of('.');
+	if (p != string::npos)
+	  name[p] = '_';
+      }
       return name;
     }
     tag* get_src(const tag* ptr)
