@@ -6126,8 +6126,13 @@ namespace intel {
     string helper(const scope::tps_t::val2_t& x)
     {
       if (const type* T = x.first) {
-        T = T->unqualified();
-        return '@' + signature(T);
+	int cvr = 0;
+        T = T->unqualified(&cvr);
+	ostringstream os;
+	os << '@';
+	if (cvr)
+	  os << cvr;
+        return  os.str() + signature(T);
       }
       var* v = x.second;
       if (addrof* a = v->addrof_cast())
