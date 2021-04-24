@@ -6135,13 +6135,12 @@ namespace intel {
       assert(v->usr_cast());
       usr* u = static_cast<usr*>(v);
       string name = u->m_name;
-      if (name[0] == '\'' || name[0] == '"') {
+      if (name[0] == '.')
+	return name.substr(1, name.length() - 1);
+      if (name[0] == '\'')
 	return name.substr(1, name.length() - 2);
-      }
-      if (name[0] == 'L') {
-	if (name[1] == '\'' || name[1] == '"')
-	  return name.substr(2, name.length() - 3);
-      }
+      if (name[0] == 'L' && name[1] == '\'')
+	return name.substr(2, name.length() - 3);
       const type* T = u->m_type;
       if (T->real()) {
 	string::size_type p = name.find_first_of('.');
