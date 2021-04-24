@@ -6134,7 +6134,15 @@ namespace intel {
         v = a->m_ref;
       assert(v->usr_cast());
       usr* u = static_cast<usr*>(v);
-      return u->m_name;
+      string name = u->m_name;
+      if (name[0] == '\'' || name[0] == '"') {
+	return name.substr(1, name.length() - 2);
+      }
+      if (name[0] == 'L') {
+	if (name[1] == '\'' || name[1] == '"')
+	  return name.substr(2, name.length() - 3);
+      }
+      return name;
     }
     tag* get_src(const tag* ptr)
     {
