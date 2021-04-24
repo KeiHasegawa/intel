@@ -6145,7 +6145,9 @@ namespace intel {
       case tag::ENUM:   os << "W4"; break;
       case tag::STRUCT: os << 'U'; break;
       case tag::UNION: os << 'T'; break;
-      default: assert(kind == tag::CLASS);  os << 'V'; break;
+      default:
+	// If kind != tag::CLASS, just ignore. for example tag::TYPENAME.
+	os << 'V'; break;
       }
       string name = ptr->m_name;
       if (name[0] == '.')
