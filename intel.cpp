@@ -217,6 +217,15 @@ int generator_ptrdiff_type()
 }
 #endif // linux
 
+#if defined(__x86_64__) || !defined(WIN32)
+extern "C" DLL_EXPORT
+int generator_ptrdiff_type()
+{
+  using namespace COMPILER;
+  return intel::mode == intel::GNU ? type::LONG : type::LONGLONG;
+}
+#endif // defined(__x86_64__) || !defined(WIN32)
+
 extern "C" DLL_EXPORT
 int generator_wchar_type()
 {
