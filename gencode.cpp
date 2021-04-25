@@ -6154,18 +6154,18 @@ namespace intel {
       }
       return name;
     }
-    tag* get_src(const tag* ptr)
+    template_tag* get_src(const tag* ptr)
     {
       tag::flag_t flag = ptr->m_flag;
       if (flag & tag::INSTANTIATE) {
         typedef const instantiated_tag IT;
         IT* it = static_cast<IT*>(ptr);
-        return reinterpret_cast<tag*>(it->m_src);
+        return it->m_src;
       }
       if (flag & tag::SPECIAL_VER) {
         typedef const special_ver_tag SV;
         SV* sv = static_cast<SV*>(ptr);
-        return reinterpret_cast<tag*>(sv->m_src);
+        return sv->m_src;
       }
       return 0;
     }
@@ -6185,20 +6185,15 @@ namespace intel {
       string name = ptr->m_name;
       if (name[0] == '.')
         name = name.substr(1) + '$';
-      if (tag* src = get_src(ptr)) {
-        name = src->m_name;
-        if (src->m_flag & tag::PARTIAL_SPECIAL) {
-          string::size_type p = name.find_first_of('<');
-          name.erase(p);
-        }
-        os << "?$" << name;
-        const instantiated_tag::SEED* seed = get_seed(ptr);
-        typedef instantiated_tag::SEED::const_iterator IT;
-        transform(begin(*seed), end(*seed),
-                  ostream_iterator<string>(os), helper);
-      }
-      else
-        os << name;
+      template_tag* tt = get_src(ptr);
+      if (!tt)
+	return name + "@@";
+      name = tt->encode_name();
+      os << "?$" << name;
+      const instantiated_tag::SEED* seed = get_seed(ptr);
+      typedef instantiated_tag::SEED::const_iterator IT;
+      transform(begin(*seed), end(*seed),
+		ostream_iterator<string>(os), helper);
       os << "@@";
       return os.str();
     }
