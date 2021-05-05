@@ -222,7 +222,9 @@ extern "C" DLL_EXPORT
 int generator_ptrdiff_type()
 {
   using namespace COMPILER;
-  return intel::mode == intel::GNU ? type::LONG : type::LONGLONG;
+  if (intel::mode == intel::MS && intel::x64 )
+    return type::LONGLONG;
+  return type::LONG;
 }
 #endif // defined(__x86_64__) || defined(_WIN64)
 

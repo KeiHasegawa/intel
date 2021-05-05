@@ -1323,8 +1323,10 @@ int intel::decide_local(int offset, COMPILER::var* v)
     return offset;
   }
   const type* T = v->m_type;
+#if 0
   int size = (f & usr::VL) ? psize() : T->size();
   offset += size;
+#endif
   int al = (f & usr::VL) ? psize() : T->align();
   offset = align(offset, al);
   if (f & usr::VL){
@@ -1339,7 +1341,12 @@ int intel::decide_local(int offset, COMPILER::var* v)
     assert(tbl.find(v) == tbl.end());
     tbl[v] = new stack(v, -offset);
   }
+#if 0
   return offset;
+#else
+  int size = (f & usr::VL) ? psize() : T->size();  
+  return offset + size;
+#endif
 }
 
 namespace intel {
@@ -5812,9 +5819,13 @@ namespace intel {
             }
  
             string label = "__RTDynamicCast";
-            out << '\t' << "call" << '\t' << label << '\n';
-            if (!x64)
-                out << '\t' << "add" << '\t' << "esp, 20" << '\n';
+            if (x64)
+	      out << '\t' << "call" << '\t' << label << '\n';
+	    else {
+	      label = '_' + label;
+	      out << '\t' << "call" << '\t' << label << '\n';
+	      out << '\t' << "add" << '\t' << "esp, 20" << '\n';
+	    }
             mem::refed.insert(mem::refgen_t(label, usr::FUNCTION, 0));
 
             address* x = getaddr(p->x);
