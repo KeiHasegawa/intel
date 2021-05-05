@@ -852,13 +852,19 @@ void intel::sched_stack(const COMPILER::fundef* func,
 #if 0
   stack::local_area += func_local(func, ms_handler);
 #else
-  stack::local_area = func_local(func, ms_handler);
+  if (mode == GNU || x64)
+    stack::local_area = func_local(func, ms_handler);
+  else
+    stack::local_area += func_local(func, ms_handler);
 #endif
 #else // CXX_GENERATOR
 #if 0
   stack::local_area += func_local(func);
 #else
-  stack::local_area = func_local(func);
+  if (mode == GNU || x64)
+    stack::local_area = func_local(func);
+  else
+    stack::local_area += func_local(func);
 #endif
 #endif // CXX_GENERATOR
   if (allocated::base) {
@@ -1366,8 +1372,7 @@ int intel::decide_local(int offset, COMPILER::var* v)
   }
   const type* T = v->m_type;
   int size = (f & usr::VL) ? psize() : T->size();
-  if (mode == GNU || x64)
-    offset += size;
+  offset += size;
   int al = (f & usr::VL) ? psize() : T->align();
   offset = align(offset, al);
   if (f & usr::VL){
@@ -1382,9 +1387,7 @@ int intel::decide_local(int offset, COMPILER::var* v)
     assert(tbl.find(v) == tbl.end());
     tbl[v] = new stack(v, -offset);
   }
-  if (mode == GNU || x64)
-    return offset;
-  return offset + size;
+  return offset;
 }
 
 namespace intel {
