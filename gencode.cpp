@@ -1310,6 +1310,48 @@ int intel::usr_local2(int offset, COMPILER::usr* u)
   return flag & mask ? offset : decide_local(offset,u);
 }
 
+/*
+GNU 32 bit
+       pushl   %ebp
+       movl    %esp, %ebp
+       pushl   %ebx
+       subl    $160, %esp
+
++-------------+ <- esp(new)
+|             |
+|             |
+|             |
+|             |
+|             |
+|             |
+|             |
++-------------+
+|   ebx(old)  |
++-------------+ <- ebp(new)
+|   ebp(old)  |
++-------------+ <- esp(old)
+
+
+MS 32 bit
+	push 	ebp
+	push 	ebx
+	mov 	ebp, esp
+	sub 	esp, 160
+
++-------------+ <- esp(new)
+|             |
+|             |
+|             |
+|             |
+|             |
+|             |
+|             |
++-------------+ <- ebp(new)
+|   ebx(old)  |
++-------------+
+|   ebp(old)  |
++-------------+ <- esp(old)
+*/
 int intel::decide_local(int offset, COMPILER::var* v)
 {
   using namespace std;
@@ -1323,10 +1365,9 @@ int intel::decide_local(int offset, COMPILER::var* v)
     return offset;
   }
   const type* T = v->m_type;
-#if 0
   int size = (f & usr::VL) ? psize() : T->size();
-  offset += size;
-#endif
+  if (mode == GNU || x64)
+    offset += size;
   int al = (f & usr::VL) ? psize() : T->align();
   offset = align(offset, al);
   if (f & usr::VL){
@@ -1341,12 +1382,9 @@ int intel::decide_local(int offset, COMPILER::var* v)
     assert(tbl.find(v) == tbl.end());
     tbl[v] = new stack(v, -offset);
   }
-#if 0
-  return offset;
-#else
-  int size = (f & usr::VL) ? psize() : T->size();  
+  if (mode == GNU || x64)
+    return offset;
   return offset + size;
-#endif
 }
 
 namespace intel {
