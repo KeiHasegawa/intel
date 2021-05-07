@@ -849,23 +849,9 @@ void intel::sched_stack(const COMPILER::fundef* func,
   }
   allocated::base = 0;
 #ifdef CXX_GENERATOR
-#if 0
-  stack::local_area += func_local(func, ms_handler);
-#else
-  if (mode == GNU || x64)
-    stack::local_area = func_local(func, ms_handler);
-  else
-    stack::local_area += func_local(func, ms_handler);
-#endif
+  stack::local_area = func_local(func, ms_handler);
 #else // CXX_GENERATOR
-#if 0
-  stack::local_area += func_local(func);
-#else
-  if (mode == GNU || x64)
-    stack::local_area = func_local(func);
-  else
-    stack::local_area += func_local(func);
-#endif
+  stack::local_area = func_local(func);
 #endif // CXX_GENERATOR
   if (allocated::base) {
     if (debug_flag)
@@ -1110,6 +1096,7 @@ int intel::call_arg::normal_case(const std::vector<COMPILER::tac*>& code)
 #ifdef CXX_GENERATOR
     if (!T) {
       p = q + 1;
+      n = max(n, m);
       continue;
     }
 #endif // CXX_GENERATOR
