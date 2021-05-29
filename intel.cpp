@@ -217,7 +217,7 @@ int generator_ptrdiff_type()
 }
 #endif // linux
 
-#if defined(__x86_64__) || defined(_WIN64)
+#if defined(__x86_64__) || defined(_WIN64) || defined(WIN32)
 extern "C" DLL_EXPORT
 int generator_ptrdiff_type()
 {
@@ -226,7 +226,7 @@ int generator_ptrdiff_type()
     return type::LONGLONG;
   return type::LONG;
 }
-#endif // defined(__x86_64__) || defined(_WIN64)
+#endif // defined(__x86_64__) || defined(_WIN64) || defined(WIN32)
 
 extern "C" DLL_EXPORT
 int generator_wchar_type()
